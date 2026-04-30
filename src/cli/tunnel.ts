@@ -3,10 +3,8 @@ import { execSync, spawnSync } from 'child_process';
 import { existsSync, writeFileSync, readFileSync, mkdirSync, chmodSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import { CLI_NAME, PRODUCT_NAME, TUNNEL_NAME_BASE, getStateRoot } from '../utils/elevate.js';
 
-const TUNNEL_NAME = 'cortextos';
-const PLIST_LABEL = 'com.cortextos.tunnel';
-const PLIST_PATH = join(homedir(), 'Library', 'LaunchAgents', `${PLIST_LABEL}.plist`);
 const CLOUDFLARED_CERT = join(homedir(), '.cloudflared', 'cert.pem');
 const CLOUDFLARED_CONFIG = join(homedir(), '.cloudflared', 'config.yaml');
 
@@ -18,8 +16,20 @@ interface TunnelConfig {
   createdAt?: string;
 }
 
+function getTunnelName(instance: string): string {
+  return `${TUNNEL_NAME_BASE}-${instance}`;
+}
+
+function getPlistLabel(instance: string): string {
+  return `com.elevateos.tunnel.${instance}`;
+}
+
+function getPlistPath(instance: string): string {
+  return join(homedir(), 'Library', 'LaunchAgents', `${getPlistLabel(instance)}.plist`);
+}
+
 function getTunnelConfigPath(instance: string): string {
-  return join(homedir(), '.cortextos', instance, 'tunnel.json');
+  return join(getStateRoot(instance), 'tunnel.json');
 }
 
 function readTunnelConfig(instance: string): TunnelConfig {
@@ -32,14 +42,14 @@ function readTunnelConfig(instance: string): TunnelConfig {
 
 function writeTunnelConfig(instance: string, config: TunnelConfig): void {
   const configPath = getTunnelConfigPath(instance);
-  mkdirSync(join(homedir(), '.cortextos', instance), { recursive: true });
+  mkdirSync(getStateRoot(instance), { recursive: true });
   writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
 }
 
 function checkPlatform(): void {
   if (process.platform !== 'darwin') {
-    console.error('  cortextos tunnel requires macOS (uses launchd for persistence).');
-    console.error('  On Linux/Windows, run cloudflared manually: cloudflared tunnel run cortextos');
+    console.error(`  ${CLI_NAME} tunnel requires macOS (uses launchd for persistence).`);
+    console.error(`  On Linux/Windows, run cloudflared manually: cloudflared tunnel run ${TUNNEL_NAME_BASE}-<instance>`);
     process.exit(1);
   }
 }
@@ -59,7 +69,7 @@ function checkAuth(): void {
   if (!existsSync(CLOUDFLARED_CERT)) {
     console.error('  Not authenticated with Cloudflare.');
     console.error('  Run: cloudflared login');
-    console.error('  Then re-run: cortextos tunnel start');
+    console.error(`  Then re-run: ${CLI_NAME} tunnel start`);
     process.exit(1);
   }
 }
@@ -121,7 +131,8 @@ interface CloudflaredCreateOutput {
   name: string;
 }
 
-function findExistingTunnel(): CloudflaredTunnel | null {
+function findExistingTunnel(instance: string): CloudflaredTunnel | null {
+  const tunnelName = getTunnelName(instance);
   try {
     const output = execSync('cloudflared tunnel list --output json', {
       encoding: 'utf-8',
@@ -130,16 +141,17 @@ function findExistingTunnel(): CloudflaredTunnel | null {
     });
     const tunnels: CloudflaredTunnel[] = JSON.parse(output);
     // Filter out deleted tunnels — reuse only active ones
-    return tunnels.find((t) => t.name === TUNNEL_NAME && !t.deleted_at) ?? null;
+    return tunnels.find((t) => t.name === tunnelName && !t.deleted_at) ?? null;
   } catch {
     return null;
   }
 }
 
-function createTunnel(): CloudflaredTunnel {
+function createTunnel(instance: string): CloudflaredTunnel {
+  const tunnelName = getTunnelName(instance);
   let output = '';
   try {
-    output = execSync(`cloudflared tunnel create --output json ${TUNNEL_NAME}`, {
+    output = execSync(`cloudflared tunnel create --output json ${tunnelName}`, {
       encoding: 'utf-8',
       stdio: 'pipe',
       timeout: 30000,
@@ -153,7 +165,7 @@ function createTunnel(): CloudflaredTunnel {
     return { id: created.id, name: created.name };
   } catch {
     // JSON parse failed — fall back to listing
-    const tunnel = findExistingTunnel();
+    const tunnel = findExistingTunnel(instance);
     if (!tunnel) {
       console.error('  Tunnel was created but could not be found in list. Try running again.');
       process.exit(1);
@@ -177,8 +189,11 @@ function writePlist(instance: string, port: number): void {
   const cfPath = getCloudflaredPath();
   const nodeBinDir = detectNodePath();
   const cfBinDir = detectCloudflaredPath();
-  const logDir = join(homedir(), '.cortextos', instance, 'logs', 'tunnel');
-  const ctxRoot = join(homedir(), '.cortextos', instance);
+  const tunnelName = getTunnelName(instance);
+  const plistLabel = getPlistLabel(instance);
+  const plistPath = getPlistPath(instance);
+  const ctxRoot = getStateRoot(instance);
+  const logDir = join(ctxRoot, 'logs', 'tunnel');
 
   mkdirSync(logDir, { recursive: true });
 
@@ -198,7 +213,7 @@ function writePlist(instance: string, port: number): void {
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>${PLIST_LABEL}</string>
+    <string>${plistLabel}</string>
 
     <key>ProgramArguments</key>
     <array>
@@ -206,7 +221,7 @@ function writePlist(instance: string, port: number): void {
         <string>tunnel</string>
         <string>--no-autoupdate</string>
         <string>run</string>
-        <string>${TUNNEL_NAME}</string>
+        <string>${tunnelName}</string>
     </array>
 
     <key>RunAtLoad</key>
@@ -230,6 +245,8 @@ function writePlist(instance: string, port: number): void {
         <string>${homedir()}</string>
         <key>PATH</key>
         <string>${launchdPath}</string>
+        <key>ELEVATE_ROOT</key>
+        <string>${ctxRoot}</string>
         <key>CTX_ROOT</key>
         <string>${ctxRoot}</string>
     </dict>
@@ -238,13 +255,13 @@ function writePlist(instance: string, port: number): void {
 `;
 
   mkdirSync(join(homedir(), 'Library', 'LaunchAgents'), { recursive: true });
-  writeFileSync(PLIST_PATH, plist, 'utf-8');
-  chmodSync(PLIST_PATH, 0o644);
+  writeFileSync(plistPath, plist, 'utf-8');
+  chmodSync(plistPath, 0o644);
 }
 
-function isServiceLoaded(): boolean {
+function isServiceLoaded(instance: string): boolean {
   // `launchctl list <label>` exits 0 if service is registered (loaded), non-zero otherwise
-  const result = spawnSync('launchctl', ['list', PLIST_LABEL], { stdio: 'pipe' });
+  const result = spawnSync('launchctl', ['list', getPlistLabel(instance)], { stdio: 'pipe' });
   return result.status === 0;
 }
 
@@ -256,21 +273,23 @@ function getUid(): string {
   }
 }
 
-function loadService(): void {
+function loadService(instance: string): void {
   // Bootout first in case of stale registration, then bootstrap fresh
   const uid = getUid();
-  spawnSync('launchctl', ['bootout', `gui/${uid}/${PLIST_LABEL}`], { stdio: 'pipe' });
-  spawnSync('launchctl', ['bootout', `gui/${uid}`, PLIST_PATH], { stdio: 'pipe' });
+  const plistLabel = getPlistLabel(instance);
+  const plistPath = getPlistPath(instance);
+  spawnSync('launchctl', ['bootout', `gui/${uid}/${plistLabel}`], { stdio: 'pipe' });
+  spawnSync('launchctl', ['bootout', `gui/${uid}`, plistPath], { stdio: 'pipe' });
 
   // Try modern bootstrap (macOS 10.10+, preferred on Sonoma)
-  const result = spawnSync('launchctl', ['bootstrap', `gui/${uid}`, PLIST_PATH], {
+  const result = spawnSync('launchctl', ['bootstrap', `gui/${uid}`, plistPath], {
     encoding: 'utf-8',
     stdio: 'pipe',
   });
 
   if (result.status !== 0) {
     // Fallback to legacy load for older macOS
-    const legacyResult = spawnSync('launchctl', ['load', '-w', PLIST_PATH], {
+    const legacyResult = spawnSync('launchctl', ['load', '-w', plistPath], {
       encoding: 'utf-8',
       stdio: 'pipe',
     });
@@ -280,18 +299,20 @@ function loadService(): void {
   }
 }
 
-function unloadService(): void {
+function unloadService(instance: string): void {
   const uid = getUid();
+  const plistLabel = getPlistLabel(instance);
+  const plistPath = getPlistPath(instance);
 
   // Try modern bootout first (macOS 10.10+)
-  const result = spawnSync('launchctl', ['bootout', `gui/${uid}/${PLIST_LABEL}`], {
+  const result = spawnSync('launchctl', ['bootout', `gui/${uid}/${plistLabel}`], {
     encoding: 'utf-8',
     stdio: 'pipe',
   });
 
   if (result.status !== 0) {
     // Fallback to legacy unload
-    spawnSync('launchctl', ['unload', '-w', PLIST_PATH], { stdio: 'pipe' });
+    spawnSync('launchctl', ['unload', '-w', plistPath], { stdio: 'pipe' });
   }
 }
 
@@ -303,9 +324,11 @@ const startCommand = new Command('start')
   .description('Create (or reuse) the Cloudflare tunnel and start it as a launchd service')
   .action(async (options: { instance: string; port: string }) => {
     const port = parseInt(options.port, 10);
+    const tunnelName = getTunnelName(options.instance);
+    const plistPath = getPlistPath(options.instance);
 
     checkPlatform();
-    console.log('\ncortextOS Tunnel\n');
+    console.log(`\n${PRODUCT_NAME} Tunnel\n`);
 
     // 1. Check cloudflared installed
     const version = checkCloudflared();
@@ -316,12 +339,12 @@ const startCommand = new Command('start')
     console.log(`  Cloudflare auth: OK`);
 
     // 3. Find or create tunnel
-    let tunnel = findExistingTunnel();
+    let tunnel = findExistingTunnel(options.instance);
     if (tunnel) {
       console.log(`  Tunnel: ${tunnel.name} (${tunnel.id}) — reusing existing`);
     } else {
-      console.log(`  Creating tunnel '${TUNNEL_NAME}'...`);
-      tunnel = createTunnel();
+      console.log(`  Creating tunnel '${tunnelName}'...`);
+      tunnel = createTunnel(options.instance);
       console.log(`  Tunnel: ${tunnel.name} (${tunnel.id}) — created`);
     }
 
@@ -333,13 +356,13 @@ const startCommand = new Command('start')
 
     // 5. Write launchd plist
     writePlist(options.instance, port);
-    console.log(`  Plist: ${PLIST_PATH}`);
+    console.log(`  Plist: ${plistPath}`);
 
     // 6. Load launchd service
-    if (isServiceLoaded()) {
+    if (isServiceLoaded(options.instance)) {
       console.log(`  Service: already running — reloading`);
     }
-    loadService();
+    loadService(options.instance);
     console.log(`  Service: loaded (auto-starts on login)`);
 
     // 7. Wait briefly for tunnel to connect, then health-check
@@ -377,28 +400,29 @@ const startCommand = new Command('start')
     console.log(`\n  Dashboard URL: ${tunnelUrl}`);
     console.log(`  TUNNEL_URL saved to: ${getTunnelConfigPath(options.instance)}\n`);
     console.log(`  The tunnel will restart automatically after reboot.`);
-    console.log(`  Start the dashboard with: cortextos dashboard\n`);
+    console.log(`  Start the dashboard with: ${CLI_NAME} dashboard\n`);
   });
 
 const stopCommand = new Command('stop')
   .option('--instance <id>', 'Instance ID', 'default')
   .description('Stop the Cloudflare tunnel launchd service')
-  .action(async (_options: { instance: string }) => {
+  .action(async (options: { instance: string }) => {
     checkPlatform();
+    const plistPath = getPlistPath(options.instance);
 
-    if (!existsSync(PLIST_PATH)) {
-      console.log('  Tunnel service is not installed. Run: cortextos tunnel start');
+    if (!existsSync(plistPath)) {
+      console.log(`  Tunnel service is not installed. Run: ${CLI_NAME} tunnel start`);
       return;
     }
 
-    if (!isServiceLoaded()) {
+    if (!isServiceLoaded(options.instance)) {
       console.log('  Tunnel service is not running.');
       return;
     }
 
-    unloadService();
+    unloadService(options.instance);
     console.log('  Tunnel service stopped.');
-    console.log('  (The tunnel config is preserved — run `cortextos tunnel start` to restart)\n');
+    console.log(`  (The tunnel config is preserved — run \`${CLI_NAME} tunnel start\` to restart)\n`);
   });
 
 const statusCommand = new Command('status')
@@ -406,7 +430,7 @@ const statusCommand = new Command('status')
   .description('Show tunnel URL and running status')
   .action(async (options: { instance: string }) => {
     checkPlatform();
-    console.log('\ncortextOS Tunnel Status\n');
+    console.log(`\n${PRODUCT_NAME} Tunnel Status\n`);
 
     // cloudflared installed?
     let cfVersion = 'not installed';
@@ -419,11 +443,12 @@ const statusCommand = new Command('status')
     console.log(`  Cloudflare auth: ${existsSync(CLOUDFLARED_CERT) ? 'OK' : 'not authenticated (run: cloudflared login)'}`);
 
     // Tunnel exists?
-    const tunnel = findExistingTunnel();
-    console.log(`  Tunnel '${TUNNEL_NAME}': ${tunnel ? `exists (${tunnel.id})` : 'not created'}`);
+    const tunnelName = getTunnelName(options.instance);
+    const tunnel = findExistingTunnel(options.instance);
+    console.log(`  Tunnel '${tunnelName}': ${tunnel ? `exists (${tunnel.id})` : 'not created'}`);
 
     // Service running?
-    const running = isServiceLoaded();
+    const running = isServiceLoaded(options.instance);
     console.log(`  Service (launchd): ${running ? 'running' : 'stopped'}`);
 
     // Saved config
@@ -431,7 +456,7 @@ const statusCommand = new Command('status')
     if (config.tunnelUrl) {
       console.log(`  Dashboard URL: ${config.tunnelUrl}`);
     } else {
-      console.log(`  Dashboard URL: not set (run: cortextos tunnel start)`);
+      console.log(`  Dashboard URL: not set (run: ${CLI_NAME} tunnel start)`);
     }
 
     if (config.createdAt) {
@@ -447,7 +472,7 @@ const urlCommand = new Command('url')
   .action(async (options: { instance: string }) => {
     const config = readTunnelConfig(options.instance);
     if (!config.tunnelUrl) {
-      console.error('No tunnel URL found. Run: cortextos tunnel start');
+      console.error(`No tunnel URL found. Run: ${CLI_NAME} tunnel start`);
       process.exit(1);
     }
     process.stdout.write(config.tunnelUrl + '\n');
@@ -462,7 +487,7 @@ export const tunnelCommand = new Command('tunnel')
   .addCommand(statusCommand)
   .addCommand(urlCommand);
 
-// Default action: run start when `cortextos tunnel` is called with no subcommand
+// Default action: run start when `elevate tunnel` is called with no subcommand
 tunnelCommand.action(async () => {
   await startCommand.parseAsync([], { from: 'user' });
 });

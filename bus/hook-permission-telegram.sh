@@ -80,7 +80,7 @@ esac
 
 # Generate unique ID for this request
 UNIQUE_ID=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
-HOOK_STATE_DIR="${CTX_ROOT:-${HOME}/.cortextos/default}/state/${AGENT}"
+HOOK_STATE_DIR="${CTX_ROOT:-${HOME}/.elevate/default}/state/${AGENT}"
 mkdir -p "${HOOK_STATE_DIR}"
 RESPONSE_FILE="${HOOK_STATE_DIR}/hook-response-${UNIQUE_ID}.json"
 

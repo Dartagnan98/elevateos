@@ -390,10 +390,10 @@ export function checkUpstream(
 
   // If --apply: merge upstream
   if (options.apply) {
-    if (process.env.CORTEXTOS_CONFIRM_UPSTREAM_MERGE !== 'yes') {
+    if (process.env.ELEVATE_CONFIRM_UPSTREAM_MERGE !== 'yes') {
       return {
         status: 'error',
-        error: 'Refusing to auto-merge upstream. Review the diff first (run without --apply), then re-run with CORTEXTOS_CONFIRM_UPSTREAM_MERGE=yes if you trust the changes.',
+        error: 'Refusing to auto-merge upstream. Review the diff first (run without --apply), then re-run with ELEVATE_CONFIRM_UPSTREAM_MERGE=yes if you trust the changes.',
       };
     }
     const localItems = getCatalogItems('local');

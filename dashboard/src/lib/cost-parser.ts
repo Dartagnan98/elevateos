@@ -1,4 +1,4 @@
-// cortextOS Dashboard - Cost parser
+// ElevateOS Dashboard - Cost parser
 // Parses ~/.claude/projects/*.jsonl for token usage and calculates cost.
 
 import fs from 'fs';
@@ -140,7 +140,7 @@ export function scanClaudeProjectsCosts(): CostEntry[] {
   const allowedOrgs = new Set(getOrgs());
 
   // Also allow the instance ID itself as a fallback org label
-  const instanceId = process.env.CTX_INSTANCE_ID ?? 'default';
+  const instanceId = process.env.ELEVATE_INSTANCE_ID ?? process.env.CTX_INSTANCE_ID ?? 'default';
   allowedOrgs.add(instanceId);
 
   const allEntries: CostEntry[] = [];

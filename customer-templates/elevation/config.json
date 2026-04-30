@@ -1,0 +1,14 @@
+{
+  "name": "elevation",
+  "display_name": "Elevation Real Estate",
+  "data_roots": {
+    "messages_db": "/Users/admin/skyleigh-tools/data/messages.db",
+    "brew_dir": "/Users/admin/skyleigh-tools/data/brew",
+    "marketing_dir": "/Users/admin/skyleigh-tools/data/marketing",
+    "listings_state": "/Users/admin/skyleigh-tools/data",
+    "knowledge_seed": "/Users/admin/skyleigh-tools/knowledge"
+  },
+  "brokerage": "Forever Real Estate Group / EXP Realty",
+  "voice_profile": "/Users/admin/skyleigh-tools/knowledge/skyleigh-profile.md",
+  "agents": ["avery", "marlowe", "pierce", "reese"]
+}

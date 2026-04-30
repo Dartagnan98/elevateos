@@ -1,4 +1,4 @@
-// cortextOS Dashboard - Analytics data queries
+// ElevateOS Dashboard - Analytics data queries
 // Aggregated metrics for charts on the analytics page.
 
 import { db } from '@/lib/db';

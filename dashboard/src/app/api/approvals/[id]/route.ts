@@ -97,11 +97,16 @@ export async function PATCH(
   }
 
   const frameworkRoot = getFrameworkRoot();
+  const instanceId = process.env.ELEVATE_INSTANCE_ID ?? process.env.CTX_INSTANCE_ID ?? 'default';
   const env = {
     ...process.env,
+    ELEVATE_FRAMEWORK_ROOT: frameworkRoot,
+    ELEVATE_ROOT: getCTXRoot(),
+    ELEVATE_INSTANCE_ID: instanceId,
+    ELEVATE_ORG: approval.org || '',
     CTX_FRAMEWORK_ROOT: frameworkRoot,
     CTX_ROOT: getCTXRoot(),
-    CTX_INSTANCE_ID: process.env.CTX_INSTANCE_ID ?? 'default',
+    CTX_INSTANCE_ID: instanceId,
     CTX_AGENT_NAME: 'dashboard',
     CTX_ORG: approval.org || '',
   };

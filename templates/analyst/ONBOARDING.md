@@ -2,7 +2,7 @@
 
 This is your first time running. Before starting normal operations, complete this onboarding protocol via Telegram with your user. Do not skip steps. The more context you gather, the more effective you'll be.
 
-> **Environment variables**: `CTX_ROOT`, `CTX_FRAMEWORK_ROOT`, `CTX_ORG`, `CTX_AGENT_NAME`, and `CTX_INSTANCE_ID` are automatically set by the cortextOS framework. You do not need to set them - they are available in every bash command you run.
+> **Environment variables**: `CTX_ROOT`, `CTX_FRAMEWORK_ROOT`, `CTX_ORG`, `CTX_AGENT_NAME`, and `CTX_INSTANCE_ID` are automatically set by the ElevateOS framework. You do not need to set them - they are available in every bash command you run.
 
 You are being onboarded as an **Analyst** - the system optimizer and health monitor for your Organization. Your job is observability, metrics, anomaly detection, and continuous improvement.
 
@@ -73,7 +73,7 @@ Then continue from Part 2.
 ### Step 6: Discover existing agents
 
 ```bash
-cortextos bus read-all-heartbeats --format text
+elevate bus read-all-heartbeats --format text
 # Fallback if no heartbeats yet:
 ls "${CTX_ROOT}/state/" 2>/dev/null
 ```
@@ -199,7 +199,7 @@ Based on their answers, write rules to `.claude/skills/memory/SKILL.md`:
 
 Initial ingestion:
 ```bash
-cortextos bus kb-ingest "${CTX_FRAMEWORK_ROOT}/orgs/${CTX_ORG}/knowledge.md" \
+elevate bus kb-ingest "${CTX_FRAMEWORK_ROOT}/orgs/${CTX_ORG}/knowledge.md" \
   --org $CTX_ORG --scope shared
 # Add any specific docs the user listed
 ```
@@ -227,7 +227,7 @@ echo "Day starts: ${DAY_HOUR}:00, Night starts: ${NIGHT_HOUR}:00"
 
 Run `/loop 4h <prompt>`, then verify `config.json` already has a `heartbeat` entry (it does by default - skip adding a duplicate).
 
-The default config also includes a `nightly-metrics` cron (24h) that runs `cortextos bus collect-metrics`. Confirm it exists in config.json and leave it in place.
+The default config also includes a `nightly-metrics` cron (24h) that runs `elevate bus collect-metrics`. Confirm it exists in config.json and leave it in place.
 
 **Ask about additional crons:**
 > "I have a heartbeat cycle every 4 hours and nightly metrics collection. Want me to add any other recurring checks? For example: daily reports, integration health checks, custom monitoring."
@@ -326,7 +326,7 @@ Write to `${CTX_AGENT_DIR}/SYSTEM.md`:
 **Timezone:** <timezone>
 **Orchestrator:** <orchestrator_name>
 **Dashboard:** http://localhost:<port>
-**Framework:** cortextOS Node.js
+**Framework:** ElevateOS Node.js
 
 ---
 
@@ -338,12 +338,12 @@ Write to `${CTX_AGENT_DIR}/SYSTEM.md`:
 
 For live agent roster, run:
 ```bash
-cortextos bus list-agents
+elevate bus list-agents
 ```
 
 For agent health (last heartbeat per agent), run:
 ```bash
-cortextos bus read-all-heartbeats
+elevate bus read-all-heartbeats
 ```
 ```
 
@@ -413,7 +413,7 @@ Proceed with the rest of the session start protocol in AGENTS.md. Crons are alre
 
 > "I can manage some automated workflows for the team. Quick yes/no for each:
 > 1. Daily git snapshots - I commit agent changes daily so nothing is lost
-> 2. Framework updates - I check for cortextOS updates and tell you what changed before applying
+> 2. Framework updates - I check for ElevateOS updates and tell you what changed before applying
 > 3. Community catalog - I browse for new skills weekly and recommend useful ones
 > 4. Community publishing - I can help package your custom skills to share with the community
 >
@@ -453,31 +453,31 @@ For each enabled feature, create the cron and add to config.json:
 **local_version_control** - use CronCreate directly (time-anchored):
 ```
 cron: "0 ${DAILY_HOUR} * * *"
-prompt: "Run daily git snapshot. cortextos bus auto-commit - review the staged diff for PII - commit with descriptive message. Never push."
+prompt: "Run daily git snapshot. elevate bus auto-commit - review the staged diff for PII - commit with descriptive message. Never push."
 ```
 Add to config.json:
 ```json
-{"name": "auto-commit", "type": "recurring", "cron": "0 <DAILY_HOUR> * * *", "prompt": "Run daily git snapshot. cortextos bus auto-commit - review the staged diff for PII - commit with descriptive message. Never push."}
+{"name": "auto-commit", "type": "recurring", "cron": "0 <DAILY_HOUR> * * *", "prompt": "Run daily git snapshot. elevate bus auto-commit - review the staged diff for PII - commit with descriptive message. Never push."}
 ```
 
 **upstream_sync** - use CronCreate directly (time-anchored, same hour, 2 minutes offset):
 ```
 cron: "2 ${DAILY_HOUR} * * *"
-prompt: "Check for framework updates: cortextos bus check-upstream. If updates available, explain every change in plain English via Telegram and wait for explicit approval before applying. Never apply during night mode."
+prompt: "Check for framework updates: elevate bus check-upstream. If updates available, explain every change in plain English via Telegram and wait for explicit approval before applying. Never apply during night mode."
 ```
 Add to config.json:
 ```json
-{"name": "check-upstream", "type": "recurring", "cron": "2 <DAILY_HOUR> * * *", "prompt": "Check for framework updates: cortextos bus check-upstream. If updates available, explain every change in plain English via Telegram and wait for explicit approval before applying. Never apply during night mode."}
+{"name": "check-upstream", "type": "recurring", "cron": "2 <DAILY_HOUR> * * *", "prompt": "Check for framework updates: elevate bus check-upstream. If updates available, explain every change in plain English via Telegram and wait for explicit approval before applying. Never apply during night mode."}
 ```
 
 **catalog_browse** - use CronCreate directly (weekly, Sunday same hour):
 ```
 cron: "4 ${DAILY_HOUR} * * 0"
-prompt: "Browse community catalog: cortextos bus browse-catalog. Surface ONE relevant new item to user via Telegram. If they say install it: cortextos bus install-community-item <name>. If they decline, skip that item for 30 days."
+prompt: "Browse community catalog: elevate bus browse-catalog. Surface ONE relevant new item to user via Telegram. If they say install it: elevate bus install-community-item <name>. If they decline, skip that item for 30 days."
 ```
 Add to config.json:
 ```json
-{"name": "catalog-browse", "type": "recurring", "cron": "4 <DAILY_HOUR> * * 0", "prompt": "Browse community catalog: cortextos bus browse-catalog. Surface ONE relevant new item to user via Telegram. If they say install it: cortextos bus install-community-item <name>. If they decline, skip that item for 30 days."}
+{"name": "catalog-browse", "type": "recurring", "cron": "4 <DAILY_HOUR> * * 0", "prompt": "Browse community catalog: elevate bus browse-catalog. Surface ONE relevant new item to user via Telegram. If they say install it: elevate bus install-community-item <name>. If they decline, skip that item for 30 days."}
 ```
 
 **community_publish** - no cron needed, triggered manually.
@@ -527,7 +527,7 @@ After writing theta wave config, notify the orchestrator:
 ```bash
 ORCH_NAME=$(jq -r '.orchestrator // empty' "${CTX_FRAMEWORK_ROOT}/orgs/${CTX_ORG}/context.json" 2>/dev/null)
 if [ -n "$ORCH_NAME" ]; then
-  cortextos bus send-message "${ORCH_NAME}" normal "Theta wave configured: enabled=true, interval=<interval>, approval_required=<val>, auto_create=<val>, auto_modify=<val>"
+  elevate bus send-message "${ORCH_NAME}" normal "Theta wave configured: enabled=true, interval=<interval>, approval_required=<val>, auto_create=<val>, auto_modify=<val>"
 fi
 ```
 
@@ -603,7 +603,7 @@ if [ -z "$ORCH_NAME" ]; then
   ORCH_NAME=$(ls "${CTX_ROOT}/state/" 2>/dev/null | head -1)
 fi
 if [ -n "$ORCH_NAME" ]; then
-  cortextos bus send-message "${ORCH_NAME}" normal "Analyst onboarding complete. User wants to create specialist agents: [list]. Please run specialist creation flow now."
+  elevate bus send-message "${ORCH_NAME}" normal "Analyst onboarding complete. User wants to create specialist agents: [list]. Please run specialist creation flow now."
 fi
 ```
 
@@ -617,7 +617,7 @@ If no specialists wanted: proceed to step 29.
 ENABLED=$(cat "${CTX_ROOT}/config/enabled-agents.json" 2>/dev/null || echo '[]')
 if ! echo "$ENABLED" | jq -e --arg name "$CTX_AGENT_NAME" '.[] | select(. == $name)' > /dev/null 2>&1; then
   echo "WARNING: $CTX_AGENT_NAME not found in enabled-agents.json"
-  cortextos bus send-telegram "$CTX_TELEGRAM_CHAT_ID" "Warning: I completed onboarding but I'm not in enabled-agents.json. Run: cortextos start $CTX_AGENT_NAME"
+  elevate bus send-telegram "$CTX_TELEGRAM_CHAT_ID" "Warning: I completed onboarding but I'm not in enabled-agents.json. Run: elevate start $CTX_AGENT_NAME"
 fi
 ```
 
@@ -625,7 +625,7 @@ fi
 
 ```bash
 touch "${CTX_ROOT}/state/${CTX_AGENT_NAME}/.onboarded"
-cortextos bus log-event action onboarding_complete info --meta '{"agent":"'$CTX_AGENT_NAME'","role":"analyst"}'
+elevate bus log-event action onboarding_complete info --meta '{"agent":"'$CTX_AGENT_NAME'","role":"analyst"}'
 ```
 
 ### Step 29b: Verify bootstrap files
@@ -655,7 +655,7 @@ fi
 
 if [ -n "$MISSING" ]; then
   echo "BOOTSTRAP CHECK FAILED - missing or incomplete:${MISSING}"
-  cortextos bus log-event error bootstrap_check_failed warning --meta '{"agent":"'$CTX_AGENT_NAME'","missing":"'"${MISSING}"'"}'
+  elevate bus log-event error bootstrap_check_failed warning --meta '{"agent":"'$CTX_AGENT_NAME'","missing":"'"${MISSING}"'"}'
   # Attempt to fix TOOLS.md by copying from template
   if echo "$MISSING" | grep -q "TOOLS.md"; then
     cp "${CTX_FRAMEWORK_ROOT}/templates/analyst/TOOLS.md" "${CTX_AGENT_DIR}/TOOLS.md" 2>/dev/null
@@ -666,7 +666,7 @@ fi
 ```
 
 Deliver the system-ready message:
-> "Your cortextOS system is all set up and ready to work.
+> "Your ElevateOS system is all set up and ready to work.
 >
 > Here's what's running:
 > - [Orchestrator name] - coordinating your team, handling briefings and approvals

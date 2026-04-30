@@ -4,7 +4,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 describe('Sprint 8: Dashboard Compatibility', () => {
-  const testDir = join(tmpdir(), `cortextos-sprint8-${Date.now()}`);
+  const testDir = join(tmpdir(), `elevate-sprint8-${Date.now()}`);
   const ctxRoot = join(testDir, 'ctx');
 
   beforeEach(() => {

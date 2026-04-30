@@ -36,6 +36,9 @@ export async function resolveApproval(
   const frameworkRoot = getFrameworkRoot();
   const env = {
     ...process.env,
+    ELEVATE_FRAMEWORK_ROOT: frameworkRoot,
+    ELEVATE_ROOT: getCTXRoot(),
+    ELEVATE_AGENT_NAME: 'dashboard',
     CTX_FRAMEWORK_ROOT: frameworkRoot,
     CTX_ROOT: getCTXRoot(),
     CTX_AGENT_NAME: 'dashboard',

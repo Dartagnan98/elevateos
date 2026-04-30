@@ -10,7 +10,7 @@ describe('Task Management', () => {
   let paths: BusPaths;
 
   beforeEach(() => {
-    testDir = mkdtempSync(join(tmpdir(), 'cortextos-task-test-'));
+    testDir = mkdtempSync(join(tmpdir(), 'elevate-task-test-'));
     paths = {
       ctxRoot: testDir,
       inbox: join(testDir, 'inbox', 'paul'),
@@ -116,12 +116,12 @@ describe('Task Management', () => {
 /**
  * Cross-org task lifecycle — exercises the findTaskFile fallback so an
  * assignee in one org can drive the lifecycle of a task filed by an
- * orchestrator in a sibling org. Standard cortextOS dispatch pattern:
+ * orchestrator in a sibling org. Standard ElevateOS dispatch pattern:
  * an orchestrator in one org files a task, a specialist in another org
  * needs to update and complete it from their own agent session.
  *
  * These tests build a REAL nested filesystem layout (matching the
- * production shape at ~/.cortextos/<instance>/orgs/<org>/tasks/) so they
+ * production shape at ~/.elevate/<instance>/orgs/<org>/tasks/) so they
  * cover the actual cross-org path resolution, not a mocked shortcut.
  */
 describe('Cross-org task lifecycle', () => {
@@ -132,7 +132,7 @@ describe('Cross-org task lifecycle', () => {
   let originalWarn: typeof console.warn;
 
   beforeEach(() => {
-    testDir = mkdtempSync(join(tmpdir(), 'cortextos-crossorg-test-'));
+    testDir = mkdtempSync(join(tmpdir(), 'elevate-crossorg-test-'));
     // Nested layout: <ctxRoot>/orgs/{OrgA,OrgB}/tasks/
     mkdirSync(join(testDir, 'orgs', 'OrgA', 'tasks'), { recursive: true });
     mkdirSync(join(testDir, 'orgs', 'OrgB', 'tasks'), { recursive: true });
@@ -327,7 +327,7 @@ describe('claimTask — atomic claim (beads-inspired)', () => {
   let paths: BusPaths;
 
   beforeEach(() => {
-    testDir = mkdtempSync(join(tmpdir(), 'cortextos-claim-test-'));
+    testDir = mkdtempSync(join(tmpdir(), 'elevate-claim-test-'));
     paths = {
       ctxRoot: testDir,
       inbox: join(testDir, 'inbox', 'x'),
@@ -404,7 +404,7 @@ describe('Task audit log (append-only JSONL)', () => {
   let paths: BusPaths;
 
   beforeEach(() => {
-    testDir = mkdtempSync(join(tmpdir(), 'cortextos-audit-test-'));
+    testDir = mkdtempSync(join(tmpdir(), 'elevate-audit-test-'));
     paths = {
       ctxRoot: testDir,
       inbox: join(testDir, 'inbox', 'x'),
@@ -493,7 +493,7 @@ describe('Task dependency DAG (blocks / blocked_by)', () => {
   let paths: BusPaths;
 
   beforeEach(() => {
-    testDir = mkdtempSync(join(tmpdir(), 'cortextos-dag-test-'));
+    testDir = mkdtempSync(join(tmpdir(), 'elevate-dag-test-'));
     paths = {
       ctxRoot: testDir,
       inbox: join(testDir, 'inbox', 'x'),
@@ -620,7 +620,7 @@ describe('compactTasks — semantic compaction of old completed tasks', () => {
   let paths: BusPaths;
 
   beforeEach(() => {
-    testDir = mkdtempSync(join(tmpdir(), 'cortextos-compact-test-'));
+    testDir = mkdtempSync(join(tmpdir(), 'elevate-compact-test-'));
     paths = {
       ctxRoot: testDir,
       inbox: join(testDir, 'inbox', 'x'),

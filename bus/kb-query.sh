@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kb-query.sh — Query the cortextOS knowledge base
+# kb-query.sh — Query the ElevateOS knowledge base
 #
 # Usage:
 #   bash bus/kb-query.sh "<question>" [options]
@@ -83,7 +83,7 @@ if [[ -z "$COLLECTION" ]]; then
 fi
 
 # Paths
-KB_ROOT="$HOME/.cortextos/$INSTANCE_ID/orgs/$ORG/knowledge-base"
+KB_ROOT="$HOME/.elevate/$INSTANCE_ID/orgs/$ORG/knowledge-base"
 CHROMADB_DIR="$KB_ROOT/chromadb"
 VENV_DIR="$FRAMEWORK_ROOT/knowledge-base/venv"
 MMRAG_PY="$FRAMEWORK_ROOT/knowledge-base/scripts/mmrag.py"

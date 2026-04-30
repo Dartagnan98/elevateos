@@ -1,11 +1,11 @@
 /**
- * BUG-041 regression test: `cortextos add-agent` must reject invalid agent
+ * BUG-041 regression test: `elevate add-agent` must reject invalid agent
  * names (mixed-case, spaces, path traversal, etc.) BEFORE creating any
  * filesystem artifacts.
  *
- * Before the fix, `cortextos add-agent CortextDesigner --template agent --org testorg`
+ * Before the fix, `elevate add-agent ElevateDesigner --template agent --org testorg`
  * succeeded at the CLI level, wrote the agent dir to disk, registered the
- * agent in `enabled-agents.json`, and THEN failed every `cortextos bus *`
+ * agent in `enabled-agents.json`, and THEN failed every `elevate bus *`
  * command at runtime because `resolveEnv()` rejected the same name that
  * add-agent had accepted. Affected agents were half-functional — daemon-
  * managed fine but unable to reply to Telegram, create tasks, check inbox,
@@ -23,7 +23,7 @@ describe('BUG-041: add-agent agent name validation', () => {
     vi.restoreAllMocks();
   });
 
-  it('rejects CortextDesigner (PascalCase) before any filesystem write', async () => {
+  it('rejects ElevateDesigner (PascalCase) before any filesystem write', async () => {
     // Commander calls process.exit(1) on validation failure. We intercept
     // it by throwing, which we catch via expect().rejects. This avoids the
     // test runner itself exiting on process.exit().
@@ -34,14 +34,14 @@ describe('BUG-041: add-agent agent name validation', () => {
 
     await expect(
       addAgentCommand.parseAsync(
-        ['node', 'cli', 'CortextDesigner', '--template', 'agent', '--org', 'testorg']
+        ['node', 'cli', 'ElevateDesigner', '--template', 'agent', '--org', 'testorg']
       )
     ).rejects.toThrow(/__TEST_PROCESS_EXIT_1__/);
 
     // The error message must tell the user exactly what was wrong
     expect(consoleErrorSpy).toHaveBeenCalled();
     const errorOutput = consoleErrorSpy.mock.calls.flat().join(' ');
-    expect(errorOutput).toContain("Invalid agent name 'CortextDesigner'");
+    expect(errorOutput).toContain("Invalid agent name 'ElevateDesigner'");
     // And it must show the validation rule so the user knows how to fix it
     expect(errorOutput).toContain('/^[a-z0-9_-]+$/');
 

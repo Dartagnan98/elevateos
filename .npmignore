@@ -19,7 +19,7 @@ ecosystem.config.js
 
 # Personal/runtime
 orgs/
-.cortextos-env
+.elevate-env
 .env
 .env.*
 !.env.example

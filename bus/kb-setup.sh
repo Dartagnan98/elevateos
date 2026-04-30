@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kb-setup.sh — Initialize the cortextOS knowledge base for an org
+# kb-setup.sh — Initialize the ElevateOS knowledge base for an org
 # Creates the Python venv and ChromaDB directory structure.
 #
 # Usage: bash bus/kb-setup.sh [--org ORG] [--instance ID]
@@ -32,13 +32,13 @@ if [[ -z "$ORG" ]]; then
 fi
 
 # Paths
-KB_ROOT="$HOME/.cortextos/$INSTANCE_ID/orgs/$ORG/knowledge-base"
+KB_ROOT="$HOME/.elevate/$INSTANCE_ID/orgs/$ORG/knowledge-base"
 CHROMADB_DIR="$KB_ROOT/chromadb"
 VENV_DIR="$FRAMEWORK_ROOT/knowledge-base/venv"
 MMRAG_PY="$FRAMEWORK_ROOT/knowledge-base/scripts/mmrag.py"
 REQS="$FRAMEWORK_ROOT/knowledge-base/scripts/requirements.txt"
 
-echo "Setting up cortextOS knowledge base"
+echo "Setting up ElevateOS knowledge base"
 echo "  Org: $ORG"
 echo "  Instance: $INSTANCE_ID"
 echo "  ChromaDB: $CHROMADB_DIR"

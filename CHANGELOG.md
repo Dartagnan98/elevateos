@@ -14,15 +14,15 @@
 
 ## [0.1.0] — 2026-03-30
 
-### cortextOS Node.js — Initial Release
+### ElevateOS Node.js — Initial Release
 
-Complete TypeScript/Node.js implementation of the cortextOS agent framework. Full feature parity with the bash reference implementation. 307 unit and integration tests, 0 failures. npm-ready.
+Complete TypeScript/Node.js implementation of the ElevateOS agent framework. Full feature parity with the bash reference implementation. 307 unit and integration tests, 0 failures. npm-ready.
 
 ---
 
-## What is cortextOS
+## What is ElevateOS
 
-cortextOS is a persistent 24/7 multi-agent framework built on Claude Code. Agents run as PM2-managed PTY processes, communicate over a file-based message bus, manage tasks, log analytics events, and are controlled via Telegram. This Node.js package ships the entire framework as a single `npm install` with a unified `cortextos` CLI.
+ElevateOS is a persistent 24/7 multi-agent framework built on Claude Code. Agents run as PM2-managed PTY processes, communicate over a file-based message bus, manage tasks, log analytics events, and are controlled via Telegram. This Node.js package ships the entire framework as a single `npm install` with a unified `elevate` CLI.
 
 ---
 
@@ -98,7 +98,7 @@ Semantic memory via the multimodal-rag Python library (mmrag.py).
 - **`listCollections()`**: Lists all ChromaDB collections with document counts
 - **Collections**: `shared-{org}` (org-wide, all agents) and `agent-{name}` (private per-agent)
 - **Environment setup**: Auto-sets `MMRAG_DIR`, `MMRAG_CHROMADB_DIR`, `MMRAG_CONFIG` for every subprocess call
-- **Instance isolation**: KB root derived from `CTX_ROOT` basename — each cortextOS instance has its own KB
+- **Instance isolation**: KB root derived from `CTX_ROOT` basename — each ElevateOS instance has its own KB
 - **Auto-init**: `kb-ingest.sh` auto-calls `kb-setup.sh` if `config.json` is missing
 - **`kb-setup.sh`**: Creates venv, installs mmrag deps, writes default `config.json`
 
@@ -135,26 +135,26 @@ Structured hypothesis-test-evaluate loop for autonomous agent experimentation.
 
 ---
 
-## CLI Reference (`cortextos`)
+## CLI Reference (`elevate`)
 
 ### Agent Management
 
 | Command | Description |
 |---------|-------------|
-| `cortextos init` | Initialize a new cortextOS instance |
-| `cortextos add-agent <name> --template <type>` | Create a new agent from template |
-| `cortextos enable <name>` | Enable an agent (adds to enabled-agents.json) |
-| `cortextos start <name>` | Start an agent (via PM2) |
-| `cortextos stop <name>` | Stop an agent (via PM2) |
-| `cortextos status` | Show all agents' status, heartbeat age, current task |
-| `cortextos list-agents [--org <org>]` | List agents with heartbeat/role info |
-| `cortextos list-skills` | List available skills |
-| `cortextos install` | Install/configure cortextOS on this machine |
-| `cortextos uninstall [--keep-state]` | Remove cortextOS |
-| `cortextos doctor` | Diagnose common configuration issues |
-| `cortextos dashboard` | Start the Next.js dashboard |
+| `elevate init` | Initialize a new ElevateOS instance |
+| `elevate add-agent <name> --template <type>` | Create a new agent from template |
+| `elevate enable <name>` | Enable an agent (adds to enabled-agents.json) |
+| `elevate start <name>` | Start an agent (via PM2) |
+| `elevate stop <name>` | Stop an agent (via PM2) |
+| `elevate status` | Show all agents' status, heartbeat age, current task |
+| `elevate list-agents [--org <org>]` | List agents with heartbeat/role info |
+| `elevate list-skills` | List available skills |
+| `elevate install` | Install/configure ElevateOS on this machine |
+| `elevate uninstall [--keep-state]` | Remove ElevateOS |
+| `elevate doctor` | Diagnose common configuration issues |
+| `elevate dashboard` | Start the Next.js dashboard |
 
-### Bus Subcommands (`cortextos bus <cmd>`)
+### Bus Subcommands (`elevate bus <cmd>`)
 
 #### Messaging
 | Command | Description |
@@ -432,7 +432,7 @@ Research and analytics specialist. Reads metrics, generates reports, tracks KPIs
 
 `.github/workflows/ci.yml` — three-job GitHub Actions pipeline:
 
-1. **`build`**: TypeScript type check (`tsc --noEmit`) + full build (`npm run build`) + CLI smoke test (`cortextos --version`)
+1. **`build`**: TypeScript type check (`tsc --noEmit`) + full build (`npm run build`) + CLI smoke test (`elevate --version`)
 2. **`test`**: Vitest full suite (depends on `build` job passing)
 3. **`dashboard-build`**: Next.js type check + production build
 
@@ -441,7 +441,7 @@ Triggers: push to `main`, `feat/*`, `fix/*` branches; all pull requests.
 ### Directory Structure
 
 ```
-cortextos/
+elevate/
 ├── src/
 │   ├── bus/          # Core bus modules (message, task, event, heartbeat, approval, experiment, knowledge-base, agents, catalog, system, metrics)
 │   ├── cli/          # CLI entry points (bus.ts, dashboard.ts, doctor.ts, ecosystem.ts, enable-agent.ts, init.ts, install.ts, list-agents.ts, list-skills.ts, notify-agent.ts, start.ts, status.ts, stop.ts, uninstall.ts)
@@ -468,7 +468,7 @@ cortextos/
 
 ---
 
-## Migration Notes (from bash cortextOS)
+## Migration Notes (from bash ElevateOS)
 
 The Node.js implementation is **format-compatible** with the bash reference implementation. All file formats match exactly:
 

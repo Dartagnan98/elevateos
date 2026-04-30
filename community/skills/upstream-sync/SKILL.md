@@ -1,26 +1,26 @@
 ---
 name: upstream-sync
-description: "Check for cortextOS framework updates from the remote repo. Fetches changes, categorizes them, explains in plain English, and applies only with user approval."
+description: "Check for ElevateOS framework updates from the remote repo. Fetches changes, categorizes them, explains in plain English, and applies only with user approval."
 triggers: ["upstream", "framework update", "check updates", "new version", "pull changes"]
 external_calls: ["github.com"]
 ---
 
 # Upstream Sync
 
-Check for cortextOS framework updates from the remote repository. Never auto-merges. Always explains changes and waits for approval.
+Check for ElevateOS framework updates from the remote repository. Never auto-merges. Always explains changes and waits for approval.
 
 ## When to Run
 
 - Daily cron (configured in config.json)
 - When user asks about updates
-- After hearing about new cortextOS features
+- After hearing about new ElevateOS features
 
 ## Workflow
 
 ### Step 1: Check for updates
 
 ```bash
-RESULT=$(cortextos bus check-upstream)
+RESULT=$(elevate bus check-upstream)
 ```
 
 The script fetches from upstream and returns a JSON summary categorizing changes by type (bus scripts, templates, skills, dashboard, etc.).
@@ -38,7 +38,7 @@ The script fetches from upstream and returns a JSON summary categorizing changes
 ### Step 3: Apply (only after approval)
 
 ```bash
-cortextos bus check-upstream --apply
+elevate bus check-upstream --apply
 ```
 
 ### Step 4: Post-apply

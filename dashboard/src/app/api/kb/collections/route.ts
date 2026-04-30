@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server';
 import { execFileSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
-import os from 'os';
 import { getCTXRoot, getFrameworkRoot } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
@@ -30,7 +29,7 @@ export async function GET(request: NextRequest) {
   const ctxRoot = getCTXRoot();
   const instanceId = path.basename(ctxRoot);
 
-  const kbRoot = path.join(os.homedir(), '.cortextos', instanceId, 'orgs', org, 'knowledge-base');
+  const kbRoot = path.join(ctxRoot, 'orgs', org, 'knowledge-base');
   const chromaDir = path.join(kbRoot, 'chromadb');
   const configPath = path.join(kbRoot, 'config.json');
   const isWin = process.platform === 'win32';
@@ -41,8 +40,12 @@ export async function GET(request: NextRequest) {
 
   const env: Record<string, string> = {
     ...(process.env as Record<string, string>),
+    ELEVATE_FRAMEWORK_ROOT: frameworkRoot,
+    ELEVATE_INSTANCE_ID: instanceId,
+    ELEVATE_ROOT: ctxRoot,
     CTX_FRAMEWORK_ROOT: frameworkRoot,
     CTX_INSTANCE_ID: instanceId,
+    CTX_ROOT: ctxRoot,
     CTX_ORG: org,
     PATH: process.env.PATH ?? '',
     MMRAG_DIR: kbRoot,

@@ -1,4 +1,4 @@
-// cortextOS Dashboard - Chokidar file watcher singleton
+// ElevateOS Dashboard - Chokidar file watcher singleton
 // Monitors CTX_ROOT for JSON/JSONL changes, syncs to SQLite, emits SSE events.
 
 import { EventEmitter } from 'events';
@@ -13,16 +13,16 @@ import type { SSEEvent } from './types';
 // ---------------------------------------------------------------------------
 
 const globalForWatcher = globalThis as unknown as {
-  __cortextos_emitter: EventEmitter | undefined;
-  __cortextos_watcher: FSWatcher | undefined;
+  __elevate_emitter: EventEmitter | undefined;
+  __elevate_watcher: FSWatcher | undefined;
 };
 
 export const emitter: EventEmitter =
-  globalForWatcher.__cortextos_emitter ?? new EventEmitter();
+  globalForWatcher.__elevate_emitter ?? new EventEmitter();
 emitter.setMaxListeners(100); // support many concurrent SSE clients
 
 if (process.env.NODE_ENV !== 'production') {
-  globalForWatcher.__cortextos_emitter = emitter;
+  globalForWatcher.__elevate_emitter = emitter;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,8 +126,8 @@ function createWatcher(): FSWatcher {
  * Runs a full sync on first call, then starts watching for incremental changes.
  */
 export function initWatcher(): FSWatcher {
-  if (globalForWatcher.__cortextos_watcher) {
-    return globalForWatcher.__cortextos_watcher;
+  if (globalForWatcher.__elevate_watcher) {
+    return globalForWatcher.__elevate_watcher;
   }
 
   console.log('[watcher] Running initial full sync...');
@@ -136,7 +136,7 @@ export function initWatcher(): FSWatcher {
   const watcher = createWatcher();
 
   if (process.env.NODE_ENV !== 'production') {
-    globalForWatcher.__cortextos_watcher = watcher;
+    globalForWatcher.__elevate_watcher = watcher;
   }
 
   return watcher;
@@ -146,9 +146,9 @@ export function initWatcher(): FSWatcher {
  * Gracefully close the watcher.
  */
 export function stopWatcher(): void {
-  if (globalForWatcher.__cortextos_watcher) {
-    globalForWatcher.__cortextos_watcher.close();
-    globalForWatcher.__cortextos_watcher = undefined;
+  if (globalForWatcher.__elevate_watcher) {
+    globalForWatcher.__elevate_watcher.close();
+    globalForWatcher.__elevate_watcher = undefined;
   }
 }
 

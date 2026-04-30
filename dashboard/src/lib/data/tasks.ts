@@ -1,4 +1,4 @@
-// cortextOS Dashboard - Task data fetcher
+// ElevateOS Dashboard - Task data fetcher
 // Reads from SQLite (synced from JSON task files on disk).
 
 import { db } from '@/lib/db';

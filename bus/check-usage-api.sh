@@ -4,7 +4,7 @@
 # api.anthropic.com/api/oauth/usage endpoint, and returns utilization data.
 #
 # Usage:
-#   cortextos bus check-usage-api [--warn-7day N] [--warn-5h N] [--chat-id ID]
+#   elevate bus check-usage-api [--warn-7day N] [--warn-5h N] [--chat-id ID]
 #
 # Options:
 #   --warn-7day N   Warn (via Telegram) if 7-day utilization >= N% (default: 80)

@@ -1,14 +1,14 @@
-import { homedir } from 'os';
 import { join } from 'path';
 import type { BusPaths } from '../types/index.js';
 import { validateInstanceId } from './validate.js';
+import { getStateRoot } from './elevate.js';
 
 /**
  * Resolve all bus paths for an agent.
  * Mirrors the path resolution in bash _ctx-env.sh.
  *
  * The directory layout is:
- *   ~/.cortextos/{instance}/
+ *   ~/.elevate/{instance}/
  *     config/                - enabled-agents.json
  *     state/{agent}/         - flat, per-agent subdirs
  *     state/{agent}/heartbeat.json - canonical heartbeat location
@@ -29,7 +29,7 @@ export function resolvePaths(
   org?: string,
 ): BusPaths {
   validateInstanceId(instanceId);
-  const ctxRoot = join(homedir(), '.cortextos', instanceId);
+  const ctxRoot = getStateRoot(instanceId);
 
   // Org-scoped paths for tasks, approvals, analytics
   const orgBase = org ? join(ctxRoot, 'orgs', org) : ctxRoot;
@@ -55,7 +55,7 @@ export function resolvePaths(
 export function getIpcPath(instanceId: string = 'default'): string {
   validateInstanceId(instanceId);
   if (process.platform === 'win32') {
-    return `\\\\.\\pipe\\cortextos-${instanceId}`;
+    return `\\\\.\\pipe\\elevate-${instanceId}`;
   }
-  return join(homedir(), '.cortextos', instanceId, 'daemon.sock');
+  return join(getStateRoot(instanceId), 'daemon.sock');
 }

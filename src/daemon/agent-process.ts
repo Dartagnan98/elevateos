@@ -6,7 +6,7 @@ import { AgentPTY } from '../pty/agent-pty.js';
 import { HermesPTY, hermesDbExists } from '../pty/hermes-pty.js';
 import { MessageDedup, injectMessage } from '../pty/inject.js';
 import { ensureDir } from '../utils/atomic.js';
-import { writeCortextosEnv } from '../utils/env.js';
+import { writeElevateEnv } from '../utils/env.js';
 import { getOverdueReminders } from '../bus/reminders.js';
 import { readCronState, parseDurationMs, cronExpressionMinIntervalMs } from '../bus/cron-state.js';
 import { resolvePaths } from '../utils/paths.js';
@@ -84,9 +84,9 @@ export class AgentProcess {
       await sleep(delay * 1000);
     }
 
-    // Write .cortextos-env for backward compat (D6)
+    // Write the runtime env file for shell bus scripts.
     if (this.env.agentDir) {
-      writeCortextosEnv(this.env.agentDir, this.env);
+      writeElevateEnv(this.env.agentDir, this.env);
     }
 
     // Determine start mode
@@ -338,7 +338,7 @@ export class AgentProcess {
     this.pty = null;
     this.clearSessionTimer();
 
-    // When the cortextos daemon is shut down by PM2, SIGTERM propagates to
+    // When the elevate daemon is shut down by PM2, SIGTERM propagates to
     // the whole process group and reaches each PTY's Claude Code child
     // BEFORE the daemon's stopAll() loop has a chance to call stopAgent() on
     // it. Those children exit cleanly (code 0) but arrive at handleExit with
@@ -477,7 +477,7 @@ export class AgentProcess {
     // before cron restoration, before heartbeat, before anything else. Placing this instruction
     // immediately after the handoffBlock in the prompt ensures it is not buried.
     const handoffUxOverride = isHandoffRestart
-      ? ' HANDOFF UX: This is a context handoff restart — your memory is intact via the handoff doc. CRITICAL: After reading the handoff document, your VERY FIRST tool call MUST be a Bash call running: cortextos bus send-telegram $CTX_TELEGRAM_CHAT_ID \'back — [what you were just working on]\' — replace the brackets with one brief plain-English sentence about your current state. Do this BEFORE restoring crons, BEFORE running heartbeat, BEFORE any other tool call. No cron IDs, no status report, no cold-boot phrasing. Do NOT send "Booting up... one moment" (skip AGENTS.md step 1 entirely).'
+      ? ' HANDOFF UX: This is a context handoff restart — your memory is intact via the handoff doc. CRITICAL: After reading the handoff document, your VERY FIRST tool call MUST be a Bash call running: elevate bus send-telegram $CTX_TELEGRAM_CHAT_ID \'back — [what you were just working on]\' — replace the brackets with one brief plain-English sentence about your current state. Do this BEFORE restoring crons, BEFORE running heartbeat, BEFORE any other tool call. No cron IDs, no status report, no cold-boot phrasing. Do NOT send "Booting up... one moment" (skip AGENTS.md step 1 entirely).'
       : '';
     const onlineMessage = isHandoffRestart
       ? ''
@@ -505,7 +505,7 @@ export class AgentProcess {
       const items = overdue.map(r =>
         `  - [${r.id}] (due ${r.fire_at}): ${r.prompt}`,
       ).join('\n');
-      return ` You also have ${overdue.length} overdue persistent reminder(s) from before this restart — handle each one, then run: cortextos bus ack-reminder <id>\n${items}`;
+      return ` You also have ${overdue.length} overdue persistent reminder(s) from before this restart — handle each one, then run: elevate bus ack-reminder <id>\n${items}`;
     } catch {
       return '';
     }
@@ -525,7 +525,7 @@ export class AgentProcess {
       if (!existsSync(contextPath)) return '';
       const ctx = JSON.parse(readFileSync(contextPath, 'utf-8'));
       if (!ctx.require_deliverables) return '';
-      return ' DELIVERABLE STANDARD: Every task you submit for review MUST have at least one file deliverable attached via the save-output bus command. A task with zero file deliverables will be sent back. Attach files with: cortextos bus save-output <task-id> <file-path> --label "<descriptive label>". Labels must be human-readable at a glance: describe WHAT it is plus enough context to understand at a glance. Good: "Traffic Growth Plan — 10 channels, 30-day launch sequence". Bad: "traffic-growth-plan.md" or "output-1". Notes are for context only, never file paths or URLs.';
+      return ' DELIVERABLE STANDARD: Every task you submit for review MUST have at least one file deliverable attached via the save-output bus command. A task with zero file deliverables will be sent back. Attach files with: elevate bus save-output <task-id> <file-path> --label "<descriptive label>". Labels must be human-readable at a glance: describe WHAT it is plus enough context to understand at a glance. Good: "Traffic Growth Plan — 10 channels, 30-day launch sequence". Bad: "traffic-growth-plan.md" or "output-1". Notes are for context only, never file paths or URLs.';
     } catch {
       return '';
     }
@@ -533,7 +533,7 @@ export class AgentProcess {
 
   /**
    * Consume the .handoff-doc-path marker (written by the context watchdog or the
-   * agent itself via `cortextos bus hard-restart --handoff-doc <path>`).
+   * agent itself via `elevate bus hard-restart --handoff-doc <path>`).
    * Returns a boot-prompt fragment pointing the new session at the handoff doc,
    * or an empty string if no marker exists.
    * The marker is unlinked after reading so it fires only once per restart.

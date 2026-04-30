@@ -3,8 +3,8 @@ import { IPCServer } from './ipc-server.js';
 import { readdirSync, readFileSync, writeFileSync, existsSync, chmodSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { join } from 'path';
-import { homedir } from 'os';
 import { ensureDir } from '../utils/atomic.js';
+import { PRODUCT_NAME, getInstanceId, getStateRoot } from '../utils/elevate.js';
 
 // ---------------------------------------------------------------------------
 // Crash handling: turn silent daemon deaths into attributable, observable
@@ -154,7 +154,7 @@ function sendCrashLoopAlertBestEffort(
     return false;
   }
   const message =
-    `🚨 CRITICAL: cortextos daemon is crash-looping\n` +
+    `CRITICAL: ${PRODUCT_NAME} daemon is crash-looping\n` +
     `${crashCount} crashes in 15 minutes\n` +
     `Last error: ${errStr.slice(0, 500)}\n` +
     `Next alert in 30 min if the pattern continues.`;
@@ -209,8 +209,8 @@ function handleFatal(
 }
 
 /**
- * cortextOS Daemon - single process managing all agents.
- * Run via `pm2 start ecosystem.config.js` or `cortextos ecosystem && pm2 start`.
+ * ElevateOS daemon - single process managing all agents.
+ * Run via `pm2 start ecosystem.config.js` or `elevate ecosystem && pm2 start`.
  */
 class Daemon {
   private agentManager: AgentManager | null = null;
@@ -219,9 +219,9 @@ class Daemon {
   private ctxRoot: string;
 
   constructor() {
-    this.instanceId = process.env.CTX_INSTANCE_ID || 'default';
-    // Always derive ctxRoot from instanceId to avoid inheriting a parent cortextOS's CTX_ROOT
-    this.ctxRoot = join(homedir(), '.cortextos', this.instanceId);
+    this.instanceId = getInstanceId();
+    // Always derive ctxRoot from instanceId unless an explicit Elevate root is set.
+    this.ctxRoot = getStateRoot(this.instanceId);
   }
 
   async start(): Promise<void> {
@@ -231,7 +231,7 @@ class Daemon {
       process.umask(0o077);
     }
 
-    console.log(`[daemon] Starting cortextOS daemon (instance: ${this.instanceId})`);
+    console.log(`[daemon] Starting ${PRODUCT_NAME} daemon (instance: ${this.instanceId})`);
 
     const frameworkRoot = process.env.CTX_FRAMEWORK_ROOT || '';
     const org = process.env.CTX_ORG || '';
@@ -346,7 +346,7 @@ class Daemon {
 // Guarding with require.main prevents accidental daemon spawn when the module
 // is require()'d for testing or class imports — which would start a full daemon
 // with TelegramPollers, IPC server, and Claude PTY processes as a side effect.
-// See: https://github.com/grandamenium/cortextos/issues/44
+// See upstream issue 44.
 if (require.main === module) {
   const daemon = new Daemon();
   daemon.start().catch(err => {

@@ -81,9 +81,21 @@ export async function PATCH(request: NextRequest) {
     // On Windows this will silently fail (no bash) — acceptable for a non-critical sync.
     const syncScript = join(frameworkRoot, 'bus', 'sync-org-config.sh');
     if (existsSync(syncScript)) {
-      const childEnv: NodeJS.ProcessEnv = { ...process.env, CTX_FRAMEWORK_ROOT: frameworkRoot, CTX_ORG: org };
-      if (process.env.CTX_ROOT) childEnv.CTX_ROOT = process.env.CTX_ROOT;
-      if (process.env.CTX_INSTANCE_ID) childEnv.CTX_INSTANCE_ID = process.env.CTX_INSTANCE_ID;
+      const childEnv: NodeJS.ProcessEnv = {
+        ...process.env,
+        ELEVATE_FRAMEWORK_ROOT: frameworkRoot,
+        ELEVATE_ORG: org,
+        CTX_FRAMEWORK_ROOT: frameworkRoot,
+        CTX_ORG: org,
+      };
+      if (process.env.ELEVATE_ROOT || process.env.CTX_ROOT) {
+        childEnv.ELEVATE_ROOT = process.env.ELEVATE_ROOT ?? process.env.CTX_ROOT;
+        childEnv.CTX_ROOT = process.env.ELEVATE_ROOT ?? process.env.CTX_ROOT;
+      }
+      if (process.env.ELEVATE_INSTANCE_ID || process.env.CTX_INSTANCE_ID) {
+        childEnv.ELEVATE_INSTANCE_ID = process.env.ELEVATE_INSTANCE_ID ?? process.env.CTX_INSTANCE_ID;
+        childEnv.CTX_INSTANCE_ID = process.env.ELEVATE_INSTANCE_ID ?? process.env.CTX_INSTANCE_ID;
+      }
       import('child_process').then(({ spawn }) => {
         const child = spawn('bash', [syncScript, '--org', org], { env: childEnv, stdio: 'pipe' });
         child.on('error', (err) => console.error('[api/org/config] sync-org-config.sh spawn error:', err));

@@ -20,7 +20,7 @@ describe('BUG-035 + BUG-013: enable-agent validation', () => {
   const origPr = process.env.CTX_PROJECT_ROOT;
 
   beforeEach(() => {
-    tmpHome = mkdtempSync(join(tmpdir(), 'cortextos-batch-'));
+    tmpHome = mkdtempSync(join(tmpdir(), 'elevate-batch-'));
     process.env.HOME = tmpHome;
     delete process.env.CTX_FRAMEWORK_ROOT;
     delete process.env.CTX_PROJECT_ROOT;
@@ -47,26 +47,26 @@ describe('BUG-035 + BUG-013: enable-agent validation', () => {
       expect(discoverProjectRoot()).toBe('/legacy/path');
     });
 
-    it('discovers ~/cortextos when both env vars are unset and the canonical install exists', () => {
-      // Create a fake ~/cortextos with an orgs/ dir (the canonical marker)
-      mkdirSync(join(tmpHome, 'cortextos', 'orgs'), { recursive: true });
-      expect(discoverProjectRoot()).toBe(join(tmpHome, 'cortextos'));
+    it('discovers ~/elevateos when both env vars are unset and the canonical install exists', () => {
+      // Create a fake ~/elevateos with an orgs/ dir (the canonical marker)
+      mkdirSync(join(tmpHome, 'elevateos', 'orgs'), { recursive: true });
+      expect(discoverProjectRoot()).toBe(join(tmpHome, 'elevateos'));
     });
 
-    it('also recognizes ~/cortextos via legacy agents/ dir', () => {
-      mkdirSync(join(tmpHome, 'cortextos', 'agents'), { recursive: true });
-      expect(discoverProjectRoot()).toBe(join(tmpHome, 'cortextos'));
+    it('also recognizes ~/elevateos via legacy agents/ dir', () => {
+      mkdirSync(join(tmpHome, 'elevateos', 'agents'), { recursive: true });
+      expect(discoverProjectRoot()).toBe(join(tmpHome, 'elevateos'));
     });
 
     it('falls back to process.cwd() when nothing else applies (legacy behavior preserved)', () => {
-      // No env vars, no ~/cortextos at all
+      // No env vars, no ~/elevateos at all
       expect(discoverProjectRoot()).toBe(process.cwd());
     });
   });
 
   describe('readEnabledAgents (BUG-013)', () => {
     function setupConfigFile(instanceId: string, content: string): string {
-      const configDir = join(tmpHome, '.cortextos', instanceId, 'config');
+      const configDir = join(tmpHome, '.elevate', instanceId, 'config');
       mkdirSync(configDir, { recursive: true });
       const path = join(configDir, 'enabled-agents.json');
       writeFileSync(path, content);
@@ -90,7 +90,7 @@ describe('BUG-035 + BUG-013: enable-agent validation', () => {
       expect(result).toEqual({});
 
       // The corrupt file should be backed up, not destroyed
-      const backups = readdirSync(join(tmpHome, '.cortextos', 'default', 'config'))
+      const backups = readdirSync(join(tmpHome, '.elevate', 'default', 'config'))
         .filter(f => f.startsWith('enabled-agents.json.broken-'));
       expect(backups.length).toBeGreaterThan(0);
 
@@ -103,7 +103,7 @@ describe('BUG-035 + BUG-013: enable-agent validation', () => {
       const result = readEnabledAgents('default');
       expect(result).toEqual({});
 
-      const backups = readdirSync(join(tmpHome, '.cortextos', 'default', 'config'))
+      const backups = readdirSync(join(tmpHome, '.elevate', 'default', 'config'))
         .filter(f => f.startsWith('enabled-agents.json.broken-'));
       expect(backups.length).toBeGreaterThan(0);
     });
@@ -113,7 +113,7 @@ describe('BUG-035 + BUG-013: enable-agent validation', () => {
       const result = readEnabledAgents('default');
       expect(result).toEqual({});
 
-      const backups = readdirSync(join(tmpHome, '.cortextos', 'default', 'config'))
+      const backups = readdirSync(join(tmpHome, '.elevate', 'default', 'config'))
         .filter(f => f.startsWith('enabled-agents.json.broken-'));
       expect(backups.length).toBeGreaterThan(0);
     });
@@ -123,7 +123,7 @@ describe('BUG-035 + BUG-013: enable-agent validation', () => {
       const result = readEnabledAgents('default');
       expect(result).toEqual({});
 
-      const backups = readdirSync(join(tmpHome, '.cortextos', 'default', 'config'))
+      const backups = readdirSync(join(tmpHome, '.elevate', 'default', 'config'))
         .filter(f => f.startsWith('enabled-agents.json.broken-'));
       expect(backups.length).toBeGreaterThan(0);
     });
@@ -132,7 +132,7 @@ describe('BUG-035 + BUG-013: enable-agent validation', () => {
       setupConfigFile('default', '{}');
       readEnabledAgents('default');
 
-      const backups = readdirSync(join(tmpHome, '.cortextos', 'default', 'config'))
+      const backups = readdirSync(join(tmpHome, '.elevate', 'default', 'config'))
         .filter(f => f.startsWith('enabled-agents.json.broken-'));
       expect(backups.length).toBe(0);
     });

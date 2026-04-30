@@ -1,9 +1,9 @@
 import { Command } from 'commander';
 import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync, copyFileSync, chmodSync } from 'fs';
 import { join, resolve } from 'path';
-import { homedir } from 'os';
-import { OrgContext } from '../types';
-import { validateAgentName } from '../utils/validate';
+import { OrgContext } from '../types/index.js';
+import { validateAgentName } from '../utils/validate.js';
+import { CLI_NAME, PRODUCT_NAME, getFrameworkRoot, getStateRoot } from '../utils/elevate.js';
 
 export const addAgentCommand = new Command('add-agent')
   .argument('<name>', 'Agent name')
@@ -13,8 +13,8 @@ export const addAgentCommand = new Command('add-agent')
   .description('Add a new agent to the organization')
   .action(async (name: string, options: { template: string; org?: string; instance: string }) => {
     // BUG-041 fix: validate the agent name BEFORE creating anything on disk.
-    // Without this, mixed-case names like 'CortextDesigner' pass through
-    // add-agent, get written to disk, and THEN fail every `cortextos bus *`
+    // Without this, mixed-case names like 'ElevateDesigner' pass through
+    // add-agent, get written to disk, and THEN fail every bus command
     // command at runtime because `src/utils/env.ts:resolveEnv()` strictly
     // validates CTX_AGENT_NAME via the same `validateAgentName()` function.
     // The mismatch made affected agents half-functional — daemon-managed
@@ -26,11 +26,11 @@ export const addAgentCommand = new Command('add-agent')
     } catch (err) {
       console.error(`Error: ${(err as Error).message}`);
       console.error(`Agent names must match /^[a-z0-9_-]+$/ (lowercase letters, numbers, underscores, hyphens).`);
-      console.error(`Examples of valid names: paul, sentinel, cortext-designer, m2c1-worker, agent_1`);
+      console.error(`Examples of valid names: paul, sentinel, elevate-designer, m2c1-worker, agent_1`);
       process.exit(1);
     }
 
-    const projectRoot = process.env.CTX_FRAMEWORK_ROOT || process.env.CTX_PROJECT_ROOT || process.cwd();
+    const projectRoot = getFrameworkRoot(process.cwd());
 
     // Auto-detect org if not specified
     let org = options.org;
@@ -50,7 +50,7 @@ export const addAgentCommand = new Command('add-agent')
     }
 
     if (!org) {
-      console.error('No organization found. Run "cortextos init <org>" first.');
+      console.error(`No organization found. Run "${CLI_NAME} init <org>" first.`);
       process.exit(1);
     }
 
@@ -156,7 +156,7 @@ export const addAgentCommand = new Command('add-agent')
             `**Dashboard:** ${dashboardUrl}`,
             `**Communication Style:** ${ctx.communication_style || 'casual'}`,
             `**Day Mode:** ${ctx.day_mode_start || '08:00'} - ${ctx.day_mode_end || '00:00'}`,
-            '**Framework:** cortextOS Node.js',
+            `**Framework:** ${PRODUCT_NAME} Node.js`,
             '',
             '---',
             '',
@@ -164,20 +164,20 @@ export const addAgentCommand = new Command('add-agent')
             '',
             '> This section is populated during onboarding. For the live roster:',
             '```bash',
-            'cortextos list-agents',
+            `${CLI_NAME} list-agents`,
             '```',
             '',
             '## Agent Health',
             '',
             '```bash',
-            'cortextos bus read-all-heartbeats',
+            `${CLI_NAME} bus read-all-heartbeats`,
             '```',
             '',
             '## Communication',
             '',
-            '- Agent-to-agent: `cortextos bus send-message <agent> <priority> "<text>"`',
-            '- Telegram to user: `cortextos bus send-telegram <chat_id> "<text>"`',
-            '- Check inbox: `cortextos bus check-inbox`',
+            `- Agent-to-agent: \`${CLI_NAME} bus send-message <agent> <priority> "<text>"\``,
+            `- Telegram to user: \`${CLI_NAME} bus send-telegram <chat_id> "<text>"\``,
+            `- Check inbox: \`${CLI_NAME} bus check-inbox\``,
             '',
           ].join('\n');
           writeFileSync(join(agentDir, 'SYSTEM.md'), systemMd, 'utf-8');
@@ -224,7 +224,7 @@ export const addAgentCommand = new Command('add-agent')
 
     // Register in enabled-agents.json
     const instanceId = options.instance;
-    const ctxRoot = join(homedir(), '.cortextos', instanceId);
+    const ctxRoot = getStateRoot(instanceId);
     const enabledPath = join(ctxRoot, 'config', 'enabled-agents.json');
     const configDir = join(ctxRoot, 'config');
     mkdirSync(configDir, { recursive: true });
@@ -250,15 +250,15 @@ export const addAgentCommand = new Command('add-agent')
     console.log(`\n  Next steps:`);
     console.log(`    1. Edit ${join('orgs', org, 'agents', name, '.env')} with your Telegram settings`);
     console.log(`    2. Customize identity files (IDENTITY.md, SOUL.md, GOALS.md)`);
-    console.log(`    3. Start: cortextos start ${name}\n`);
+    console.log(`    3. Start: ${CLI_NAME} start ${name}\n`);
   });
 
 function findTemplateDir(projectRoot: string, template: string): string | null {
-  const frameworkRoot = process.env.CTX_FRAMEWORK_ROOT || projectRoot;
+  const frameworkRoot = getFrameworkRoot(projectRoot);
   const candidates = [
     join(projectRoot, 'templates', template),
     join(frameworkRoot, 'templates', template),
-    join(projectRoot, 'node_modules', 'cortextos', 'templates', template),
+    join(projectRoot, 'node_modules', 'elevateos', 'templates', template),
     // Relative to this file for development
     join(__dirname, '..', '..', 'templates', template),
   ];
@@ -303,14 +303,14 @@ function createMinimalAgent(agentDir: string, name: string, org: string, templat
   writeFileSync(join(agentDir, 'MEMORY.md'), `# Long-Term Memory\n\nNothing recorded yet.\n`);
   writeFileSync(join(agentDir, 'USER.md'), `# User Profile\n\nNot configured yet.\n`);
   writeFileSync(join(agentDir, 'SYSTEM.md'), `# System Context\n\nOrganization: ${org}\n`);
-  writeFileSync(join(agentDir, 'TOOLS.md'), `# Available Tools\n\nUse \`cortextos bus <command>\` for bus operations.\n`);
+  writeFileSync(join(agentDir, 'TOOLS.md'), `# Available Tools\n\nUse \`${CLI_NAME} bus <command>\` for bus operations.\n`);
   // CLAUDE.md is a thin wrapper that imports AGENTS.md (works with Claude Code's @ import syntax)
   writeFileSync(join(agentDir, 'CLAUDE.md'), '@AGENTS.md\n');
   writeFileSync(join(agentDir, 'AGENTS.md'), createAgentsMd(name, org, template));
 }
 
 function createAgentsMd(name: string, org: string, template: string): string {
-  return `# cortextOS ${template.charAt(0).toUpperCase() + template.slice(1)}
+  return `# ${PRODUCT_NAME} ${template.charAt(0).toUpperCase() + template.slice(1)}
 
 ## BOOTSTRAP PROTOCOL - READ EVERY FILE BEFORE DOING ANYTHING
 
@@ -328,14 +328,14 @@ Read these files at the start of EVERY session:
 
 ## Bus Commands
 
-Send messages: \`cortextos bus send-message <agent> <priority> "<text>"\`
-Check inbox: \`cortextos bus check-inbox\`
-ACK messages: \`cortextos bus ack-inbox <id>\`
-Create tasks: \`cortextos bus create-task "<title>" --assignee <agent> --priority <p>\`
-Update tasks: \`cortextos bus update-task <id> <status>\`
-Complete tasks: \`cortextos bus complete-task <id> --result "<text>"\`
-Log events: \`cortextos bus log-event <category> <event> <severity>\`
-Update heartbeat: \`cortextos bus update-heartbeat "<status>"\`
-Send Telegram: \`cortextos bus send-telegram <chat_id> "<text>"\`
+Send messages: \`${CLI_NAME} bus send-message <agent> <priority> "<text>"\`
+Check inbox: \`${CLI_NAME} bus check-inbox\`
+ACK messages: \`${CLI_NAME} bus ack-inbox <id>\`
+Create tasks: \`${CLI_NAME} bus create-task "<title>" --assignee <agent> --priority <p>\`
+Update tasks: \`${CLI_NAME} bus update-task <id> <status>\`
+Complete tasks: \`${CLI_NAME} bus complete-task <id> --result "<text>"\`
+Log events: \`${CLI_NAME} bus log-event <category> <event> <severity>\`
+Update heartbeat: \`${CLI_NAME} bus update-heartbeat "<status>"\`
+Send Telegram: \`${CLI_NAME} bus send-telegram <chat_id> "<text>"\`
 `;
 }

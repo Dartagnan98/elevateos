@@ -24,7 +24,7 @@ Three signals tell the dashboard to route this to "Your Tasks" — all three are
 
 ```bash
 # 1. Create the human task with clear step-by-step instructions
-HUMAN_TASK_ID=$(cortextos bus create-task \
+HUMAN_TASK_ID=$(elevate bus create-task \
   "[HUMAN] <what needs to be done>" \
   --desc "<step-by-step instructions — be specific enough for the human to complete without asking you>" \
   --assignee human \
@@ -34,15 +34,15 @@ HUMAN_TASK_ID=$(cortextos bus create-task \
 echo "HUMAN_TASK_ID=$HUMAN_TASK_ID"
 
 # 2. Block your own task on it
-cortextos bus update-task "$YOUR_TASK_ID" blocked
-cortextos bus log-event task task_blocked info --meta "{\"task_id\":\"$YOUR_TASK_ID\",\"blocked_by\":\"$HUMAN_TASK_ID\",\"reason\":\"human dependency\"}"
+elevate bus update-task "$YOUR_TASK_ID" blocked
+elevate bus log-event task task_blocked info --meta "{\"task_id\":\"$YOUR_TASK_ID\",\"blocked_by\":\"$HUMAN_TASK_ID\",\"reason\":\"human dependency\"}"
 
 # 3. Notify orchestrator to surface in next briefing
-cortextos bus send-message "$CTX_ORCHESTRATOR_AGENT" normal \
+elevate bus send-message "$CTX_ORCHESTRATOR_AGENT" normal \
   "Human task created: [HUMAN] <title> — needed before I can proceed with <your task title>"
 
 # 4. Notify user directly if urgent
-cortextos bus send-telegram "$CTX_TELEGRAM_CHAT_ID" \
+elevate bus send-telegram "$CTX_TELEGRAM_CHAT_ID" \
   "I need your help: [HUMAN] <title> — I've created a task with instructions. Check dashboard."
 ```
 
@@ -54,7 +54,7 @@ You receive an inbox message automatically when the human task is marked complet
 
 ```bash
 # Unblock immediately — don't wait
-cortextos bus update-task "$YOUR_TASK_ID" in_progress \
+elevate bus update-task "$YOUR_TASK_ID" in_progress \
   "Human task completed — resuming"
 
 # Resume work
@@ -68,7 +68,7 @@ The instructions field should be complete enough that the human can execute with
 
 **Bad:** "Set up the API key"
 
-**Good:** "1. Go to openai.com/account/api-keys. 2. Click 'Create new secret key'. 3. Name it 'cortextos-myorg'. 4. Copy the key (starts with sk-...). 5. Open Terminal and run: echo 'OPENAI_API_KEY=<your-key>' >> ~/cortextos/orgs/myorg/.env"
+**Good:** "1. Go to openai.com/account/api-keys. 2. Click 'Create new secret key'. 3. Name it 'elevate-myorg'. 4. Copy the key (starts with sk-...). 5. Open Terminal and run: echo 'OPENAI_API_KEY=<your-key>' >> ~/elevateos/orgs/myorg/.env"
 
 ---
 

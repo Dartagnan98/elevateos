@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * cortextOS cross-platform installer
+ * ElevateOS cross-platform installer
  *
- * Mac/Linux:   curl -fsSL https://raw.githubusercontent.com/grandamenium/cortextos/main/install.mjs | node
- * Windows:     node -e "$(irm https://raw.githubusercontent.com/grandamenium/cortextos/main/install.mjs)"
+ * Mac/Linux:   curl -fsSL https://raw.githubusercontent.com/Dartagnan98/elevateos/main/install.mjs | node
+ * Windows:     node -e "$(irm https://raw.githubusercontent.com/Dartagnan98/elevateos/main/install.mjs)"
  * Local test:  node install.mjs
  */
 
@@ -12,16 +12,16 @@ import { existsSync, mkdirSync, writeFileSync, readdirSync, statSync, chmodSync 
 import { join } from 'path';
 import { homedir, platform } from 'os';
 
-const REPO_URL = process.env.CORTEXTOS_REPO || 'https://github.com/grandamenium/cortextos.git';
-const INSTALL_DIR = process.env.CORTEXTOS_DIR || join(homedir(), 'cortextos');
+const REPO_URL = process.env.ELEVATE_REPO || 'https://github.com/Dartagnan98/elevateos.git';
+const INSTALL_DIR = process.env.ELEVATE_DIR || join(homedir(), 'elevateos');
 
-// CORTEXTOS_BRANCH lets you install a specific branch instead of `main`. Useful
+// ELEVATE_BRANCH lets you install a specific branch instead of `main`. Useful
 // for testing fixes before they merge:
-//   CORTEXTOS_BRANCH=fix/foo curl -fsSL .../fix/foo/install.mjs | node
+//   ELEVATE_BRANCH=fix/foo curl -fsSL .../fix/foo/install.mjs | node
 // Branch name is restricted to standard git ref characters to avoid shell injection.
-const REPO_BRANCH_RAW = process.env.CORTEXTOS_BRANCH || 'main';
+const REPO_BRANCH_RAW = process.env.ELEVATE_BRANCH || 'main';
 if (!/^[a-zA-Z0-9._/-]+$/.test(REPO_BRANCH_RAW)) {
-  console.error(`Invalid CORTEXTOS_BRANCH value: ${REPO_BRANCH_RAW}`);
+  console.error(`Invalid ELEVATE_BRANCH value: ${REPO_BRANCH_RAW}`);
   console.error('Branch names may only contain letters, digits, dot, underscore, slash, or dash.');
   process.exit(1);
 }
@@ -73,7 +73,7 @@ function tryInstall(label, installFn) {
 }
 
 console.log('');
-console.log(`${BOLD}cortextOS installer${R}`);
+console.log(`${BOLD}ElevateOS installer${R}`);
 console.log('Persistent 24/7 Claude Code agents with Telegram control');
 console.log('');
 
@@ -375,7 +375,7 @@ if (existsSync(INSTALL_DIR)) {
       // Check if origin points to canonical — if so, rename it to upstream
       let originUrl = '';
       try { originUrl = run('git remote get-url origin', { cwd: INSTALL_DIR }); } catch { /* no origin */ }
-      if (originUrl && (originUrl.includes('grandamenium/cortextos') || originUrl === REPO_URL)) {
+      if (originUrl && (originUrl.includes('Dartagnan98/elevateos') || originUrl === REPO_URL)) {
         log('Migrating git remotes: renaming origin → upstream...');
         try {
           run('git remote rename origin upstream', { cwd: INSTALL_DIR });
@@ -398,10 +398,10 @@ if (existsSync(INSTALL_DIR)) {
       warn('Could not pull — continuing with existing version');
     }
   } else {
-    fail(`${INSTALL_DIR} exists but is not a git repo. Remove it or set CORTEXTOS_DIR to a different path.`);
+    fail(`${INSTALL_DIR} exists but is not a git repo. Remove it or set ELEVATE_DIR to a different path.`);
   }
 } else {
-  log(`Cloning cortextOS (branch: ${REPO_BRANCH}) to ${INSTALL_DIR}...`);
+  log(`Cloning ElevateOS (branch: ${REPO_BRANCH}) to ${INSTALL_DIR}...`);
   runVisible(`git clone --branch ${REPO_BRANCH} ${REPO_URL} ${JSON.stringify(INSTALL_DIR)}`);
   ok('Cloned');
 
@@ -409,7 +409,7 @@ if (existsSync(INSTALL_DIR)) {
   log('Configuring git remotes...');
   try {
     run('git remote rename origin upstream', { cwd: INSTALL_DIR });
-    ok('"upstream" remote configured (tracks canonical cortextOS)');
+    ok('"upstream" remote configured (tracks canonical ElevateOS)');
   } catch {
     warn('Could not configure upstream remote — run manually: git remote rename origin upstream');
   }
@@ -470,7 +470,7 @@ ok('Build complete');
 
 // ─── 10. Link CLI globally ────────────────────────────────────────────────────
 
-log('Linking cortextos CLI...');
+log('Linking elevate CLI...');
 try {
   runVisible('npm link', { cwd: INSTALL_DIR });
 } catch {
@@ -481,10 +481,10 @@ try {
   }
 }
 
-if (commandExists('cortextos')) {
-  ok('cortextos CLI available');
+if (commandExists('elevate')) {
+  ok('elevate CLI available');
 } else {
-  warn('cortextos not in PATH yet. You may need to restart your terminal.');
+  warn('elevate not in PATH yet. You may need to restart your terminal.');
 }
 
 // ─── 11. PM2 ─────────────────────────────────────────────────────────────────
@@ -502,19 +502,19 @@ if (!commandExists('pm2')) {
   ok(`PM2 ${run('pm2 --version')}`);
 }
 
-// ─── 12. Run cortextos install ────────────────────────────────────────────────
+// ─── 12. Run elevate install ────────────────────────────────────────────────
 
-log('Running cortextos install...');
+log('Running elevate install...');
 try {
   runVisible('node dist/cli.js install', { cwd: INSTALL_DIR });
 } catch {
-  warn('cortextos install had warnings — see above');
+  warn('elevate install had warnings — see above');
 }
 
 // ─── Done ─────────────────────────────────────────────────────────────────────
 
 console.log('');
-console.log(`${G}${BOLD}cortextOS installed successfully!${R}`);
+console.log(`${G}${BOLD}ElevateOS installed successfully!${R}`);
 console.log('');
 
 if (!commandExists('claude')) {

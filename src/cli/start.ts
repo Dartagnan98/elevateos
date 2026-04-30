@@ -1,9 +1,10 @@
 import { Command } from 'commander';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { homedir, platform } from 'os';
+import { platform } from 'os';
 import { execSync, spawn, spawnSync } from 'child_process';
 import { IPCClient } from '../daemon/ipc-server.js';
+import { CLI_NAME, PRODUCT_NAME, buildRuntimeEnv, getStateRoot } from '../utils/elevate.js';
 
 const IS_WINDOWS = platform() === 'win32';
 const SAFE_CMD = /^[@a-z0-9._/-]+$/i;
@@ -19,7 +20,7 @@ export const startCommand = new Command('start')
   .argument('[agent]', 'Specific agent to start (starts all if omitted)')
   .option('--instance <id>', 'Instance ID', 'default')
   .option('--foreground', 'Run daemon in foreground (no PM2, for debugging)')
-  .description('Start the cortextOS daemon and agents')
+  .description(`Start the ${PRODUCT_NAME} daemon and agents`)
   .action(async (agent: string | undefined, options: { instance: string; foreground?: boolean }) => {
     const ipc = new IPCClient(options.instance);
     const daemonRunning = await ipc.isDaemonRunning();
@@ -33,7 +34,7 @@ export const startCommand = new Command('start')
         process.exit(1);
       }
 
-      const ctxRoot = join(homedir(), '.cortextos', options.instance);
+      const ctxRoot = getStateRoot(options.instance);
 
       // Try reading org from enabled-agents.json
       let org = '';
@@ -46,18 +47,16 @@ export const startCommand = new Command('start')
         } catch { /* ignore */ }
       }
 
-      const daemonEnv = {
-        ...process.env,
-        CTX_INSTANCE_ID: options.instance,
-        CTX_ROOT: ctxRoot,
-        CTX_FRAMEWORK_ROOT: projectRoot,
-        CTX_PROJECT_ROOT: projectRoot,
-        ...(org ? { CTX_ORG: org } : {}),
-      };
+      const daemonEnv = buildRuntimeEnv({
+        instanceId: options.instance,
+        stateRoot: ctxRoot,
+        frameworkRoot: projectRoot,
+        org,
+      });
 
       if (options.foreground) {
         // Run in foreground (blocking) — useful for debugging
-        console.log('Starting cortextOS daemon in foreground...');
+        console.log(`Starting ${PRODUCT_NAME} daemon in foreground...`);
         console.log('(Press Ctrl+C to stop)\n');
         const child = spawn(process.execPath, [daemonScript, '--instance', options.instance], {
           stdio: 'inherit',
@@ -74,11 +73,11 @@ export const startCommand = new Command('start')
         // PM2 available — use ecosystem or direct pm2 start
         const ecosystemPath = join(projectRoot, 'ecosystem.config.js');
         if (existsSync(ecosystemPath)) {
-          console.log('Starting cortextOS daemon via PM2...');
+          console.log(`Starting ${PRODUCT_NAME} daemon via PM2...`);
           try {
             execSync('pm2 start ecosystem.config.js', { stdio: 'inherit', cwd: projectRoot });
             execSync('pm2 save', { stdio: 'inherit', cwd: projectRoot });
-            console.log('\nDaemon started. Use `cortextos status` to check agents.');
+            console.log(`\nDaemon started. Use \`${CLI_NAME} status\` to check agents.`);
             if (IS_WINDOWS) {
               console.log('\nFor auto-start on Windows boot:');
               console.log('  npm install -g pm2-windows-startup');
@@ -97,7 +96,7 @@ export const startCommand = new Command('start')
             });
             execSync('pm2 start ecosystem.config.js', { stdio: 'inherit', cwd: projectRoot });
             execSync('pm2 save', { stdio: 'inherit', cwd: projectRoot });
-            console.log('\nDaemon started. Use `cortextos status` to check agents.');
+            console.log(`\nDaemon started. Use \`${CLI_NAME} status\` to check agents.`);
             if (IS_WINDOWS) {
               console.log('\nFor auto-start on Windows boot:');
               console.log('  npm install -g pm2-windows-startup');
@@ -105,7 +104,7 @@ export const startCommand = new Command('start')
             }
           } catch {
             console.error('Failed to generate ecosystem and start. Try manually:');
-            console.error('  cortextos ecosystem && pm2 start ecosystem.config.js');
+            console.error(`  ${CLI_NAME} ecosystem && pm2 start ecosystem.config.js`);
           }
         }
       } else {
@@ -145,7 +144,7 @@ export const startCommand = new Command('start')
     // Daemon already running
     if (agent) {
       // Auto-register in enabled-agents.json if not already present
-      const ctxRoot = join(homedir(), '.cortextos', options.instance);
+      const ctxRoot = getStateRoot(options.instance);
       const enabledPath = join(ctxRoot, 'config', 'enabled-agents.json');
       let enabledAgents: Record<string, any> = {};
       try {
@@ -168,18 +167,18 @@ export const startCommand = new Command('start')
       }
 
       console.log(`Starting agent: ${agent}`);
-      const response = await ipc.send({ type: 'start-agent', agent, source: 'cortextos start' });
+      const response = await ipc.send({ type: 'start-agent', agent, source: `${CLI_NAME} start` });
       if (response.success) {
         console.log(`  ${response.data}`);
       } else {
         console.error(`  Error: ${response.error}`);
       }
     } else {
-      const response = await ipc.send({ type: 'status', source: 'cortextos start' });
+      const response = await ipc.send({ type: 'status', source: `${CLI_NAME} start` });
       if (response.success) {
         const statuses = response.data as any[];
         if (statuses.length === 0) {
-          console.log('No agents configured. Add one with: cortextos add-agent <name>');
+          console.log(`No agents configured. Add one with: ${CLI_NAME} add-agent <name>`);
         } else {
           console.log('Agent statuses:');
           for (const s of statuses) {

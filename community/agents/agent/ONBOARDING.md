@@ -2,7 +2,7 @@
 
 This is your first time running. Before starting normal operations, complete this onboarding protocol via Telegram with your user. Do not skip steps. The more context you gather, the more effective you'll be.
 
-> **Environment variables**: `CTX_ROOT`, `CTX_FRAMEWORK_ROOT`, `CTX_ORG`, `CTX_AGENT_NAME`, and `CTX_INSTANCE_ID` are automatically set by the cortextOS framework. You do not need to set them - they are available in every bash command you run.
+> **Environment variables**: `CTX_ROOT`, `CTX_FRAMEWORK_ROOT`, `CTX_ORG`, `CTX_AGENT_NAME`, and `CTX_INSTANCE_ID` are automatically set by the ElevateOS framework. You do not need to set them - they are available in every bash command you run.
 
 **IMPORTANT: When this document says "END YOUR TURN", you MUST stop all tool execution and end your response. The user's Telegram reply will arrive as your next conversation turn. Do not keep working - the message will not reach you until your current turn ends.**
 
@@ -12,7 +12,7 @@ This is your first time running. Before starting normal operations, complete thi
    > "Hey! I'm a new specialist agent that just came online. Before I start working, I need to get set up. Can you help me with a few questions?"
 
 2. **Confirm identity from system config** - your name is already set (do not re-ask):
-   > "I'm **{{CTX_AGENT_NAME}}** (set up via cortextos). Let me verify my config is right - can you confirm my role and personality? What's my vibe: formal, casual, technical, creative?"
+   > "I'm **{{CTX_AGENT_NAME}}** (set up via elevate). Let me verify my config is right - can you confirm my role and personality? What's my vibe: formal, casual, technical, creative?"
 
 3. **Ask for role and responsibilities:**
    > "What kind of work will I be doing? Be specific - the more context you give me, the better I can help. For example: writing code, managing content, doing research, handling operations, etc."
@@ -80,7 +80,7 @@ Then continue from step 8.
 
 8. **Discover your team:**
    ```bash
-   cortextos bus read-all-heartbeats
+   elevate bus read-all-heartbeats
    # Fallback if no heartbeats yet: ls "${CTX_ROOT}/state/" 2>/dev/null
    ```
    List all agents found and ask:
@@ -161,7 +161,7 @@ After workflows and tools are configured:
     If KB is enabled:
     > "Your org has a semantic knowledge base I can query. Any domain-specific docs, reference material, or style guides I should have access to? Send me a file path or URL and I'll ingest it."
 
-    Ingest any provided docs: `cortextos bus kb-ingest <path> --org $CTX_ORG --scope private --agent $CTX_AGENT_NAME`
+    Ingest any provided docs: `elevate bus kb-ingest <path> --org $CTX_ORG --scope private --agent $CTX_AGENT_NAME`
 
 ## Part 3: Context Import
 
@@ -276,14 +276,14 @@ Do NOT rewrite TOOLS.md from memory. The template contains the authoritative ref
 ENABLED=$(cat "${CTX_FRAMEWORK_ROOT}/orgs/${CTX_ORG}/enabled-agents.json" 2>/dev/null || echo '[]')
 if ! echo "$ENABLED" | jq -e --arg name "$CTX_AGENT_NAME" '.[] | select(. == $name)' > /dev/null 2>&1; then
   echo "WARNING: $CTX_AGENT_NAME not found in enabled-agents.json"
-  cortextos bus send-telegram "$CTX_TELEGRAM_CHAT_ID" "Warning: I completed onboarding but I'm not in enabled-agents.json. Run: cortextos start $CTX_AGENT_NAME"
+  elevate bus send-telegram "$CTX_TELEGRAM_CHAT_ID" "Warning: I completed onboarding but I'm not in enabled-agents.json. Run: elevate start $CTX_AGENT_NAME"
 fi
 ```
 
 19. **Mark onboarding complete and signal orchestrator:**
     ```bash
     touch "${CTX_ROOT}/state/${CTX_AGENT_NAME}/.onboarded"
-    cortextos bus log-event action onboarding_complete info --meta '{"agent":"'$CTX_AGENT_NAME'","role":"specialist"}'
+    elevate bus log-event action onboarding_complete info --meta '{"agent":"'$CTX_AGENT_NAME'","role":"specialist"}'
     ```
 
     Signal the orchestrator that this specialist is fully configured and ready:
@@ -291,7 +291,7 @@ fi
     # Find orchestrator from org context
     ORCH_NAME=$(cat "${CTX_FRAMEWORK_ROOT}/orgs/${CTX_ORG}/context.json" 2>/dev/null | jq -r '.orchestrator // empty')
     if [ -n "$ORCH_NAME" ]; then
-      cortextos bus send-message "${ORCH_NAME}" normal "Specialist agent ${CTX_AGENT_NAME} onboarding complete and ready to work."
+      elevate bus send-message "${ORCH_NAME}" normal "Specialist agent ${CTX_AGENT_NAME} onboarding complete and ready to work."
     fi
     ```
 
@@ -322,7 +322,7 @@ fi
 
 if [ -n "$MISSING" ]; then
   echo "BOOTSTRAP CHECK FAILED - missing or incomplete:${MISSING}"
-  cortextos bus log-event error bootstrap_check_failed warning --meta '{"agent":"'$CTX_AGENT_NAME'","missing":"'"${MISSING}"'"}'
+  elevate bus log-event error bootstrap_check_failed warning --meta '{"agent":"'$CTX_AGENT_NAME'","missing":"'"${MISSING}"'"}'
   # Attempt to fix TOOLS.md by copying from template
   if echo "$MISSING" | grep -q "TOOLS.md"; then
     cp "${CTX_FRAMEWORK_ROOT}/templates/agent/TOOLS.md" "${CTX_AGENT_DIR}/TOOLS.md" 2>/dev/null
@@ -368,7 +368,7 @@ fi
     EOF
 
     # Register the cycle
-    cortextos bus manage-cycle create $CTX_AGENT_NAME \
+    elevate bus manage-cycle create $CTX_AGENT_NAME \
       --cycle "<metric_name>" \
       --metric "<metric_name>" \
       --metric-type "<quantitative|qualitative>" \

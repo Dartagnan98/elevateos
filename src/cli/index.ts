@@ -22,12 +22,13 @@ import { getConfigCommand } from './get-config.js';
 import { goalsCommand } from './goals.js';
 import { setupCommand } from './setup.js';
 import { spawnWorkerCommand, terminateWorkerCommand, listWorkersCommand, injectWorkerCommand } from './workers.js';
+import { CLI_NAME } from '../utils/elevate.js';
 
 const program = new Command();
 
 program
-  .name('cortextos')
-  .description('Persistent 24/7 Claude Code agents with multi-agent orchestration')
+  .name(CLI_NAME)
+  .description('Persistent Elevate agents with local orchestration, memory, and operator controls')
   .version('0.1.1');
 
 program.addCommand(initCommand);

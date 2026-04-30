@@ -1,13 +1,13 @@
 ---
 name: agent-management
-description: "You need to create a new agent, restart a crashed agent, change an agent's model or config, fix a Telegram bot token, troubleshoot why an agent is not responding, enable or disable an agent, spawn an agent for another user, manage PM2 process management, reset crash limits, or do anything that touches an agent's lifecycle, configuration, or credentials. This is the definitive guide for every agent operation in cortextOS."
+description: "You need to create a new agent, restart a crashed agent, change an agent's model or config, fix a Telegram bot token, troubleshoot why an agent is not responding, enable or disable an agent, spawn an agent for another user, manage PM2 process management, reset crash limits, or do anything that touches an agent's lifecycle, configuration, or credentials. This is the definitive guide for every agent operation in ElevateOS."
 triggers: ["new agent", "create agent", "spawn agent", "add agent", "restart", "soft restart", "hard restart", "disable agent", "enable agent", "change model", "switch model", "bot token", "BotFather", "agent not responding", "agent crashed", "agent down", "crash limit", "reset crashes", "agent health", "list agents", "heartbeat", "onboard", "setup agent", "configure agent", ".env", "config.json", "pm2", "ecosystem.config", "cross-org", "agent for someone else", "agent management", "agent lifecycle", "agent credentials", "telegram bot", "token not working"]
 external_calls: ["api.telegram.org"]
 ---
 
 # Agent Management
 
-> The definitive guide for managing cortextOS agent lifecycle. Every operation, every script, every protocol. Follow these EXACTLY - do not improvise.
+> The definitive guide for managing ElevateOS agent lifecycle. Every operation, every script, every protocol. Follow these EXACTLY - do not improvise.
 
 ---
 
@@ -15,8 +15,8 @@ external_calls: ["api.telegram.org"]
 
 1. **ALWAYS use the CLI.** Never manually edit state files or .env without using the proper command.
 2. **ALWAYS create .env before enabling.** An agent without .env will inherit parent credentials (the Becky bug).
-3. **ALWAYS write restart markers before /exit.** Use `cortextos bus self-restart`, never raw /exit.
-4. **ALWAYS use `cortextos enable` to start agents.** Never manually edit PM2 config.
+3. **ALWAYS write restart markers before /exit.** Use `elevate bus self-restart`, never raw /exit.
+4. **ALWAYS use `elevate enable` to start agents.** Never manually edit PM2 config.
 5. **NEVER share bot tokens between agents.** Each agent gets its own bot from @BotFather.
 6. **NEVER hardcode chat IDs.** Get them from the actual user via Telegram getUpdates.
 
@@ -28,7 +28,7 @@ external_calls: ["api.telegram.org"]
 
 ```bash
 # Option A: CLI (recommended)
-cortextos add-agent <name> --template agent --org <org>
+elevate add-agent <name> --template agent --org <org>
 
 # Option B: Manual
 TEMPLATE="agent"  # or "orchestrator" or "analyst"
@@ -44,7 +44,7 @@ cp -r "$CTX_FRAMEWORK_ROOT/templates/$TEMPLATE" \
 # 1. Open Telegram, message @BotFather
 # 2. Send /newbot
 # 3. Choose a name (e.g., "My Agent")
-# 4. Choose a username (e.g., myagent_cortextos_bot)
+# 4. Choose a username (e.g., myagent_elevate_bot)
 # 5. Copy the bot token
 
 # Step 3: Get chat ID
@@ -56,7 +56,7 @@ cp -r "$CTX_FRAMEWORK_ROOT/templates/$TEMPLATE" \
 # Step 4: Get user ID (for ALLOWED_USER security)
 # Same getUpdates response: .result[0].message.from.id
 
-# Step 5: Write .env (CRITICAL - do this BEFORE cortextos enable)
+# Step 5: Write .env (CRITICAL - do this BEFORE elevate enable)
 cat > "$CTX_FRAMEWORK_ROOT/orgs/$ORG/agents/$AGENT_NAME/.env" << EOF
 BOT_TOKEN=<token from BotFather>
 CHAT_ID=<chat_id from getUpdates>
@@ -75,10 +75,10 @@ fs.writeFileSync(path, JSON.stringify(c, null, 2));
 "
 
 # Step 7: Enable agent (registers with daemon)
-cortextos enable "$AGENT_NAME" --org "$ORG"
+elevate enable "$AGENT_NAME" --org "$ORG"
 
 # Step 8: Verify
-cortextos status
+elevate status
 ```
 
 ### For Another Person (Cross-User Agent)
@@ -91,7 +91,7 @@ THEIR_CHAT_ID="<THEIR chat_id, NOT yours>"
 THEIR_USER_ID="<THEIR user_id>"
 
 # Step 1: Add agent via CLI
-cortextos add-agent "$AGENT_NAME" --template agent --org "$ORG"
+elevate add-agent "$AGENT_NAME" --template agent --org "$ORG"
 
 # Step 2: Write THEIR .env (CRITICAL - must be THEIR credentials)
 cat > "$CTX_FRAMEWORK_ROOT/orgs/$ORG/agents/$AGENT_NAME/.env" << EOF
@@ -102,7 +102,7 @@ EOF
 chmod 600 "$CTX_FRAMEWORK_ROOT/orgs/$ORG/agents/$AGENT_NAME/.env"
 
 # Step 3: Enable
-cortextos enable "$AGENT_NAME" --org "$ORG"
+elevate enable "$AGENT_NAME" --org "$ORG"
 
 # VERIFY: The new agent messages THEM, not you
 # If messages come to you instead of them, the .env has wrong CHAT_ID
@@ -118,10 +118,10 @@ cortextos enable "$AGENT_NAME" --org "$ORG"
 
 ```bash
 # Via bus command (preferred — writes marker file automatically)
-cortextos bus self-restart --reason "<reason>"
+elevate bus self-restart --reason "<reason>"
 
 # Restart a DIFFERENT agent
-cortextos bus send-message <agent_name> high "soft-restart" "<reason>"
+elevate bus send-message <agent_name> high "soft-restart" "<reason>"
 ```
 
 **What it does:**
@@ -133,7 +133,7 @@ cortextos bus send-message <agent_name> high "soft-restart" "<reason>"
 ### Hard Restart (Fresh Session, Loses History)
 
 ```bash
-cortextos bus hard-restart --reason "context exhaustion"
+elevate bus hard-restart --reason "context exhaustion"
 ```
 
 **When to use:** Context window full, conversation corrupted, need clean slate.
@@ -142,10 +142,10 @@ cortextos bus hard-restart --reason "context exhaustion"
 
 ```bash
 # Soft restart another agent via message bus
-cortextos bus send-message assistant high "soft-restart" "goal refresh"
+elevate bus send-message assistant high "soft-restart" "goal refresh"
 
 # Check status after restart
-cortextos status
+elevate status
 ```
 
 ---
@@ -167,7 +167,7 @@ fs.writeFileSync(path, JSON.stringify(c, null, 2));
 "
 
 # Step 2: Soft restart to pick up new model
-cortextos bus send-message "$AGENT" high "soft-restart" "model change to $NEW_MODEL"
+elevate bus send-message "$AGENT" high "soft-restart" "model change to $NEW_MODEL"
 ```
 
 **Available models:**
@@ -212,7 +212,7 @@ sed -i '' "s/^BOT_TOKEN=.*/BOT_TOKEN=<new_token>/" \
   "$CTX_FRAMEWORK_ROOT/orgs/$ORG/agents/$AGENT/.env"
 
 # Restart to pick up new token
-cortextos bus send-message "$AGENT" high "soft-restart" "bot token updated"
+elevate bus send-message "$AGENT" high "soft-restart" "bot token updated"
 ```
 
 ---
@@ -264,7 +264,7 @@ fs.writeFileSync(path, JSON.stringify(c, null, 2));
 "
 
 # Notify agent to reload crons
-cortextos bus send-message "$AGENT" normal \
+elevate bus send-message "$AGENT" normal \
   'Crons updated in config.json. Re-read your config.json and set up the new cron with /loop.'
 ```
 
@@ -277,7 +277,7 @@ const c = JSON.parse(fs.readFileSync(path));
 c.crons = (c.crons || []).filter(cr => cr.name !== 'cron-to-remove');
 fs.writeFileSync(path, JSON.stringify(c, null, 2));
 "
-cortextos bus send-message "$AGENT" normal 'Cron removed from config.json. Recreate your crons on next restart.'
+elevate bus send-message "$AGENT" normal 'Cron removed from config.json. Recreate your crons on next restart.'
 ```
 
 ---
@@ -286,12 +286,12 @@ cortextos bus send-message "$AGENT" normal 'Cron removed from config.json. Recre
 
 ### Enable
 ```bash
-cortextos enable <agent> --org <org>
+elevate enable <agent> --org <org>
 ```
 
 ### Disable
 ```bash
-cortextos disable <agent> --org <org>
+elevate disable <agent> --org <org>
 ```
 
 This stops the agent's PM2 process and marks the agent as disabled. Config and .env are preserved.
@@ -302,18 +302,18 @@ This stops the agent's PM2 process and marks the agent as disabled. Config and .
 
 ### Check All Agents
 ```bash
-cortextos status
-cortextos bus read-all-heartbeats
+elevate status
+elevate bus read-all-heartbeats
 ```
 
 ### Check Specific Agent Heartbeat
 ```bash
-cat "$HOME/.cortextos/default/state/$AGENT/heartbeat.json"
+cat "$HOME/.elevate/default/state/$AGENT/heartbeat.json"
 ```
 
 ### List All Agents
 ```bash
-cortextos bus list-agents --format json
+elevate bus list-agents --format json
 ```
 
 ### Check PM2 Process Status
@@ -331,13 +331,13 @@ d.forEach(p => console.log(p.name, p.pm2_env.status));
 
 ### Reset Crash Counter
 ```bash
-rm -f "$HOME/.cortextos/default/state/$AGENT/.crash_count_today"
+rm -f "$HOME/.elevate/default/state/$AGENT/.crash_count_today"
 ```
 
 ### Force Fresh Start (Lose Conversation)
 ```bash
-echo "" > "$HOME/.cortextos/default/state/$AGENT/.force-fresh"
-cortextos enable "$AGENT" --org "$ORG" --restart
+echo "" > "$HOME/.elevate/default/state/$AGENT/.force-fresh"
+elevate enable "$AGENT" --org "$ORG" --restart
 ```
 
 ---
@@ -347,8 +347,8 @@ cortextos enable "$AGENT" --org "$ORG" --restart
 ### Agent Not Responding to Telegram
 1. Check .env exists and has BOT_TOKEN + CHAT_ID + ALLOWED_USER
 2. Check fast-checker is running: `ps aux | grep fast-checker | grep $AGENT`
-3. Check fast-checker log: `tail -10 $HOME/.cortextos/default/logs/$AGENT/fast-checker.log`
-4. Check agent status: `cortextos status`
+3. Check fast-checker log: `tail -10 $HOME/.elevate/default/logs/$AGENT/fast-checker.log`
+4. Check agent status: `elevate status`
 
 ### Messages Going to Wrong Person
 1. Check .env CHAT_ID - is it the right person's chat ID?
@@ -357,16 +357,16 @@ cortextos enable "$AGENT" --org "$ORG" --restart
 4. Fix: rewrite .env with correct credentials, soft restart
 
 ### Agent Keeps Crashing
-1. Check crash count: `cat $HOME/.cortextos/default/state/$AGENT/.crash_count_today`
-2. Check stderr: `tail -20 $HOME/.cortextos/default/logs/$AGENT/stderr.log`
+1. Check crash count: `cat $HOME/.elevate/default/state/$AGENT/.crash_count_today`
+2. Check stderr: `tail -20 $HOME/.elevate/default/logs/$AGENT/stderr.log`
 3. Common causes: rate limit, auth expired, context exhaustion
-4. Fix: reset crash count, fix root cause, `cortextos enable <agent> --restart`
+4. Fix: reset crash count, fix root cause, `elevate enable <agent> --restart`
 
 ### PM2 Not Restarting Agent
 1. Check PM2 status: `pm2 list`
 2. Check PM2 logs: `pm2 logs <agent-process-name>`
-3. Regenerate ecosystem config: `cortextos ecosystem` then `pm2 restart ecosystem.config.js`
-4. If exit code shows throttling, wait 10s then `cortextos enable <agent> --restart`
+3. Regenerate ecosystem config: `elevate ecosystem` then `pm2 restart ecosystem.config.js`
+4. If exit code shows throttling, wait 10s then `elevate enable <agent> --restart`
 
 ---
 
@@ -374,17 +374,17 @@ cortextos enable "$AGENT" --org "$ORG" --restart
 
 | I need to... | Command |
 |---|---|
-| Create new agent | `cortextos add-agent <name> --template <type> --org <org>` |
-| Enable agent | `cortextos enable <agent> --org <org>` |
-| Disable agent | `cortextos disable <agent> --org <org>` |
-| Soft restart (self) | `cortextos bus self-restart --reason "<reason>"` |
-| Hard restart (self) | `cortextos bus hard-restart --reason "<reason>"` |
-| Restart another agent | `cortextos bus send-message <agent> high "soft-restart" "<reason>"` |
+| Create new agent | `elevate add-agent <name> --template <type> --org <org>` |
+| Enable agent | `elevate enable <agent> --org <org>` |
+| Disable agent | `elevate disable <agent> --org <org>` |
+| Soft restart (self) | `elevate bus self-restart --reason "<reason>"` |
+| Hard restart (self) | `elevate bus hard-restart --reason "<reason>"` |
+| Restart another agent | `elevate bus send-message <agent> high "soft-restart" "<reason>"` |
 | Change model | Edit config.json model field + soft restart |
 | Update bot token | Edit .env BOT_TOKEN + soft restart |
 | Add cron | Edit config.json crons + notify agent |
-| Check health | `cortextos status` or `cortextos bus read-all-heartbeats` |
-| List agents | `cortextos bus list-agents --format json` |
+| Check health | `elevate status` or `elevate bus read-all-heartbeats` |
+| List agents | `elevate bus list-agents --format json` |
 | Check PM2 | `pm2 list` |
-| Reset crash count | `rm ~/.cortextos/default/state/<agent>/.crash_count_today` |
-| Force fresh start | Write .force-fresh + `cortextos enable --restart` |
+| Reset crash count | `rm ~/.elevate/default/state/<agent>/.crash_count_today` |
+| Force fresh start | Write .force-fresh + `elevate enable --restart` |

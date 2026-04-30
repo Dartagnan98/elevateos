@@ -16,7 +16,7 @@
  */
 import { existsSync, readFileSync, writeFileSync, appendFileSync, unlinkSync, mkdirSync, statSync } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
+import { getInstanceId, getStateRoot } from '../utils/elevate.js';
 
 const DEDUP_WINDOW_MS = 10 * 60 * 1000;         // 10 minutes
 const QUIET_HOUR_START_LA = 22;                 // 22:00 America/Los_Angeles
@@ -101,10 +101,10 @@ function shouldSuppressDedup(stateDir: string, endType: string): boolean {
 
 async function main(): Promise<void> {
   const agentName = process.env.CTX_AGENT_NAME;
-  const instanceId = process.env.CTX_INSTANCE_ID || 'default';
+  const instanceId = getInstanceId();
   if (!agentName) return;
 
-  const ctxRoot = join(homedir(), '.cortextos', instanceId);
+  const ctxRoot = getStateRoot(instanceId);
   const stateDir = join(ctxRoot, 'state', agentName);
   const logDir = join(ctxRoot, 'logs', agentName);
 

@@ -135,7 +135,13 @@ export async function PATCH(
           'bash',
           [sendMsg, name, 'normal', 'Settings updated via dashboard. Re-read config.json and apply new operational settings.'],
           {
-            env: { ...process.env, CTX_FRAMEWORK_ROOT: frameworkRoot, CTX_AGENT_NAME: name },
+            env: {
+              ...process.env,
+              ELEVATE_FRAMEWORK_ROOT: frameworkRoot,
+              ELEVATE_AGENT_NAME: name,
+              CTX_FRAMEWORK_ROOT: frameworkRoot,
+              CTX_AGENT_NAME: name,
+            },
             timeout: 5000,
             stdio: 'pipe',
           },

@@ -1,0 +1,38 @@
+{
+  "agent_name": "{{agent_name}}",
+  "enabled": true,
+  "startup_delay": 0,
+  "max_session_seconds": 255600,
+  "max_crashes_per_day": 10,
+  "working_directory": "",
+  "timezone": "America/Vancouver",
+  "crons": [
+    {
+      "name": "heartbeat",
+      "type": "recurring",
+      "interval": "6h",
+      "prompt": "Read HEARTBEAT.md and follow its instructions. Update your heartbeat, check inbox, work on assigned tasks."
+    },
+    {
+      "name": "market-stats",
+      "type": "recurring",
+      "interval": "24h",
+      "prompt": "Run TZ=America/Vancouver date +%H. If hour not 06, 07, or 08, exit silently. Sentinel: STAMP=data/.cron-runs/market-stats-$(TZ=America/Vancouver date +%F); if [ -f $STAMP ], exit silently. Otherwise: run market-stats-watcher skill. Refresh Kamloops + Okanagan stats. Drop summary to data/brew/$(date +%F)-market.md so Avery can pull it for the morning brew. On success: mkdir -p data/.cron-runs && touch $STAMP."
+    },
+    {
+      "name": "listing-copy-review",
+      "type": "recurring",
+      "interval": "24h",
+      "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {10,11,12}, exit silently. Sentinel: STAMP=data/.cron-runs/listing-copy-review-$(TZ=America/Vancouver date +%F); if [ -f $STAMP ], exit silently. Otherwise: review active listings. Any with weak copy or missing photos? Surface as task to Avery. On success: mkdir -p data/.cron-runs && touch $STAMP."
+    },
+    {
+      "name": "campaign-check",
+      "type": "recurring",
+      "interval": "24h",
+      "prompt": "Run TZ=America/Vancouver date +%A. If output is not Monday, exit silently. Sentinel: STAMP=data/.cron-runs/campaign-check-$(TZ=America/Vancouver date +%F); if [ -f $STAMP ], exit silently. Otherwise: review marketing/runs/. Anything pending? Anything underperforming? Compose weekly marketing summary. On success: mkdir -p data/.cron-runs && touch $STAMP."
+    }
+  ],
+  "ecosystem": {
+    "local_version_control": { "enabled": true }
+  }
+}

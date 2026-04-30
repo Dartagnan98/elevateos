@@ -1,0 +1,59 @@
+{
+  "agent_name": "{{agent_name}}",
+  "enabled": true,
+  "startup_delay": 0,
+  "max_session_seconds": 255600,
+  "max_crashes_per_day": 10,
+  "working_directory": "",
+  "timezone": "America/Vancouver",
+  "approval_rules": {
+    "always_ask": [],
+    "never_ask": []
+  },
+  "crons": [
+    {
+      "name": "heartbeat",
+      "type": "recurring",
+      "interval": "6h",
+      "prompt": "Read HEARTBEAT.md and follow its instructions. Update your heartbeat, check inbox, work on assigned tasks."
+    },
+    {
+      "name": "pipeline-scan",
+      "type": "recurring",
+      "interval": "24h",
+      "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {06,07,08}, exit silently. Sentinel: STAMP=data/.cron-runs/pipeline-scan-$(TZ=America/Vancouver date +%F); if [ -f $STAMP ], exit silently. Otherwise: scan Lofty for active deals. Score each by stage + age + last touch. Drop summary to data/brew/$(date +%F)-pipeline.md so Avery can pull it for the morning brew. On success: mkdir -p data/.cron-runs && touch $STAMP."
+    },
+    {
+      "name": "comps-refresh",
+      "type": "recurring",
+      "interval": "24h",
+      "prompt": "Run TZ=America/Vancouver date +%A. If output is not Monday, exit silently. Sentinel: STAMP=data/.cron-runs/comps-refresh-$(TZ=America/Vancouver date +%F); if [ -f $STAMP ], exit silently. Otherwise: refresh comps for active listings. Flag any pricing drift greater than 5% from list. On success: mkdir -p data/.cron-runs && touch $STAMP."
+    },
+    {
+      "name": "deadline-calc",
+      "type": "recurring",
+      "interval": "6h",
+      "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {08,20}, exit silently. Otherwise: for every active deal, recalc subject removal / deposit / possession dates. Surface anything tight (<48h) to Avery via send-message normal."
+    },
+    {
+      "name": "auto-commit",
+      "type": "recurring",
+      "interval": "24h",
+      "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {21,22,23}, exit silently. Sentinel: STAMP=data/.cron-runs/auto-commit-$(TZ=America/Vancouver date +%F); if [ -f $STAMP ], exit silently. Otherwise: read .claude/skills/local-version-control/SKILL.md and execute the daily version control workflow. Stage, review, and commit changes. On success: mkdir -p data/.cron-runs && touch $STAMP."
+    }
+  ],
+  "ecosystem": {
+    "local_version_control": {
+      "enabled": true
+    },
+    "upstream_sync": {
+      "enabled": false
+    },
+    "catalog_browse": {
+      "enabled": false
+    },
+    "community_publish": {
+      "enabled": false
+    }
+  }
+}

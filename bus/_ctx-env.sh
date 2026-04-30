@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cortextOS shared environment resolution
+# Elevate shared environment resolution
 # Source this at the top of bus/ and scripts/ files after determining SCRIPT_DIR.
 #
 # Handles:
@@ -8,30 +8,30 @@
 # - Flat message bus paths
 # - .env sourcing helper
 
-# ── Source .cortextos-env if present (written by the Node.js daemon) ─────
+# ── Source .elevate-env if present (written by the Node.js daemon) ────────
 # This is the most reliable fallback: a file in the agent's working dir
 # that contains the correct CTX_ vars, regardless of env var inheritance.
 if [[ -z "${CTX_ROOT:-}" ]]; then
-    if [[ -f "$(pwd)/.cortextos-env" ]]; then
-        source "$(pwd)/.cortextos-env" 2>/dev/null || true
-    elif [[ -n "${CTX_AGENT_DIR:-}" && -f "${CTX_AGENT_DIR}/.cortextos-env" ]]; then
-        source "${CTX_AGENT_DIR}/.cortextos-env" 2>/dev/null || true
+    if [[ -f "$(pwd)/.elevate-env" ]]; then
+        source "$(pwd)/.elevate-env" 2>/dev/null || true
+    elif [[ -n "${CTX_AGENT_DIR:-}" && -f "${CTX_AGENT_DIR}/.elevate-env" ]]; then
+        source "${CTX_AGENT_DIR}/.elevate-env" 2>/dev/null || true
     fi
 fi
 
-# ── Backward compat: accept CRM_ or CTX_ vars ──────────────────────────
-CTX_INSTANCE_ID="${CTX_INSTANCE_ID:-${CRM_INSTANCE_ID:-default}}"
-CTX_AGENT_NAME="${CTX_AGENT_NAME:-${CRM_AGENT_NAME:-$(basename "$(pwd)")}}"
+# ── Backward compat: accept Elevate, CRM, or CTX vars ─────────────────────
+CTX_INSTANCE_ID="${ELEVATE_INSTANCE_ID:-${CTX_INSTANCE_ID:-${CRM_INSTANCE_ID:-default}}}"
+CTX_AGENT_NAME="${ELEVATE_AGENT_NAME:-${CTX_AGENT_NAME:-${CRM_AGENT_NAME:-$(basename "$(pwd)")}}}"
 
 # ── Validate agent name to prevent path traversal ─────────────────────────
 if [[ -n "${CTX_AGENT_NAME}" && ! "${CTX_AGENT_NAME}" =~ ^[a-z0-9_-]+$ ]]; then
     echo "FATAL: CTX_AGENT_NAME '${CTX_AGENT_NAME}' contains invalid characters (allowed: a-z 0-9 _ -)" >&2
     exit 1
 fi
-CTX_FRAMEWORK_ROOT="${CTX_FRAMEWORK_ROOT:-${CRM_TEMPLATE_ROOT:-}}"
-CTX_ROOT="${CTX_ROOT:-${CRM_ROOT:-${HOME}/.cortextos/${CTX_INSTANCE_ID}}}"
-CTX_PROJECT_ROOT="${CTX_PROJECT_ROOT:-}"
-CTX_ORG="${CTX_ORG:-}"
+CTX_FRAMEWORK_ROOT="${ELEVATE_FRAMEWORK_ROOT:-${CTX_FRAMEWORK_ROOT:-${CRM_TEMPLATE_ROOT:-}}}"
+CTX_ROOT="${ELEVATE_ROOT:-${CTX_ROOT:-${CRM_ROOT:-${HOME}/.elevate/${CTX_INSTANCE_ID}}}}"
+CTX_PROJECT_ROOT="${ELEVATE_PROJECT_ROOT:-${CTX_PROJECT_ROOT:-}}"
+CTX_ORG="${ELEVATE_ORG:-${CTX_ORG:-}}"
 
 # ── Canonical agent directory (never construct manually elsewhere) ──────
 if [[ -n "${CTX_AGENT_DIR:-}" ]]; then
@@ -97,11 +97,14 @@ ctx_resolve_instance() {
     local framework_root="${1:-${CTX_FRAMEWORK_ROOT:-}}"
     if [[ -n "${framework_root}" && -f "${framework_root}/.env" ]]; then
         local id
-        id=$(grep '^CTX_INSTANCE_ID=' "${framework_root}/.env" 2>/dev/null | cut -d= -f2)
+        id=$(grep '^ELEVATE_INSTANCE_ID=' "${framework_root}/.env" 2>/dev/null | cut -d= -f2)
+        if [[ -z "${id}" ]]; then
+            id=$(grep '^CTX_INSTANCE_ID=' "${framework_root}/.env" 2>/dev/null | cut -d= -f2)
+        fi
         if [[ -z "${id}" ]]; then
             id=$(grep '^CRM_INSTANCE_ID=' "${framework_root}/.env" 2>/dev/null | cut -d= -f2)
         fi
         CTX_INSTANCE_ID="${id:-${CTX_INSTANCE_ID}}"
     fi
-    CTX_ROOT="${HOME}/.cortextos/${CTX_INSTANCE_ID}"
+    CTX_ROOT="${HOME}/.elevate/${CTX_INSTANCE_ID}"
 }

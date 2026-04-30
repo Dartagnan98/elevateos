@@ -1,64 +1,77 @@
 import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { join, basename } from 'path';
-import { homedir } from 'os';
 import type { CtxEnv } from '../types/index.js';
 import { ensureDir } from './atomic.js';
-import { validateAgentName, validateOrgName } from './validate.js';
+import { validateAgentName } from './validate.js';
+import { getStateRoot } from './elevate.js';
 
 /**
- * Resolve the cortextOS environment context.
- * Equivalent of bash _ctx-env.sh - reads from env vars, .cortextos-env, .env files.
+ * Resolve the Elevate environment context.
+ * Equivalent of bash _ctx-env.sh - reads from env vars, .elevate-env, .env files.
  */
 export function resolveEnv(overrides?: Partial<CtxEnv>): CtxEnv {
-  // Priority: overrides > env vars > .cortextos-env file > defaults
+  // Priority: overrides > env vars > .elevate-env file > defaults
 
-  // Try reading .cortextos-env from cwd
   let envFile: Record<string, string> = {};
-  const cortextosEnvPath = join(process.cwd(), '.cortextos-env');
-  if (existsSync(cortextosEnvPath)) {
-    envFile = parseEnvFile(cortextosEnvPath);
+  const elevateEnvPath = join(process.cwd(), '.elevate-env');
+  if (existsSync(elevateEnvPath)) {
+    envFile = parseEnvFile(elevateEnvPath);
   }
 
   const instanceId =
     overrides?.instanceId ||
+    process.env.ELEVATE_INSTANCE_ID ||
     process.env.CTX_INSTANCE_ID ||
+    envFile.ELEVATE_INSTANCE_ID ||
     envFile.CTX_INSTANCE_ID ||
     'default';
 
   const ctxRoot =
     overrides?.ctxRoot ||
+    process.env.ELEVATE_ROOT ||
     process.env.CTX_ROOT ||
+    envFile.ELEVATE_ROOT ||
     envFile.CTX_ROOT ||
-    join(homedir(), '.cortextos', instanceId);
+    getStateRoot(instanceId);
 
   const frameworkRoot =
     overrides?.frameworkRoot ||
+    process.env.ELEVATE_FRAMEWORK_ROOT ||
     process.env.CTX_FRAMEWORK_ROOT ||
+    envFile.ELEVATE_FRAMEWORK_ROOT ||
     envFile.CTX_FRAMEWORK_ROOT ||
     '';
 
   const agentName =
     overrides?.agentName ||
+    process.env.ELEVATE_AGENT_NAME ||
     process.env.CTX_AGENT_NAME ||
+    envFile.ELEVATE_AGENT_NAME ||
     envFile.CTX_AGENT_NAME ||
     basename(process.cwd());
 
   const org =
     overrides?.org ||
+    process.env.ELEVATE_ORG ||
     process.env.CTX_ORG ||
+    envFile.ELEVATE_ORG ||
     envFile.CTX_ORG ||
     '';
 
   const projectRoot =
     overrides?.projectRoot ||
+    process.env.ELEVATE_PROJECT_ROOT ||
     process.env.CTX_PROJECT_ROOT ||
+    envFile.ELEVATE_PROJECT_ROOT ||
     envFile.CTX_PROJECT_ROOT ||
     '';
 
   // Resolve agent directory
   let agentDir =
     overrides?.agentDir ||
+    process.env.ELEVATE_AGENT_DIR ||
     process.env.CTX_AGENT_DIR ||
+    envFile.ELEVATE_AGENT_DIR ||
     envFile.CTX_AGENT_DIR ||
     '';
 
@@ -84,7 +97,7 @@ export function resolveEnv(overrides?: Partial<CtxEnv>): CtxEnv {
   }
 
   // Security (H9): Validate agent name and org before they flow into filesystem paths.
-  // These come from env vars / .cortextos-env and must match [a-z0-9_-]+.
+  // These come from env vars / .elevate-env and must match [a-z0-9_-]+.
   if (agentName) {
     try {
       validateAgentName(agentName);
@@ -106,12 +119,18 @@ export function resolveEnv(overrides?: Partial<CtxEnv>): CtxEnv {
 }
 
 /**
- * Write .cortextos-env file for backward compatibility with bash bus scripts.
- * Per D6: maintain this pattern.
+ * Write .elevate-env for shell bus scripts.
  */
-export function writeCortextosEnv(agentDir: string, env: CtxEnv): void {
+export function writeElevateEnv(agentDir: string, env: CtxEnv): void {
   ensureDir(agentDir);
   const content = [
+    `ELEVATE_INSTANCE_ID=${env.instanceId}`,
+    `ELEVATE_ROOT=${env.ctxRoot}`,
+    `ELEVATE_FRAMEWORK_ROOT=${env.frameworkRoot}`,
+    `ELEVATE_AGENT_NAME=${env.agentName}`,
+    `ELEVATE_ORG=${env.org}`,
+    `ELEVATE_AGENT_DIR=${env.agentDir}`,
+    `ELEVATE_PROJECT_ROOT=${env.projectRoot}`,
     `CTX_INSTANCE_ID=${env.instanceId}`,
     `CTX_ROOT=${env.ctxRoot}`,
     `CTX_FRAMEWORK_ROOT=${env.frameworkRoot}`,
@@ -121,7 +140,7 @@ export function writeCortextosEnv(agentDir: string, env: CtxEnv): void {
     `CTX_PROJECT_ROOT=${env.projectRoot}`,
   ].join('\n');
 
-  writeFileSync(join(agentDir, '.cortextos-env'), content + '\n', 'utf-8');
+  writeFileSync(join(agentDir, '.elevate-env'), content + '\n', 'utf-8');
 }
 
 /**

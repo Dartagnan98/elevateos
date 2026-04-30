@@ -1,8 +1,7 @@
 import { NextRequest } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-import { marked } from 'marked';
-import DOMPurify from 'isomorphic-dompurify';
+import { marked, Renderer } from 'marked';
 import { getCTXRoot, getFrameworkRoot, getAllowedRootsConfigPath } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
@@ -36,7 +35,9 @@ function isPathUnderAnyRoot(realPath: string, roots: string[]): boolean {
   for (const root of roots) {
     let realRoot: string;
     try {
-      realRoot = fs.realpathSync(path.resolve(root));
+      realRoot = fs.realpathSync(
+        /* turbopackIgnore: true */ path.resolve(root),
+      );
     } catch {
       continue;
     }
@@ -78,6 +79,41 @@ const MIME_TYPES: Record<string, string> = {
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']);
 const INLINE_EXTENSIONS = new Set(['.md', '.html', '.htm', '.txt', '.ts', '.tsx', '.js', '.css', '.sh', '.json', '.csv']);
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function safeUrl(value: string): string {
+  const trimmed = value.trim();
+  if (/^(javascript|data|vbscript):/i.test(trimmed)) return '#';
+  return trimmed;
+}
+
+function renderMarkdown(mdContent: string): string {
+  const renderer = new Renderer();
+
+  renderer.html = ({ text }) => escapeHtml(text);
+  renderer.link = ({ href, title, tokens }) => {
+    const label = renderer.parser.parseInline(tokens);
+    const safeHref = safeUrl(href);
+    const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
+    return `<a href="${escapeHtml(safeHref)}"${titleAttr} rel="noopener noreferrer">${label}</a>`;
+  };
+  renderer.image = ({ href, title, text }) => {
+    const safeSrc = safeUrl(href);
+    if (safeSrc === '#') return '';
+    const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
+    return `<img src="${escapeHtml(safeSrc)}" alt="${escapeHtml(text)}"${titleAttr}>`;
+  };
+
+  return marked.parse(mdContent, { renderer, async: false }) as string;
+}
+
 /**
  * GET /api/media/[...filepath]
  * Serve a local file by its path relative to CTX_ROOT (or an absolute path
@@ -114,7 +150,7 @@ export async function GET(
 
   function tryResolve(candidate: string): boolean {
     try {
-      const real = fs.realpathSync(candidate);
+      const real = fs.realpathSync(/* turbopackIgnore: true */ candidate);
       if (isPathUnderAnyRoot(real, validRoots)) {
         realFullPath = real;
         return true;
@@ -127,7 +163,7 @@ export async function GET(
 
   // Pass 1: direct resolve
   for (const root of validRoots) {
-    if (tryResolve(path.resolve(root, relativePath))) break;
+    if (tryResolve(path.resolve(/* turbopackIgnore: true */ root, relativePath))) break;
   }
 
   // Pass 2: overlap-stripped resolve
@@ -142,7 +178,7 @@ export async function GET(
         if (rootTail === relHead) {
           const stripped = relParts.slice(n).join('/');
           if (!stripped) continue;
-          if (tryResolve(path.resolve(root, stripped))) break;
+          if (tryResolve(path.resolve(/* turbopackIgnore: true */ root, stripped))) break;
         }
       }
       if (realFullPath) break;
@@ -151,7 +187,9 @@ export async function GET(
 
   if (!realFullPath) {
     // Suggest which directory to add based on the first root candidate tried
-    const suggestedDir = path.dirname(path.resolve(ctxRoot, relativePath)).replace(/\\/g, '/');
+    const suggestedDir = path.dirname(
+      path.resolve(/* turbopackIgnore: true */ ctxRoot, relativePath),
+    ).replace(/\\/g, '/');
     return new Response(
       JSON.stringify({
         error: 'not_found',
@@ -166,19 +204,15 @@ export async function GET(
   const renderMd = _request.nextUrl.searchParams.get('render') === 'true';
 
   // Markdown render mode: convert to HTML fragment for the preview panel.
-  // Agent-generated markdown can contain raw inline HTML (e.g. <script>,
-  // onerror handlers, javascript: URIs). We sanitize the marked output with
-  // DOMPurify before returning it so the client can safely inject it via
-  // dangerouslySetInnerHTML. FORBID_TAGS covers the dangerous vectors that
-  // the default DOMPurify config doesn't already strip on some configs.
+  // Agent-generated markdown can contain raw inline HTML. The custom renderer
+  // escapes raw HTML and blocks javascript/data/vbscript URLs without pulling
+  // jsdom into this server route during production builds.
   if (renderMd && ext === '.md') {
-    const mdContent = fs.readFileSync(realFullPath, 'utf-8');
-    const rawHtml = marked.parse(mdContent) as string;
-    const htmlBody = DOMPurify.sanitize(rawHtml, {
-      USE_PROFILES: { html: true },
-      FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'link', 'meta', 'base'],
-      FORBID_ATTR: ['style', 'onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'onchange', 'onsubmit', 'formaction'],
-    });
+    const mdContent = fs.readFileSync(
+      /* turbopackIgnore: true */ realFullPath,
+      'utf-8',
+    );
+    const htmlBody = renderMarkdown(mdContent);
     return new Response(htmlBody, {
       status: 200,
       headers: {
@@ -190,7 +224,7 @@ export async function GET(
   }
 
   const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
-  const fileBuffer = fs.readFileSync(realFullPath);
+  const fileBuffer = fs.readFileSync(/* turbopackIgnore: true */ realFullPath);
 
   const headers: Record<string, string> = {
     'Content-Type': mimeType,

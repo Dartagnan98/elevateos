@@ -1,9 +1,9 @@
 ---
 name: onboarding
-description: Interactive onboarding for cortextOS Node.js - walks through full setup from zero to a running multi-agent system
+description: Interactive onboarding for ElevateOS Node.js - walks through full setup from zero to a running multi-agent system
 ---
 
-You are guiding the user through a complete interactive onboarding for cortextOS (Node.js version). Walk through each phase **in order**, checking results before proceeding. Explain everything in casual plain English. If any step fails, diagnose and fix before moving on. You must go through every step even if diverted mid step by the user. No exceptions. 
+You are guiding the user through a complete interactive onboarding for ElevateOS (Node.js version). Walk through each phase **in order**, checking results before proceeding. Explain everything in casual plain English. If any step fails, diagnose and fix before moving on. You must go through every step even if diverted mid step by the user. No exceptions.
 
 **CRITICAL**: Sections marked with > blockquotes are **verbatim text** - deliver these word-for-word. Do not skip or paraphrase them.
 
@@ -15,7 +15,7 @@ You are guiding the user through a complete interactive onboarding for cortextOS
 
 ### 1a. Welcome
 
-> "cortextOS is a system for running persistent 24/7 Claude Code agents. Your agents run in the background, coordinate with each other and can freely message between each other, manage tasks on a shared tasks board, request your approval for important decisions, and you control everything from Telegram on your phone or the cortextOS web dashboard."
+> "ElevateOS is a system for running persistent 24/7 Claude Code agents. Your agents run in the background, coordinate with each other and can freely message between each other, manage tasks on a shared tasks board, request your approval for important decisions, and you control everything from Telegram on your phone or the ElevateOS web dashboard."
 
 > "Here's what you're about to set up:"
 > - **Persistent agents** that run 24/7 with automatic crash recovery and session continuation. Each agent is a full Claude Code CLI session.
@@ -27,13 +27,13 @@ You are guiding the user through a complete interactive onboarding for cortextOS
 > - **Web dashboard** - real-time monitoring of your entire system in a browser.
 > - **Agent teams** - your agents can spin up other persistent agents as permanent members of the team, and ephemeral worker agents for isolated deep work tasks. Agents can manage other agents as many layers deep as you want.
 > - **Autoresearch** - agents run continuous experiments to improve themselves and your system. Measure outcomes, learn, propose changes - all gated by your approval.
-> - **Compounding community intelligence** - an open-source skill app store where cortextOS users worldwide share workflows, automations, and skills they've built for their businesses. Your Analyst pulls weekly updates and knows when to suggest submitting your own discoveries back to the community.
+> - **Compounding community intelligence** - an open-source skill app store where ElevateOS users worldwide share workflows, automations, and skills they've built for their businesses. Your Analyst pulls weekly updates and knows when to suggest submitting your own discoveries back to the community.
 > - **Theta wave** - a nightly deep analysis session between your Orchestrator and Analyst: they pull all system analytics, read every agent's workspace, and propose system-wide experiments to optimize performance.
 > - **Semantic Knowledge Base** - agents upload files from their workspace into a shared RAG database, searchable from the dashboard. Supports docs, images, audio, video - anything you want them to store as long-term shared memory.
 > - **Native iPhone App** *(coming soon)* - dashboard + Telegram in one app with push notifications and full system control from your phone.
 > - **Full codebase access** - agents can read and write your dashboard, core scripts, and the markdown files that define their own behavior. They can build custom dashboard pages for your business and eventually extend the iPhone app.
 
-> "Every cortextOS system is built around two core agents that are always present: the **Orchestrator** and the **Analyst**. They are the two halves of your cortextOS brain."
+> "Every ElevateOS system is built around two core agents that are always present: the **Orchestrator** and the **Analyst**. They are the two halves of your ElevateOS brain."
 >
 > "The **Orchestrator** is the leader. It takes your directives from Telegram, breaks them into tasks, delegates to the rest of your team, monitors what's getting done, routes approvals to you, and sends your daily briefings. It's your right hand - the agent that keeps everything moving in the right direction."
 >
@@ -138,26 +138,26 @@ Then run install:
 node dist/cli.js install
 ```
 
-Or if the user has `cortextos` in their PATH:
+Or if the user has `elevate` in their PATH:
 ```bash
-cortextos install
+elevate install
 ```
 
 **Do not ask the user about instance names.** Auto-assign one silently:
 
 ```bash
 # Reuse the 'default' instance dir if it exists and is empty (the typical
-# fresh-install state — `cortextos install` always creates default/ with an
-# empty enabled-agents.json). Otherwise pick the next free `cortextosN` slot.
-if [ -d "${HOME}/.cortextos/default" ] && \
-   [ "$(cat "${HOME}/.cortextos/default/config/enabled-agents.json" 2>/dev/null | tr -d '[:space:]')" = "{}" ]; then
+# fresh-install state — `elevate install` always creates default/ with an
+# empty enabled-agents.json). Otherwise pick the next free `elevateN` slot.
+if [ -d "${HOME}/.elevate/default" ] && \
+   [ "$(cat "${HOME}/.elevate/default/config/enabled-agents.json" 2>/dev/null | tr -d '[:space:]')" = "{}" ]; then
   INSTANCE_ID="default"
 else
   INSTANCE_NUM=1
-  while [ -d "${HOME}/.cortextos/cortextos${INSTANCE_NUM}" ]; do
+  while [ -d "${HOME}/.elevate/elevate${INSTANCE_NUM}" ]; do
     INSTANCE_NUM=$((INSTANCE_NUM + 1))
   done
-  INSTANCE_ID="cortextos${INSTANCE_NUM}"
+  INSTANCE_ID="elevate${INSTANCE_NUM}"
 fi
 ```
 
@@ -166,13 +166,13 @@ fi
 takes one). The CLI subcommands default the instance to literal `'default'` if
 neither the flag nor the `CTX_INSTANCE_ID` env var is set. Forgetting the flag
 silently writes to the wrong instance dir, splitting the agent registration
-across multiple `~/.cortextos/<instance>/` trees. Always pass the flags.
+across multiple `~/.elevate/<instance>/` trees. Always pass the flags.
 
 Also export the env vars so any indirect subprocess (e.g. PM2 reading `ecosystem.config.js`) inherits them:
 
 ```bash
 export CTX_INSTANCE_ID="${INSTANCE_ID}"
-export CTX_ROOT="${HOME}/.cortextos/${INSTANCE_ID}"
+export CTX_ROOT="${HOME}/.elevate/${INSTANCE_ID}"
 ```
 
 ---
@@ -181,13 +181,13 @@ export CTX_ROOT="${HOME}/.cortextos/${INSTANCE_ID}"
 
 ### 4a. Explain Organizations (verbatim)
 
-> "cortextOS organizes your agents into Organizations. An Organization is a group of agents that work together toward shared goals - for your business, a side project, or any domain of your life. Each org has its own task queue, approval workflow, analytics, set of dashboard pages, and shared context."
+> "ElevateOS organizes your agents into Organizations. An Organization is a group of agents that work together toward shared goals - for your business, a side project, or any domain of your life. Each org has its own task queue, approval workflow, analytics, set of dashboard pages, and shared context."
 
 ### 4b. Gather Organization context
 
 Ask these questions one at a time. Follow up on interesting answers. Let the user elaborate.
 
-1. "The more detail and context you give me during onboarding, the better cortextOS will work from day one. What will this Organization be for? Describe it in a sentence or two."
+1. "The more detail and context you give me during onboarding, the better ElevateOS will work from day one. What will this Organization be for? Describe it in a sentence or two."
 2. "What's the Organization's North Star - the ONE long-term goal everything should work toward?"
 3. "Based on that, what do you want to call this Organization?" (lowercase, hyphens OK - e.g., `mycompany`, `acme`, `demo`)
 
@@ -289,7 +289,7 @@ Walk through step by step:
 
 After token paste:
 
-7. Tell the user: "Now send any message to your new bot on Telegram (just 'hi' is fine). This lets me detect your chat ID so that only you can message your agent. You can configure other chat IDs later so other members of your team can use cortextOS as well."
+7. Tell the user: "Now send any message to your new bot on Telegram (just 'hi' is fine). This lets me detect your chat ID so that only you can message your agent. You can configure other chat IDs later so other members of your team can use ElevateOS as well."
 
 **CRITICAL — BUG-033 fix**: Do NOT wait for the user to type a confirmation in chat before running the polling curl below. Start the long-poll IMMEDIATELY after delivering the instruction. The poll uses `timeout=30` which blocks for up to 30 seconds waiting for a Telegram message — that IS the user's confirmation. If you wait for typed confirmation first, the poll starts too late and may miss the very first message a user sends to a brand-new bot (Telegram's `getUpdates` first-message-lost trap, BUG-023). The correct sequence is: deliver the instruction, then immediately run the curl loop in the same response.
 
@@ -383,7 +383,7 @@ cat "${CTX_ROOT}/dashboard.env"
 
 Write `${CTX_FRAMEWORK_ROOT}/dashboard/.env.local` (use the Write tool with full absolute paths - NOT `~`):
 ```
-# AUTO-GENERATED by cortextOS onboarding. Edit ~/.cortextos/<instance>/dashboard.env to change credentials.
+# AUTO-GENERATED by ElevateOS onboarding. Edit ~/.elevate/<instance>/dashboard.env to change credentials.
 CTX_ROOT=<full path to CTX_ROOT>
 CTX_FRAMEWORK_ROOT=<full path to repo root>
 AUTH_SECRET=<from dashboard.env>
@@ -436,7 +436,7 @@ cd ${CTX_FRAMEWORK_ROOT}
 
 ## Phase 8: Knowledge Base
 
-> "cortextOS includes a semantic knowledge base - a shared RAG database your agents can read and write to. Agents upload files from their workspace - documents, images, audio, video - and any agent can query it with natural language. You can also search it from the web dashboard. Think of it as long-term shared memory across your entire team."
+> "ElevateOS includes a semantic knowledge base - a shared RAG database your agents can read and write to. Agents upload files from their workspace - documents, images, audio, video - and any agent can query it with natural language. You can also search it from the web dashboard. Think of it as long-term shared memory across your entire team."
 
 > "It requires a Google Gemini API key for embeddings. It's free to get one and the usage is minimal."
 
@@ -495,7 +495,7 @@ pm2 save
 
 ### 9b. Capture reboot-survival command (BUG-021 — DEFERRED, NOT mid-flow)
 
-**IMPORTANT — BUG-021 fix**: Run `pm2 startup` and capture its output, but DO NOT prompt the user to do anything mid-flow. The sudo paste step is friction in the critical path. Save the captured command for the end-of-onboarding summary in Phase 10 instead. The user can run it later (or never — cortextOS works fine without reboot persistence).
+**IMPORTANT — BUG-021 fix**: Run `pm2 startup` and capture its output, but DO NOT prompt the user to do anything mid-flow. The sudo paste step is friction in the critical path. Save the captured command for the end-of-onboarding summary in Phase 10 instead. The user can run it later (or never — ElevateOS works fine without reboot persistence).
 
 ```bash
 PM2_STARTUP_OUTPUT=$(pm2 startup 2>&1)
@@ -514,7 +514,7 @@ PM2_SUDO_CMD=$(echo "$PM2_STARTUP_OUTPUT" | grep -E '^sudo env PATH=' | head -1)
 ### 9c. Verify and hand off to Telegram
 
 ```bash
-pm2 list | grep cortextos
+pm2 list | grep elevate
 ```
 
 > "Daemon is running. Your Orchestrator will message you on Telegram in 30-60 seconds. Head to Telegram and wait for the first message."
@@ -532,7 +532,7 @@ Deliver verbatim:
 >
 > "Go to Telegram and wait for your Orchestrator to message you. It will walk you through its personality, goals, crons, and creating your Analyst agent."
 >
-> "If anything breaks, come back here and run `pm2 logs cortextos-daemon --lines 30`."
+> "If anything breaks, come back here and run `pm2 logs elevate-daemon --lines 30`."
 
 ### BUG-021 fix — Optional reboot survival (DEFERRED — non-blocking)
 
@@ -546,7 +546,7 @@ If `PM2_SUDO_CMD` from Phase 9b is non-empty, deliver this verbatim AT THE END (
 > <PM2_SUDO_CMD>
 > ```
 >
-> It will ask for your Mac password (the one you use to log in). When you type it, nothing appears on screen — that's normal. Just type and press Enter. This is a one-time setup. cortextOS works fine without it; you can do this anytime."
+> It will ask for your Mac password (the one you use to log in). When you type it, nothing appears on screen — that's normal. Just type and press Enter. This is a one-time setup. ElevateOS works fine without it; you can do this anytime."
 
 If `PM2_SUDO_CMD` is empty (PM2 startup is already configured, or the system doesn't need it), skip this section silently.
 
@@ -557,20 +557,20 @@ If `PM2_SUDO_CMD` is empty (PM2 startup is already configured, or the system doe
 ## Troubleshooting
 
 **Agent not messaging on Telegram:**
-1. Check stdout.log: `tail -50 ~/.cortextos/<instance>/logs/<agent>/stdout.log`
-2. Check activity.log: `tail -20 ~/.cortextos/<instance>/logs/<agent>/activity.log`
+1. Check stdout.log: `tail -50 ~/.elevate/<instance>/logs/<agent>/stdout.log`
+2. Check activity.log: `tail -20 ~/.elevate/<instance>/logs/<agent>/activity.log`
 3. Check .env has valid BOT_TOKEN and CHAT_ID
-4. Check fast-checker.log: `tail -20 ~/.cortextos/<instance>/logs/<agent>/fast-checker.log`
+4. Check fast-checker.log: `tail -20 ~/.elevate/<instance>/logs/<agent>/fast-checker.log`
 
 **Daemon not starting:**
-1. Check `pm2 logs cortextos-daemon --lines 30`
+1. Check `pm2 logs elevate-daemon --lines 30`
 2. Verify dist/daemon.js exists: `ls dist/daemon.js`
-3. Verify enabled-agents.json is valid JSON: `cat ~/.cortextos/<instance>/config/enabled-agents.json | jq .`
+3. Verify enabled-agents.json is valid JSON: `cat ~/.elevate/<instance>/config/enabled-agents.json | jq .`
 
 **Agent crashing immediately:**
 1. Check stdout.log for errors
 2. Verify Claude Code is authenticated: run `claude login` if needed
-3. Check `cortextos doctor` for any failing checks
+3. Check `elevate doctor` for any failing checks
 
 **Dashboard not loading:**
 1. Check `dashboard/.env.local` has correct absolute paths (no `~`)

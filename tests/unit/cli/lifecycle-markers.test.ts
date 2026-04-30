@@ -3,10 +3,10 @@
  *
  * The SessionEnd crash-alert hook (src/hooks/hook-crash-alert.ts) decides
  * whether an agent's exit was a crash by checking for marker files in
- * ~/.cortextos/<inst>/state/<agent>/. If no marker is found, it defaults
+ * ~/.elevate/<inst>/state/<agent>/. If no marker is found, it defaults
  * to "crash" and fires a 🚨 CRASH alarm via Telegram.
  *
- * Before this fix, `cortextos disable` and `cortextos stop` did not write
+ * Before this fix, `elevate disable` and `elevate stop` did not write
  * any marker, so every intentional shutdown was misclassified as a crash —
  * trust-destroying. The fix is two helpers (writeDisableMarker and
  * writeStopMarker) that drop the right marker before the IPC stop call.
@@ -24,12 +24,12 @@ import { writeStopMarker } from '../../../src/cli/stop';
 
 describe('BUG-036: lifecycle marker writes', () => {
   // The helpers write under homedir() — point HOME at a temp dir for the test
-  // so we don't pollute the user's real ~/.cortextos.
+  // so we don't pollute the user's real ~/.elevate.
   let tmpHome: string;
   const origHome = process.env.HOME;
 
   beforeEach(() => {
-    tmpHome = mkdtempSync(join(tmpdir(), 'cortextos-bug036-'));
+    tmpHome = mkdtempSync(join(tmpdir(), 'elevate-bug036-'));
     process.env.HOME = tmpHome;
   });
 
@@ -41,18 +41,18 @@ describe('BUG-036: lifecycle marker writes', () => {
 
   describe('writeDisableMarker', () => {
     it('writes .user-disable at the correct path with the given reason', () => {
-      writeDisableMarker('default', 'commander', 'disabled via cortextos disable');
+      writeDisableMarker('default', 'commander', 'disabled via elevate disable');
 
-      const expectedPath = join(homedir(), '.cortextos', 'default', 'state', 'commander', '.user-disable');
+      const expectedPath = join(homedir(), '.elevate', 'default', 'state', 'commander', '.user-disable');
       expect(existsSync(expectedPath)).toBe(true);
-      expect(readFileSync(expectedPath, 'utf-8')).toBe('disabled via cortextos disable');
+      expect(readFileSync(expectedPath, 'utf-8')).toBe('disabled via elevate disable');
     });
 
     it('creates the state directory if it does not exist', () => {
       // The state dir does not exist yet — helper must mkdirSync it
-      writeDisableMarker('cortextos1', 'analyst', 'test reason');
+      writeDisableMarker('elevate1', 'analyst', 'test reason');
 
-      const stateDir = join(homedir(), '.cortextos', 'cortextos1', 'state', 'analyst');
+      const stateDir = join(homedir(), '.elevate', 'elevate1', 'state', 'analyst');
       expect(existsSync(stateDir)).toBe(true);
     });
 
@@ -69,17 +69,17 @@ describe('BUG-036: lifecycle marker writes', () => {
 
   describe('writeStopMarker', () => {
     it('writes .user-stop at the correct path with the given reason', () => {
-      writeStopMarker('default', 'commander', 'stopped via cortextos stop');
+      writeStopMarker('default', 'commander', 'stopped via elevate stop');
 
-      const expectedPath = join(homedir(), '.cortextos', 'default', 'state', 'commander', '.user-stop');
+      const expectedPath = join(homedir(), '.elevate', 'default', 'state', 'commander', '.user-stop');
       expect(existsSync(expectedPath)).toBe(true);
-      expect(readFileSync(expectedPath, 'utf-8')).toBe('stopped via cortextos stop');
+      expect(readFileSync(expectedPath, 'utf-8')).toBe('stopped via elevate stop');
     });
 
     it('creates the state directory if it does not exist', () => {
-      writeStopMarker('cortextos1', 'analyst', 'test reason');
+      writeStopMarker('elevate1', 'analyst', 'test reason');
 
-      const stateDir = join(homedir(), '.cortextos', 'cortextos1', 'state', 'analyst');
+      const stateDir = join(homedir(), '.elevate', 'elevate1', 'state', 'analyst');
       expect(existsSync(stateDir)).toBe(true);
     });
 
@@ -96,7 +96,7 @@ describe('BUG-036: lifecycle marker writes', () => {
       writeDisableMarker('default', 'commander', 'disable');
       writeStopMarker('default', 'commander', 'stop');
 
-      const stateDir = join(homedir(), '.cortextos', 'default', 'state', 'commander');
+      const stateDir = join(homedir(), '.elevate', 'default', 'state', 'commander');
       expect(existsSync(join(stateDir, '.user-disable'))).toBe(true);
       expect(existsSync(join(stateDir, '.user-stop'))).toBe(true);
     });

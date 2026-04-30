@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useOrg } from '@/hooks/use-org';
@@ -18,6 +19,7 @@ import {
   IconClock,
   IconTarget,
   IconMessages,
+  IconUsers,
 } from '@tabler/icons-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +36,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   // Core
   { label: 'Overview', href: '/', icon: IconLayoutDashboard, section: 'core' },
+  { label: 'Leads', href: '/leads', icon: IconUsers, section: 'core' },
   { label: 'Agents', href: '/agents', icon: IconRobot, section: 'core' },
   { label: 'Tasks', href: '/tasks', icon: IconListCheck, section: 'core' },
   { label: 'Activity', href: '/activity', icon: IconActivity, section: 'core' },
@@ -97,11 +100,23 @@ export function Sidebar({
   return (
     <aside className="flex h-screen w-56 shrink-0 flex-col border-r bg-card/50">
       {/* Logo */}
-      <div className="flex h-14 items-center gap-2 px-4">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-bold">
-          cO
-        </div>
-        <span className="text-sm font-semibold tracking-tight">cortextOS</span>
+      <div className="flex h-[60px] items-center justify-center px-4">
+        <Image
+          src="/elevateos-wordmark.png"
+          alt="ElevateOS"
+          width={210}
+          height={70}
+          priority
+          className="h-auto w-[144px] object-contain dark:hidden"
+        />
+        <Image
+          src="/elevateos-wordmark-dark.png"
+          alt="ElevateOS"
+          width={210}
+          height={70}
+          priority
+          className="hidden h-auto w-[144px] object-contain dark:block"
+        />
       </div>
 
       {/* Search trigger */}

@@ -1,21 +1,21 @@
 import { Command } from 'commander';
 import { existsSync, readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
 import { IPCClient } from '../daemon/ipc-server.js';
 import type { AgentStatus, Heartbeat } from '../types/index.js';
+import { CLI_NAME, getInstanceId, getStateRoot } from '../utils/elevate.js';
 
 export const statusCommand = new Command('status')
   .option('--instance <id>', 'Instance ID')
   .description('Show agent health and status')
   .action(async (options: { instance?: string }) => {
-    const instanceId = options.instance || process.env.CTX_INSTANCE_ID || 'default';
+    const instanceId = options.instance || getInstanceId();
     const ipc = new IPCClient(instanceId);
     const daemonRunning = await ipc.isDaemonRunning();
 
     if (daemonRunning) {
       // Get live status from daemon
-      const response = await ipc.send({ type: 'status', source: 'cortextos status' });
+      const response = await ipc.send({ type: 'status', source: `${CLI_NAME} status` });
       if (response.success) {
         const statuses = response.data as AgentStatus[];
         displayStatuses(statuses);
@@ -23,12 +23,12 @@ export const statusCommand = new Command('status')
     } else {
       // Fall back to reading heartbeat files
       console.log('Daemon is not running. Showing last known heartbeats:\n');
-      const ctxRoot = join(homedir(), '.cortextos', instanceId);
+      const ctxRoot = getStateRoot(instanceId);
       const stateDir = join(ctxRoot, 'state');
 
       if (!existsSync(stateDir)) {
         console.log('  No heartbeat data found.');
-        console.log('  Start with: cortextos start');
+        console.log(`  Start with: ${CLI_NAME} start`);
         return;
       }
 
@@ -82,7 +82,7 @@ export const statusCommand = new Command('status')
 function displayStatuses(statuses: AgentStatus[]): void {
   if (statuses.length === 0) {
     console.log('No agents running.');
-    console.log('Add one with: cortextos add-agent <name>');
+    console.log(`Add one with: ${CLI_NAME} add-agent <name>`);
     return;
   }
 

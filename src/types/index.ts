@@ -1,4 +1,4 @@
-// cortextOS Node.js - Core Type Definitions
+// ElevateOS Node.js - Core Type Definitions
 // These types match the bash version's JSON formats exactly for backward compatibility
 
 export type Priority = 'urgent' | 'high' | 'normal' | 'low';
@@ -57,7 +57,7 @@ export interface Task {
   due_date: string | null;
   archived: boolean;
   result?: string;
-  /** Linked deliverables (files saved via `cortextos bus save-output`). */
+  /** Linked deliverables (files saved via `elevate bus save-output`). */
   outputs?: TaskOutput[];
   /**
    * Dependency DAG edges (beads-inspired). Optional so existing task
@@ -389,8 +389,8 @@ export interface IPCRequest {
   agent?: string;
   data?: Record<string, unknown>;
   /**
-   * BUG-015: human-readable identifier of the caller (e.g. 'cortextos enable',
-   * 'cortextos bus soft-restart-all'). Logged by the daemon on every incoming
+   * BUG-015: human-readable identifier of the caller (e.g. 'elevate enable',
+   * 'elevate bus soft-restart-all'). Logged by the daemon on every incoming
    * IPC request so we can trace which CLI command triggered which daemon action.
    * Optional for backwards compatibility — older clients fall back to 'unknown'.
    */

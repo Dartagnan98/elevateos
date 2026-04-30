@@ -352,20 +352,20 @@ describe('syncFile routing', () => {
 
 describe('path extraction helpers', () => {
   it('extractOrgFromPath returns correct org', () => {
-    expect(extractOrgFromPath('/home/user/.cortextos/orgs/acme/tasks/t.json')).toBe('acme');
+    expect(extractOrgFromPath('/home/user/.elevate/orgs/acme/tasks/t.json')).toBe('acme');
     expect(extractOrgFromPath('/no/org/path')).toBeNull();
   });
 
   it('extractOrgAndAgentFromEventPath returns org and agent', () => {
     const result = extractOrgAndAgentFromEventPath(
-      '/home/user/.cortextos/orgs/acme/analytics/events/builder/2025.jsonl',
+      '/home/user/.elevate/orgs/acme/analytics/events/builder/2025.jsonl',
     );
     expect(result.org).toBe('acme');
     expect(result.agent).toBe('builder');
   });
 
   it('extractAgentFromStatePath returns agent', () => {
-    expect(extractAgentFromStatePath('/home/user/.cortextos/state/planner/heartbeat.json')).toBe('planner');
+    expect(extractAgentFromStatePath('/home/user/.elevate/state/planner/heartbeat.json')).toBe('planner');
     expect(extractAgentFromStatePath('/no/state/path')).toBeNull();
   });
 });

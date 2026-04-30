@@ -11,19 +11,25 @@ function expandTilde(p: string): string {
 }
 
 // Core identity
-const CTX_INSTANCE_ID = process.env.CTX_INSTANCE_ID ?? 'default';
+const CTX_INSTANCE_ID = process.env.ELEVATE_INSTANCE_ID ?? process.env.CTX_INSTANCE_ID ?? 'default';
 
 // Core path constants - mirror bus/_ctx-env.sh logic
 export const CTX_ROOT = expandTilde(
+  process.env.ELEVATE_ROOT ??
   process.env.CTX_ROOT ??
-  path.join(os.homedir(), '.cortextos', CTX_INSTANCE_ID),
+  path.join(os.homedir(), '.elevate', CTX_INSTANCE_ID),
 );
 
 export const CTX_FRAMEWORK_ROOT = expandTilde(
+  process.env.ELEVATE_FRAMEWORK_ROOT ??
   process.env.CTX_FRAMEWORK_ROOT ??
   process.env.CTX_PROJECT_ROOT ??
-  path.resolve(process.cwd(), '..'),
+  path.join(/* turbopackIgnore: true */ process.cwd(), '..'),
 );
+
+export const ELEVATE_INSTANCE_ID = CTX_INSTANCE_ID;
+export const ELEVATE_ROOT = CTX_ROOT;
+export const ELEVATE_FRAMEWORK_ROOT = CTX_FRAMEWORK_ROOT;
 
 // Helper functions required by downstream tasks
 

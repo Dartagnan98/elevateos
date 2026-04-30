@@ -1,17 +1,17 @@
 import { Command } from 'commander';
 import { existsSync, mkdirSync, writeFileSync, copyFileSync, readFileSync, readdirSync, chmodSync } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
 import { ensureDir } from '../utils/atomic.js';
 import type { OrgContext } from '../types/index.js';
+import { CLI_NAME, PRODUCT_NAME, getStateRoot } from '../utils/elevate.js';
 
 export const initCommand = new Command('init')
   .argument('<org-name>', 'Organization name')
   .option('--instance <id>', 'Instance ID', 'default')
-  .description('Create a new cortextOS organization')
+  .description(`Create a new ${PRODUCT_NAME} organization`)
   .action(async (orgName: string, options: { instance: string }) => {
     const instanceId = options.instance;
-    const ctxRoot = join(homedir(), '.cortextos', instanceId);
+    const ctxRoot = getStateRoot(instanceId);
     const projectRoot = process.cwd();
 
     // Check if org already exists
@@ -21,7 +21,7 @@ export const initCommand = new Command('init')
       console.log('  Existing files will NOT be overwritten. Only missing files will be created.\n');
     }
 
-    console.log(`\nInitializing cortextOS organization: ${orgName}`);
+    console.log(`\nInitializing ${PRODUCT_NAME} organization: ${orgName}`);
     console.log(`  Instance: ${instanceId}`);
     console.log(`  State: ${ctxRoot}`);
     console.log(`  Project: ${projectRoot}\n`);
@@ -100,7 +100,7 @@ export const initCommand = new Command('init')
     const secretsPath = join(orgDir, 'secrets.env');
     if (!existsSync(secretsPath)) {
       writeFileSync(secretsPath, [
-        '# cortextOS secrets for ' + orgName,
+        `# ${PRODUCT_NAME} secrets for ${orgName}`,
         '# Add your Telegram bot token and other secrets here',
         'BOT_TOKEN=',
         'CHAT_ID=',
@@ -118,7 +118,7 @@ export const initCommand = new Command('init')
     // Create .env with instance ID
     const envPath = join(projectRoot, '.env');
     if (!existsSync(envPath)) {
-      writeFileSync(envPath, `CTX_INSTANCE_ID=${instanceId}\n`, 'utf-8');
+      writeFileSync(envPath, `ELEVATE_INSTANCE_ID=${instanceId}\nCTX_INSTANCE_ID=${instanceId}\n`, 'utf-8');
       console.log('  Created .env');
     }
 
@@ -128,7 +128,7 @@ export const initCommand = new Command('init')
       writeFileSync(knowledgePath, `# ${orgName} - Shared Knowledge\n\nShared facts, metrics, and corrections for all agents.\n`, 'utf-8');
     }
 
-    // Regenerate SYSTEM.md for all existing agents (handles cortextos init upgrades).
+    // Regenerate SYSTEM.md for all existing agents after org context changes.
     // Reads the now-current context.json and rewrites each agent's SYSTEM.md so that
     // dashboard_url, orchestrator, timezone, etc. stay in sync after context changes.
     if (existsSync(agentsDir)) {
@@ -157,7 +157,7 @@ export const initCommand = new Command('init')
               `**Dashboard:** ${ctx.dashboard_url || '(not configured)'}`,
               `**Communication Style:** ${ctx.communication_style || 'casual'}`,
               `**Day Mode:** ${ctx.day_mode_start || '08:00'} - ${ctx.day_mode_end || '00:00'}`,
-              '**Framework:** cortextOS Node.js',
+              `**Framework:** ${PRODUCT_NAME} Node.js`,
               '',
               '---',
               '',
@@ -165,20 +165,20 @@ export const initCommand = new Command('init')
               '',
               '> This section is populated during onboarding. For the live roster:',
               '```bash',
-              'cortextos list-agents',
+              `${CLI_NAME} list-agents`,
               '```',
               '',
               '## Agent Health',
               '',
               '```bash',
-              'cortextos bus read-all-heartbeats',
+              `${CLI_NAME} bus read-all-heartbeats`,
               '```',
               '',
               '## Communication',
               '',
-              '- Agent-to-agent: `cortextos bus send-message <agent> <priority> "<text>"`',
-              '- Telegram to user: `cortextos bus send-telegram <chat_id> "<text>"`',
-              '- Check inbox: `cortextos bus check-inbox`',
+              `- Agent-to-agent: \`${CLI_NAME} bus send-message <agent> <priority> "<text>"\``,
+              `- Telegram to user: \`${CLI_NAME} bus send-telegram <chat_id> "<text>"\``,
+              `- Check inbox: \`${CLI_NAME} bus check-inbox\``,
               '',
             ].join('\n');
             writeFileSync(systemMdPath, systemMd, 'utf-8');
@@ -194,14 +194,14 @@ export const initCommand = new Command('init')
     console.log(`\n  Organization "${orgName}" initialized.`);
     console.log(`\n  Next steps:`);
     console.log(`    1. Add your Telegram bot token to orgs/${orgName}/secrets.env`);
-    console.log(`    2. Add an agent: cortextos add-agent <name> --template orchestrator`);
-    console.log(`    3. Start: cortextos start\n`);
+    console.log(`    2. Add an agent: ${CLI_NAME} add-agent <name> --template orchestrator`);
+    console.log(`    3. Start: ${CLI_NAME} start\n`);
   });
 
 function findOrgTemplateDir(projectRoot: string): string | null {
   const candidates = [
     join(projectRoot, 'templates', 'org'),
-    join(projectRoot, 'node_modules', 'cortextos', 'templates', 'org'),
+    join(projectRoot, 'node_modules', 'elevateos', 'templates', 'org'),
     join(__dirname, '..', '..', 'templates', 'org'),
   ];
   for (const dir of candidates) {

@@ -134,8 +134,8 @@ export function autoCommit(projectDir: string, dryRun: boolean = false): AutoCom
       continue;
     }
 
-    // Block .cortextos-env
-    if (file === '.cortextos-env' || file.endsWith('/.cortextos-env')) {
+    // Block .elevate-env
+    if (file === '.elevate-env' || file.endsWith('/.elevate-env')) {
       blocked.push(`${file}:runtime_env`);
       continue;
     }

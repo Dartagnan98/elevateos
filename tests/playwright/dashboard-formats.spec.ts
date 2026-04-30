@@ -50,7 +50,7 @@ function makePaths(agent: string): BusPaths {
 
 test.beforeEach(() => {
   testDir = mkdtempSync(join(tmpdir(), 'dash-fmt-'));
-  ctxRoot = join(testDir, '.cortextos', 'test');
+  ctxRoot = join(testDir, '.elevate', 'test');
   mkdirSync(ctxRoot, { recursive: true });
 });
 

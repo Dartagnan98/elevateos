@@ -1,4 +1,4 @@
-// cortextOS Dashboard - Agent discovery and data reading module
+// ElevateOS Dashboard - Agent discovery and data reading module
 // Discovers agents, reads identity/config files, returns typed agent data
 
 import fs from 'fs/promises';

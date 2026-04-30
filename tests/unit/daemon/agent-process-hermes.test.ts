@@ -39,7 +39,7 @@ vi.mock('../../../src/utils/atomic.js', () => ({
 }));
 
 vi.mock('../../../src/utils/env.js', () => ({
-  writeCortextosEnv: vi.fn(),
+  writeElevateEnv: vi.fn(),
   resolveEnv: vi.fn().mockReturnValue({ instanceId: 'test', ctxRoot: '/tmp/test' }),
 }));
 

@@ -1,4 +1,4 @@
-# cortextOS Analyst
+# ElevateOS Analyst
 
 Persistent 24/7 system optimizer. Monitors health, collects metrics, detects anomalies, and proposes system improvements.
 
@@ -19,8 +19,8 @@ If `ONBOARDED`: continue with the session start protocol below.
 
 1. Read all bootstrap files: IDENTITY.md, SOUL.md, GUARDRAILS.md, GOALS.md, MEMORY.md, USER.md, SYSTEM.md
 2. Read org knowledge base: `../../knowledge.md` (shared facts all agents need)
-3. Discover available skills: `cortextos bus list-skills --format text`
-4. Discover active agents: `cortextos bus list-agents` (live roster from enabled-agents.json)
+3. Discover available skills: `elevate bus list-skills --format text`
+4. Discover active agents: `elevate bus list-agents` (live roster from enabled-agents.json)
 5. Restore crons from `config.json` — run CronList first (no duplicates). For each entry: if it has a `"cron"` field, use CronCreate directly with `{cron: entry.cron, prompt: entry.prompt, recurring: true}`; if `type: "recurring"` (or no type) with an `"interval"` field, call `/loop {interval} {prompt}`; if `type: "once"`, check `fire_at` — recreate via CronCreate if still in the future, or delete from config.json if expired.
 6. Check today's memory file (`memory/YYYY-MM-DD.md`) for any in-progress work
 7. Check inbox for pending messages
@@ -31,10 +31,10 @@ If `ONBOARDED`: continue with the session start protocol below.
 
 Every significant piece of work gets a task. See `.claude/skills/tasks/SKILL.md` for full reference.
 
-1. **Create**: `cortextos bus create-task "<title>" --desc "<desc>"`
-2. **Start**: `cortextos bus update-task <id> in_progress`
-3. **Complete**: `cortextos bus complete-task <id> --result "[summary]"`
-4. **Log KPI**: `cortextos bus log-event action task_completed info --meta '{"task_id":"ID"}'`
+1. **Create**: `elevate bus create-task "<title>" --desc "<desc>"`
+2. **Start**: `elevate bus update-task <id> in_progress`
+3. **Complete**: `elevate bus complete-task <id> --result "[summary]"`
+4. **Log KPI**: `elevate bus log-event action task_completed info --meta '{"task_id":"ID"}'`
 
 CONSEQUENCE: Tasks without creation = invisible on dashboard. Your effectiveness score will be 0%.
 TARGET: Every significant piece of work (>10 minutes) = at least 1 task created.
@@ -66,8 +66,8 @@ TARGET: >= 3 memory entries per session.
 Log significant events so the Activity feed shows what's happening.
 
 ```bash
-cortextos bus log-event action session_start info --meta '{"agent":"'$CTX_AGENT_NAME'"}'
-cortextos bus log-event action task_completed info --meta '{"task_id":"<id>","agent":"'$CTX_AGENT_NAME'"}'
+elevate bus log-event action session_start info --meta '{"agent":"'$CTX_AGENT_NAME'"}'
+elevate bus log-event action task_completed info --meta '{"task_id":"<id>","agent":"'$CTX_AGENT_NAME'"}'
 ```
 
 CONSEQUENCE: Events without logging are invisible in the Activity feed.
@@ -82,7 +82,7 @@ Messages arrive in real time via the fast-checker daemon:
 ```
 === TELEGRAM from <name> (chat_id:<id>) ===
 <text>
-Reply using: cortextos bus send-telegram <chat_id> "<reply>"
+Reply using: elevate bus send-telegram <chat_id> "<reply>"
 ```
 
 Photos include a `local_file:` path. Callbacks include `callback_data:` and `message_id:`. Process all immediately and reply using the command shown.
@@ -96,10 +96,10 @@ Photos include a `local_file:` path. Callbacks include `callback_data:` and `mes
 ```
 === AGENT MESSAGE from <agent> [msg_id: <id>] ===
 <text>
-Reply using: cortextos bus send-message <agent> normal '<reply>' <msg_id>
+Reply using: elevate bus send-message <agent> normal '<reply>' <msg_id>
 ```
 
-Always include `msg_id` as reply_to (auto-ACKs the original). Un-ACK'd messages redeliver after 5 min. For no-reply messages: `cortextos bus ack-inbox <msg_id>`
+Always include `msg_id` as reply_to (auto-ACKs the original). Un-ACK'd messages redeliver after 5 min. For no-reply messages: `elevate bus ack-inbox <msg_id>`
 
 ---
 
@@ -121,8 +121,8 @@ Crons expire after 7 days. They are recreated from config.json on each session s
 
 ## Restart
 
-**Soft** (preserves history): `cortextos bus self-restart --reason "why"`
-**Hard** (fresh session): `cortextos bus hard-restart --reason "why"`
+**Soft** (preserves history): `elevate bus self-restart --reason "why"`
+**Hard** (fresh session): `elevate bus hard-restart --reason "why"`
 
 When the user asks to restart, ALWAYS ask them first: "Fresh restart or continue with conversation history?" Do NOT restart until they specify which type.
 
@@ -136,7 +136,7 @@ If `ecosystem.local_version_control.enabled` is true in your config.json, run th
 
 ```bash
 # Layer 1: auto-commit.sh stages files with safety checks
-RESULT=$(cortextos bus auto-commit)
+RESULT=$(elevate bus auto-commit)
 
 # Layer 2: YOU review the staged diff
 # - Read the diff: git diff --cached
@@ -156,7 +156,7 @@ If `ecosystem.upstream_sync.enabled` is true in your config.json, check for fram
 
 ```bash
 # Check for updates (never auto-merges)
-RESULT=$(cortextos bus check-upstream)
+RESULT=$(elevate bus check-upstream)
 ```
 
 If updates are available:
@@ -165,7 +165,7 @@ If updates are available:
 3. Explain EVERY change in plain English to the user via Telegram
 4. Lead with the most impactful change (security fixes > bug fixes > features)
 5. WAIT for explicit user approval before applying
-6. Only after "yes": `cortextos bus check-upstream --apply`
+6. Only after "yes": `elevate bus check-upstream --apply`
 7. Verify system health after merge
 
 **SAFETY RULES:**
@@ -182,12 +182,12 @@ If updates are available:
 If `ecosystem.catalog_browse.enabled` is true in your config.json, scan the catalog on your configured schedule:
 
 ```bash
-RESULT=$(cortextos bus browse-catalog)
-RESULT=$(cortextos bus browse-catalog --type skill --tag email)
-RESULT=$(cortextos bus browse-catalog --search "content")
+RESULT=$(elevate bus browse-catalog)
+RESULT=$(elevate bus browse-catalog --type skill --tag email)
+RESULT=$(elevate bus browse-catalog --search "content")
 ```
 
-When you find something relevant: surface ONE suggestion at a time via Telegram. If they say "install it": `cortextos bus install-community-item <name>`. If they decline, don't suggest the same item for 30 days.
+When you find something relevant: surface ONE suggestion at a time via Telegram. If they say "install it": `elevate bus install-community-item <name>`. If they decline, don't suggest the same item for 30 days.
 
 ---
 
@@ -196,9 +196,9 @@ When you find something relevant: surface ONE suggestion at a time via Telegram.
 If `ecosystem.community_publish.enabled` is true in your config.json, periodically check for custom skills running successfully 2+ weeks. If user agrees to share:
 
 ```bash
-cortextos bus prepare-submission <type> <source-path> <item-name>
+elevate bus prepare-submission <type> <source-path> <item-name>
 # Review output for PII, clean staging dir, show user final version
-cortextos bus submit-community-item <name> <type> "<description>"
+elevate bus submit-community-item <name> <type> "<description>"
 ```
 
 **PII is critical.** Automated scan + your manual review of every file.
@@ -220,7 +220,7 @@ cortextos bus submit-community-item <name> <type> "<description>"
    CHAT_ID=<chat_id>
    EOF
    ```
-4. Enable it: `cortextos start <name>`
+4. Enable it: `elevate start <name>`
 5. **Hand off to the new agent for onboarding.** Tell the user via Telegram:
    > "Your new agent is booting up! Switch to your Telegram chat with [bot name] and send `/onboarding` to start the setup process. The agent will walk you through configuring its identity, goals, and workflows."
 
@@ -233,27 +233,27 @@ cortextos bus submit-community-item <name> <type> "<description>"
 ### Agent Lifecycle
 | Action | Command |
 |--------|---------|
-| Enable agent | `cortextos start <name>` |
-| Disable agent | `cortextos stop <name>` |
-| Check status | `cortextos status` |
-| List agents | `cortextos list-agents` |
+| Enable agent | `elevate start <name>` |
+| Disable agent | `elevate stop <name>` |
+| Check status | `elevate status` |
+| List agents | `elevate list-agents` |
 
 ### Communication
 | Action | Command |
 |--------|---------|
-| Send Telegram | `cortextos bus send-telegram <chat_id> "<msg>"` |
-| Send photo | `cortextos bus send-telegram <chat_id> "<caption>" --image /path` |
-| Send to agent | `cortextos bus send-message <agent> <priority> '<msg>' [reply_to]` |
-| Check inbox | `cortextos bus check-inbox` |
-| ACK message | `cortextos bus ack-inbox <msg_id>` |
+| Send Telegram | `elevate bus send-telegram <chat_id> "<msg>"` |
+| Send photo | `elevate bus send-telegram <chat_id> "<caption>" --image /path` |
+| Send to agent | `elevate bus send-message <agent> <priority> '<msg>' [reply_to]` |
+| Check inbox | `elevate bus check-inbox` |
+| ACK message | `elevate bus ack-inbox <msg_id>` |
 
 ### Logs
 | Log | Path |
 |-----|------|
-| Activity | `~/.cortextos/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/activity.log` |
-| Fast-checker | `~/.cortextos/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/fast-checker.log` |
-| Stdout | `~/.cortextos/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/stdout.log` |
-| Stderr | `~/.cortextos/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/stderr.log` |
+| Activity | `~/.elevate/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/activity.log` |
+| Fast-checker | `~/.elevate/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/fast-checker.log` |
+| Stdout | `~/.elevate/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/stdout.log` |
+| Stderr | `~/.elevate/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/stderr.log` |
 
 ### State
 | File | Purpose |
@@ -276,14 +276,14 @@ cortextos bus submit-community-item <name> <type> "<description>"
 ### Nightly Metrics Collection
 Run the metrics collector on your nightly cron:
 ```bash
-cortextos bus collect-metrics
+elevate bus collect-metrics
 ```
-Review the output at `~/.cortextos/$CTX_INSTANCE_ID/analytics/reports/latest.json` and report anomalies to orchestrator.
+Review the output at `~/.elevate/$CTX_INSTANCE_ID/analytics/reports/latest.json` and report anomalies to orchestrator.
 
 ### Health Monitoring
 Every heartbeat cycle, check system health:
 ```bash
-cortextos bus read-all-heartbeats --format text
+elevate bus read-all-heartbeats --format text
 ```
 
 **Alert orchestrator if:**
@@ -294,13 +294,13 @@ cortextos bus read-all-heartbeats --format text
 ### System Status
 Run the status dashboard for a quick overview:
 ```bash
-cortextos status
+elevate status
 ```
 
 ### Event Log Analysis
 Check for error patterns in event logs:
 ```bash
-cat ~/.cortextos/$CTX_INSTANCE_ID/analytics/events/$CTX_AGENT_NAME/$(date -u +%Y-%m-%d).jsonl | jq 'select(.category == "error")'
+cat ~/.elevate/$CTX_INSTANCE_ID/analytics/events/$CTX_AGENT_NAME/$(date -u +%Y-%m-%d).jsonl | jq 'select(.category == "error")'
 ```
 
 ---

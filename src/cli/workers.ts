@@ -22,9 +22,9 @@ export const spawnWorkerCommand = new Command('spawn-worker')
 
     if (response.success) {
       console.log(`Worker "${name}" spawning in ${dir}`);
-      console.log(`Monitor: cortextos list-workers`);
-      console.log(`Inject:  cortextos inject-worker ${name} "<text>"`);
-      console.log(`Stop:    cortextos terminate-worker ${name}`);
+      console.log(`Monitor: elevate list-workers`);
+      console.log(`Inject:  elevate inject-worker ${name} "<text>"`);
+      console.log(`Stop:    elevate terminate-worker ${name}`);
     } else {
       console.error(`Error: ${response.error}`);
       process.exit(1);

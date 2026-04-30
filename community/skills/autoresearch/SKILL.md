@@ -26,7 +26,7 @@ When your experiment cron fires, execute these steps:
 
 ### Step 1: Gather Context
 ```bash
-cortextos bus gather-context --agent $CTX_AGENT_NAME --format markdown
+elevate bus gather-context --agent $CTX_AGENT_NAME --format markdown
 ```
 Read the output carefully. Pay attention to:
 - What experiments have been tried before
@@ -40,7 +40,7 @@ If there is an active experiment (check `experiments/active.json`):
 - Measure the metric using the configured measurement method
 - Run evaluate-experiment:
 ```bash
-cortextos bus evaluate-experiment <experiment_id> <measured_value> --justification "Why this result makes sense"
+elevate bus evaluate-experiment <experiment_id> <measured_value> --justification "Why this result makes sense"
 ```
 For qualitative metrics, use `--score <1-10>` with a written justification.
 
@@ -56,19 +56,19 @@ Based on accumulated learnings:
 
 ### Step 4: Create Experiment
 ```bash
-cortextos bus create-experiment "<metric_name>" "<your hypothesis>" --surface <path> --direction <higher|lower> --window <duration>
+elevate bus create-experiment "<metric_name>" "<your hypothesis>" --surface <path> --direction <higher|lower> --window <duration>
 ```
 If `approval_required` is true in `experiments/config.json`, you must manually create an approval before proceeding:
 ```bash
-APPR_ID=$(cortextos bus create-approval "Run experiment: <hypothesis>" experiments "Cycle: <cycle_name>, Metric: <metric_name>, Surface: <surface>")
-cortextos bus send-telegram $CTX_TELEGRAM_CHAT_ID "Approval needed to run experiment for <metric_name> — check dashboard"
+APPR_ID=$(elevate bus create-approval "Run experiment: <hypothesis>" experiments "Cycle: <cycle_name>, Metric: <metric_name>, Surface: <surface>")
+elevate bus send-telegram $CTX_TELEGRAM_CHAT_ID "Approval needed to run experiment for <metric_name> — check dashboard"
 # Block until approved, then continue to Step 5
 ```
 
 ### Step 5: Make Changes and Run
 Apply your hypothesized changes to the surface file. Then:
 ```bash
-cortextos bus run-experiment <experiment_id> "Description of what you changed"
+elevate bus run-experiment <experiment_id> "Description of what you changed"
 ```
 This creates a git commit with your changes (the experiment commit) so they can be cleanly reverted if the experiment fails.
 
@@ -87,15 +87,15 @@ bash connectors/measure-instagram.sh
 ### Quantitative (computed)
 You calculate from existing data. Example: task completion rate.
 ```bash
-COMPLETED=$(cortextos bus list-tasks --agent $CTX_AGENT_NAME --status completed | jq length)
-TOTAL=$(cortextos bus list-tasks --agent $CTX_AGENT_NAME | jq length)
+COMPLETED=$(elevate bus list-tasks --agent $CTX_AGENT_NAME --status completed | jq length)
+TOTAL=$(elevate bus list-tasks --agent $CTX_AGENT_NAME | jq length)
 RATE=$(echo "scale=2; $COMPLETED / $TOTAL * 100" | bc)
 ```
 
 ### Qualitative (subjective)
 You evaluate output quality on a 1-10 scale. You MUST write a justification.
 ```bash
-cortextos bus evaluate-experiment <id> 0 --score 7 --justification "Output is more concise and actionable than baseline, but loses some nuance"
+elevate bus evaluate-experiment <id> 0 --score 7 --justification "Output is more concise and actionable than baseline, but loses some nuance"
 ```
 
 ### Qualitative (comparative)
@@ -124,7 +124,7 @@ cat > "experiments/surfaces/<metric>/current.md" << 'EOF'
 EOF
 
 # Register the cycle
-cortextos bus manage-cycle create $CTX_AGENT_NAME \
+elevate bus manage-cycle create $CTX_AGENT_NAME \
   --cycle "<metric_name>" \
   --metric "<metric_name>" \
   --metric-type "<quantitative|qualitative>" \
@@ -149,7 +149,7 @@ Then add to `config.json` crons array:
 
 To modify a cycle when the user asks:
 ```bash
-cortextos bus manage-cycle modify $CTX_AGENT_NAME --cycle "<name>" \
+elevate bus manage-cycle modify $CTX_AGENT_NAME --cycle "<name>" \
   --window "<new>" \
   --loop-interval "<new>" \
   --enabled <true|false>

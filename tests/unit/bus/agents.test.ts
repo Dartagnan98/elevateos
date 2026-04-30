@@ -10,7 +10,7 @@ describe('Agent Discovery', () => {
   let ctxRoot: string;
 
   beforeEach(() => {
-    testDir = mkdtempSync(join(tmpdir(), 'cortextos-agents-test-'));
+    testDir = mkdtempSync(join(tmpdir(), 'elevate-agents-test-'));
     ctxRoot = testDir;
     // Point CTX_FRAMEWORK_ROOT at an isolated subdir (no orgs/ inside) so that
     // listAgents() sees a configured but empty framework root and does NOT fall
@@ -134,7 +134,7 @@ describe('Agent Discovery', () => {
 
     // BUG-028: daemon and CLI must agree on what's enabled.
     // Previously, listAgents short-circuited on enabled-agents.json existence,
-    // hiding agents the daemon was actually running from `cortextos list-agents`.
+    // hiding agents the daemon was actually running from `elevate list-agents`.
     it('shows agents from dir scan even when enabled-agents.json exists', () => {
       // Set up: enabled-agents.json with one agent (alice), but TWO dirs on disk
       // (alice and bob). Previously listAgents would only return alice. After

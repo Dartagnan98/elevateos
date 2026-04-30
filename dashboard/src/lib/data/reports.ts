@@ -3,8 +3,8 @@ import path from 'path';
 import os from 'os';
 
 // Resolve CTX_ROOT without importing from config (avoids turbopack chunk issues)
-const CTX_INSTANCE_ID = process.env.CTX_INSTANCE_ID ?? 'default';
-const CTX_ROOT = process.env.CTX_ROOT ?? path.join(os.homedir(), '.cortextos', CTX_INSTANCE_ID);
+const CTX_INSTANCE_ID = process.env.ELEVATE_INSTANCE_ID ?? process.env.CTX_INSTANCE_ID ?? 'default';
+const CTX_ROOT = process.env.ELEVATE_ROOT ?? process.env.CTX_ROOT ?? path.join(os.homedir(), '.elevate', CTX_INSTANCE_ID);
 
 // ---------------------------------------------------------------------------
 // Types
@@ -216,7 +216,10 @@ export function getFleetHealth(org: string): FleetHealth | null {
 // ---------------------------------------------------------------------------
 // Fallback: build fleet health from live heartbeat files when no report exists
 function getFleetHealthFromHeartbeats(org: string): FleetHealth | null {
-  const CTX_FRAMEWORK_ROOT = process.env.CTX_FRAMEWORK_ROOT ?? path.join(path.dirname(CTX_ROOT), '..');
+  const CTX_FRAMEWORK_ROOT =
+    process.env.ELEVATE_FRAMEWORK_ROOT ??
+    process.env.CTX_FRAMEWORK_ROOT ??
+    path.join(path.dirname(CTX_ROOT), '..');
   const agentsDir = path.join(CTX_FRAMEWORK_ROOT, 'orgs', org, 'agents');
   if (!fs.existsSync(agentsDir)) return null;
 

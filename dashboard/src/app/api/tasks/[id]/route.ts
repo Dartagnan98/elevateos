@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { getTaskById } from '@/lib/data/tasks';
@@ -180,6 +179,7 @@ export async function PUT(
     // is passed as a positional arg to the bus script (which quotes "$3").
     if (assignee && assignee !== oldAssignee && assignee !== 'human' && assignee !== 'user' && isValidAgentName(assignee)) {
       try {
+        const { spawnSync } = await import('node:child_process');
         const notifyMsg = capText(`Task reassigned to you: [${id}] ${taskData.title}`);
         spawnSync(
           'bash',
@@ -189,7 +189,22 @@ export async function PUT(
             'normal',
             notifyMsg,
           ],
-          { timeout: 5000, stdio: 'pipe', env: { ...process.env, CTX_FRAMEWORK_ROOT: getFrameworkRoot(), CTX_ROOT: getCTXRoot(), CTX_INSTANCE_ID: process.env.CTX_INSTANCE_ID ?? 'default', CTX_AGENT_NAME: 'dashboard', CTX_ORG: task?.org || '' } },
+          {
+            timeout: 5000,
+            stdio: 'pipe',
+            env: {
+              ...process.env,
+              ELEVATE_FRAMEWORK_ROOT: getFrameworkRoot(),
+              ELEVATE_ROOT: getCTXRoot(),
+              ELEVATE_INSTANCE_ID: process.env.ELEVATE_INSTANCE_ID ?? process.env.CTX_INSTANCE_ID ?? 'default',
+              ELEVATE_ORG: task?.org || '',
+              CTX_FRAMEWORK_ROOT: getFrameworkRoot(),
+              CTX_ROOT: getCTXRoot(),
+              CTX_INSTANCE_ID: process.env.ELEVATE_INSTANCE_ID ?? process.env.CTX_INSTANCE_ID ?? 'default',
+              CTX_AGENT_NAME: 'dashboard',
+              CTX_ORG: task?.org || '',
+            },
+          },
         );
       } catch { /* non-fatal */ }
     }
@@ -254,16 +269,22 @@ export async function PATCH(
   const task = getTaskById(id);
 
   const frameworkRoot = getFrameworkRoot();
+  const instanceId = process.env.ELEVATE_INSTANCE_ID ?? process.env.CTX_INSTANCE_ID ?? 'default';
   const env = {
     ...process.env,
+    ELEVATE_FRAMEWORK_ROOT: frameworkRoot,
+    ELEVATE_ROOT: getCTXRoot(),
+    ELEVATE_INSTANCE_ID: instanceId,
+    ELEVATE_ORG: task?.org || '',
     CTX_FRAMEWORK_ROOT: frameworkRoot,
     CTX_ROOT: getCTXRoot(),
-    CTX_INSTANCE_ID: process.env.CTX_INSTANCE_ID ?? 'default',
+    CTX_INSTANCE_ID: instanceId,
     CTX_AGENT_NAME: 'dashboard',
     CTX_ORG: task?.org || '',
   };
 
   try {
+    const { spawnSync } = await import('node:child_process');
     let spawnResult;
     if (status === 'completed') {
       // Use complete-task.sh for completion (handles additional side effects).
@@ -310,10 +331,12 @@ export async function PATCH(
             : `Task status updated to ${status}: [${id}] ${task.title}`;
           const msg = capText(rawMsg);
           spawnSync(
-            'node',
+            'bash',
             [
-              path.join(frameworkRoot, 'dist', 'cli.js'),
-              'bus', 'send-message', createdBy, 'normal', msg,
+              path.join(frameworkRoot, 'bus', 'send-message.sh'),
+              createdBy,
+              'normal',
+              msg,
             ],
             { timeout: 5000, stdio: 'pipe', env },
           );

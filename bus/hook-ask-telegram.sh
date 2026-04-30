@@ -40,7 +40,7 @@ fi
 
 # Save state file for fast-checker to know question structure
 # Use state dir instead of predictable /tmp path
-ASK_STATE_DIR="${CTX_ROOT:-${HOME}/.cortextos/default}/state/${AGENT}"
+ASK_STATE_DIR="${CTX_ROOT:-${HOME}/.elevate/default}/state/${AGENT}"
 mkdir -p "${ASK_STATE_DIR}"
 STATE_FILE="${ASK_STATE_DIR}/ask-state.json"
 echo "$QUESTIONS_JSON" | jq -c '{

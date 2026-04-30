@@ -1,4 +1,4 @@
-// cortextOS Dashboard - Auth middleware
+// ElevateOS Dashboard - Auth proxy
 // Checks for next-auth session cookie; redirects to /login if missing.
 // Cannot import auth.ts directly because it chains to better-sqlite3,
 // which is not available in the Edge Runtime.
@@ -42,13 +42,14 @@ function buildAllowedOrigins(): string[] {
 }
 
 const ALLOWED_ORIGINS: string[] = buildAllowedOrigins();
+const PUBLIC_FILE = /\.(?:avif|gif|ico|jpg|jpeg|png|svg|webp)$/i;
 
 function getAllowedOrigin(requestOrigin: string | null): string | null {
   if (requestOrigin && ALLOWED_ORIGINS.includes(requestOrigin)) return requestOrigin;
   return null;
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const requestOrigin = request.headers.get('origin');
   const corsOrigin = getAllowedOrigin(requestOrigin) ?? 'null';
@@ -73,7 +74,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/login') ||
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/_next') ||
-    pathname === '/favicon.ico'
+    pathname === '/favicon.ico' ||
+    PUBLIC_FILE.test(pathname)
   ) {
     const response = NextResponse.next();
     response.headers.set('Access-Control-Allow-Origin', corsOrigin);
@@ -97,7 +99,7 @@ export async function middleware(request: NextRequest) {
       const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
       if (!authSecret) {
         console.error(
-          '[middleware] CRITICAL: Bearer token presented but AUTH_SECRET/NEXTAUTH_SECRET is unset. Refusing request.',
+          '[proxy] CRITICAL: Bearer token presented but AUTH_SECRET/NEXTAUTH_SECRET is unset. Refusing request.',
           { pathname, method: request.method },
         );
         const res = NextResponse.json(

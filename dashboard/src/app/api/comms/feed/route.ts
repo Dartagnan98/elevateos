@@ -16,6 +16,25 @@ interface BusMessage {
   reply_to: string | null;
 }
 
+function pathExists(filePath: string): boolean {
+  return fs.existsSync(/* turbopackIgnore: true */ filePath);
+}
+
+function readTextFile(filePath: string): string {
+  return fs.readFileSync(/* turbopackIgnore: true */ filePath, 'utf-8');
+}
+
+function readDirents(dirPath: string): fs.Dirent[] {
+  return fs.readdirSync(
+    /* turbopackIgnore: true */ dirPath,
+    { withFileTypes: true },
+  );
+}
+
+function readFileNames(dirPath: string): string[] {
+  return fs.readdirSync(/* turbopackIgnore: true */ dirPath);
+}
+
 /**
  * GET /api/comms/feed — Org-wide chronological feed of bus messages.
  *
@@ -64,7 +83,7 @@ export async function GET(request: NextRequest) {
   const identity = resolveIdentity(ctxRoot);
   const inboxBase = path.join(ctxRoot, 'inbox');
 
-  if (!fs.existsSync(inboxBase)) {
+  if (!pathExists(inboxBase)) {
     return Response.json([]);
   }
 
@@ -72,9 +91,9 @@ export async function GET(request: NextRequest) {
 
   // Primary source: persistent message history log (JSONL)
   const historyLog = path.join(ctxRoot, 'logs', 'message-history.jsonl');
-  if (fs.existsSync(historyLog)) {
+  if (pathExists(historyLog)) {
     try {
-      const lines = fs.readFileSync(historyLog, 'utf-8').trim().split('\n');
+      const lines = readTextFile(historyLog).trim().split('\n');
       for (const line of lines) {
         if (!line.trim()) continue;
         try {
@@ -96,10 +115,10 @@ export async function GET(request: NextRequest) {
   const processedBase = path.join(ctxRoot, 'processed');
 
   for (const [base, subs] of [[inboxBase, ['inflight', '']], [processedBase, ['']]] as const) {
-    if (!fs.existsSync(base)) continue;
+    if (!pathExists(base)) continue;
     let agentDirs: string[];
     try {
-      agentDirs = fs.readdirSync(base, { withFileTypes: true })
+      agentDirs = readDirents(base)
         .filter(d => d.isDirectory())
         .map(d => d.name);
     } catch {
@@ -109,15 +128,15 @@ export async function GET(request: NextRequest) {
     for (const agent of agentDirs) {
       for (const sub of subs) {
         const dir = sub ? path.join(base, agent, sub) : path.join(base, agent);
-        if (!fs.existsSync(dir)) continue;
+        if (!pathExists(dir)) continue;
         let files: string[];
         try {
-          files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.startsWith('.'));
+          files = readFileNames(dir).filter(f => f.endsWith('.json') && !f.startsWith('.'));
         } catch { continue; }
 
         for (const file of files) {
           try {
-            const raw = fs.readFileSync(path.join(dir, file), 'utf-8');
+            const raw = readTextFile(path.join(dir, file));
             const msg: BusMessage = JSON.parse(raw);
             if (!msg.id || !msg.from || !msg.to || !msg.timestamp) continue;
             if (seen.has(msg.id)) continue;
@@ -134,10 +153,10 @@ export async function GET(request: NextRequest) {
 
   // Include Telegram messages (inbound from user + outbound from agents)
   const logsBase = path.join(ctxRoot, 'logs');
-  if (fs.existsSync(logsBase)) {
+  if (pathExists(logsBase)) {
     let agentLogDirs: string[];
     try {
-      agentLogDirs = fs.readdirSync(logsBase, { withFileTypes: true })
+      agentLogDirs = readDirents(logsBase)
         .filter(d => d.isDirectory())
         .map(d => d.name);
     } catch { agentLogDirs = []; }
@@ -145,9 +164,9 @@ export async function GET(request: NextRequest) {
     for (const agent of agentLogDirs) {
       for (const logFile of ['inbound-messages.jsonl', 'outbound-messages.jsonl']) {
         const filePath = path.join(logsBase, agent, logFile);
-        if (!fs.existsSync(filePath)) continue;
+        if (!pathExists(filePath)) continue;
         try {
-          const lines = fs.readFileSync(filePath, 'utf-8').trim().split('\n');
+          const lines = readTextFile(filePath).trim().split('\n');
           const isInbound = logFile.startsWith('inbound');
           for (const line of lines) {
             if (!line.trim()) continue;

@@ -10,7 +10,7 @@ import {
 } from '../src/bus/metrics.js';
 
 describe('Sprint 5: Observability & Metrics', () => {
-  const testDir = join(tmpdir(), `cortextos-sprint5-${Date.now()}`);
+  const testDir = join(tmpdir(), `elevate-sprint5-${Date.now()}`);
   const ctxRoot = join(testDir, 'ctx');
 
   beforeEach(() => {

@@ -7,6 +7,7 @@ import { UsersTab } from '@/components/settings/users-tab';
 import { AllowedRootsTab } from '@/components/settings/allowed-roots-tab';
 import { AppearanceTab } from '@/components/settings/appearance-tab';
 import { OrganizationTab } from '@/components/settings/organization-tab';
+import { ElevateAgentTab } from '@/components/settings/elevate-agent-tab';
 
 export default function SettingsPage() {
   return (
@@ -14,12 +15,13 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-semibold">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Manage integrations, system configuration, users, and appearance.
+          Manage the Elevate agent wrapper, integrations, system configuration, users, and appearance.
         </p>
       </div>
 
-      <Tabs defaultValue="organization">
-        <TabsList>
+      <Tabs defaultValue="elevate-agent">
+        <TabsList className="max-w-full justify-start overflow-x-auto">
+          <TabsTrigger value="elevate-agent">Elevate Agent</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
           <TabsTrigger value="telegram">Telegram</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
@@ -27,6 +29,12 @@ export default function SettingsPage() {
           <TabsTrigger value="allowed-roots">Allowed Roots</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="elevate-agent">
+          <div className="mt-4 max-w-5xl">
+            <ElevateAgentTab />
+          </div>
+        </TabsContent>
 
         <TabsContent value="organization">
           <div className="mt-4 max-w-2xl">

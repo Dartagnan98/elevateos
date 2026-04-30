@@ -8,7 +8,7 @@
 
 ## Problem
 
-cortextOS is a single-machine system. Every bus primitive — messages, tasks, approvals, events, heartbeats — is a local filesystem operation under `~/.cortextos/{instance}/`. Agents on separate machines cannot communicate. The dashboard reads files via Chokidar and cannot reach agents on other hosts.
+ElevateOS is a single-machine system. Every bus primitive — messages, tasks, approvals, events, heartbeats — is a local filesystem operation under `~/.elevate/{instance}/`. Agents on separate machines cannot communicate. The dashboard reads files via Chokidar and cannot reach agents on other hosts.
 
 This document specifies Option A (Supabase) from issue #29, which is the recommended long-term solution.
 
@@ -81,7 +81,7 @@ const adapter = process.env.CTX_SUPABASE_URL
   : new FileBusAdapter(ctxRoot);
 ```
 
-No agent code or template changes are required — everything routes through the same `cortextos bus` CLI commands.
+No agent code or template changes are required — everything routes through the same `elevate bus` CLI commands.
 
 ---
 
@@ -206,7 +206,7 @@ CREATE TABLE secrets (
 );
 ```
 
-Agents read secrets via `cortextos secrets get <key>` — never touch the table directly.
+Agents read secrets via `elevate secrets get <key>` — never touch the table directly.
 
 ---
 
@@ -263,8 +263,8 @@ No dashboard page logic changes — only the data layer changes. Each page that 
 ### Phase 4: Secrets + Org Config
 
 - `secrets` table replaces per-machine `.env` for shared org secrets
-- `cortextos init` provisions Supabase tables on first run
-- `cortextos secrets set/get` CLI commands
+- `elevate init` provisions Supabase tables on first run
+- `elevate secrets set/get` CLI commands
 - **Deliverable:** No per-machine secret management for shared agents
 
 ### Phase 5: File bus deprecation
@@ -307,7 +307,7 @@ CTX_SUPABASE_SERVICE_KEY=<service_key>
 
 3. **Large payloads**: Tasks and events with large `metadata` or `description` fields will hit Supabase row limits (~1MB). Should blobs be stored in Supabase Storage with a URL reference in the row?
 
-4. **Migration tooling**: Existing local file bus data (tasks, events, heartbeats) needs a migration command to seed Supabase on first run. Define `cortextos migrate --to-supabase`.
+4. **Migration tooling**: Existing local file bus data (tasks, events, heartbeats) needs a migration command to seed Supabase on first run. Define `elevate migrate --to-supabase`.
 
 5. **Dashboard auth**: The existing dashboard auth system (logins) currently gates filesystem access. After migration, it should gate Supabase RLS policy — is this additive or a replacement?
 

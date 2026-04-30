@@ -16,9 +16,10 @@ export interface IPCResponse {
 
 function getIpcPath(instanceId: string = 'default'): string {
   if (process.platform === 'win32') {
-    return `\\\\.\\pipe\\cortextos-${instanceId}`;
+    return `\\\\.\\pipe\\elevate-${instanceId}`;
   }
-  return join(homedir(), '.cortextos', instanceId, 'daemon.sock');
+  const root = process.env.ELEVATE_ROOT || process.env.CTX_ROOT || join(homedir(), '.elevate', instanceId);
+  return join(root, 'daemon.sock');
 }
 
 export class IPCClient {
@@ -51,7 +52,7 @@ export class IPCClient {
         if (err.code === 'ECONNREFUSED' || err.code === 'ENOENT') {
           resolve({
             success: false,
-            error: 'Daemon is not running. Start it with: cortextos start',
+            error: 'Daemon is not running. Start it with: elevate start',
           });
         } else {
           reject(err);

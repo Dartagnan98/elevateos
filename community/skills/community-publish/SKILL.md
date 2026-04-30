@@ -7,7 +7,7 @@ external_calls: ["github.com"]
 
 # Community Publish
 
-Package a local skill, agent template, or org template for sharing with the cortextOS community. Strips all personal data and opens a PR.
+Package a local skill, agent template, or org template for sharing with the ElevateOS community. Strips all personal data and opens a PR.
 
 ## When to Run
 
@@ -21,14 +21,14 @@ Package a local skill, agent template, or org template for sharing with the cort
 
 ```bash
 # Dry run - shows what would be packaged and any PII found
-cortextos bus prepare-submission <type> <source-path> <item-name> --dry-run
+elevate bus prepare-submission <type> <source-path> <item-name> --dry-run
 ```
 
 Types: skill, agent, org
 
 Example:
 ```bash
-cortextos bus prepare-submission skill ./skills/morning-review morning-review --dry-run
+elevate bus prepare-submission skill ./skills/morning-review morning-review --dry-run
 ```
 
 ### Step 2: Review PII scan results
@@ -56,10 +56,10 @@ Send via Telegram:
 
 ```bash
 # Local submission only (adds to local catalog, no PR)
-cortextos bus submit-community-item <item-name> <type> "<description>" --author "<your-name>"
+elevate bus submit-community-item <item-name> <type> "<description>" --author "<your-name>"
 
 # Full contribution (branch + push to origin + open PR against upstream)
-cortextos bus submit-community-item <item-name> <type> "<description>" --author "<your-name>" --contribute
+elevate bus submit-community-item <item-name> <type> "<description>" --author "<your-name>" --contribute
 ```
 
 The `--contribute` flag:
@@ -67,7 +67,7 @@ The `--contribute` flag:
 2. Copies clean files to community/ directory
 3. Adds entry to catalog.json
 4. Commits and pushes branch to `origin` (your fork)
-5. Opens a PR against `upstream` (canonical cortextOS repo) via `gh` CLI
+5. Opens a PR against `upstream` (canonical ElevateOS repo) via `gh` CLI
 
 ### Step 5: Report
 
@@ -79,8 +79,8 @@ Requires `ecosystem.community_publish.enabled: true` in config.json.
 
 ## Prerequisites
 
-- User must have a fork of the cortextOS repo configured as `origin`
-- `upstream` remote must point to the canonical cortextOS repo (set during install)
+- User must have a fork of the ElevateOS repo configured as `origin`
+- `upstream` remote must point to the canonical ElevateOS repo (set during install)
 - `gh` CLI must be authenticated (`gh auth login`)
 
 ## Safety

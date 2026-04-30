@@ -1,10 +1,10 @@
 {
-  "name": "cortextos",
+  "name": "elevateos",
   "version": "0.1.1",
-  "description": "Persistent 24/7 Claude Code agents with multi-agent orchestration",
+  "description": "Persistent Elevate agents with local orchestration, memory, and operator controls",
   "main": "dist/daemon.js",
   "bin": {
-    "cortextos": "dist/cli.js"
+    "elevate": "dist/cli.js"
   },
   "scripts": {
     "build": "tsup",
@@ -22,15 +22,15 @@
     "ai",
     "automation"
   ],
-  "author": "Cortext LLC",
+  "author": "ElevateOS",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/grandamenium/cortextos.git"
+    "url": "https://github.com/Dartagnan98/elevateos.git"
   },
-  "homepage": "https://github.com/grandamenium/cortextos",
+  "homepage": "https://github.com/Dartagnan98/elevateos",
   "bugs": {
-    "url": "https://github.com/grandamenium/cortextos/issues"
+    "url": "https://github.com/Dartagnan98/elevateos/issues"
   },
   "type": "commonjs",
   "engines": {

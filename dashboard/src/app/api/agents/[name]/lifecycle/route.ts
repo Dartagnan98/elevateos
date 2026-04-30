@@ -79,7 +79,7 @@ export async function POST(
     }
   }
 
-  const instanceId = process.env.CTX_INSTANCE_ID ?? 'default';
+  const instanceId = process.env.ELEVATE_INSTANCE_ID ?? process.env.CTX_INSTANCE_ID ?? 'default';
   const ipc = new IPCClient(instanceId);
 
   try {
@@ -214,7 +214,7 @@ export async function DELETE(
 
   // 1. Tell daemon to stop the agent (best-effort; agent may already be stopped)
   {
-    const instanceId = process.env.CTX_INSTANCE_ID ?? 'default';
+    const instanceId = process.env.ELEVATE_INSTANCE_ID ?? process.env.CTX_INSTANCE_ID ?? 'default';
     const ipc = new IPCClient(instanceId);
     const stopResult = await ipc.send({ type: 'stop-agent', agent: decoded });
     if (!stopResult.success && !stopResult.error?.includes('Daemon is not running')) {

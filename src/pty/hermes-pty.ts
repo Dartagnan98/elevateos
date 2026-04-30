@@ -13,7 +13,7 @@ const HERMES_BOOTSTRAP_PATTERN = '❯';
 // Startup prompt file written to the agent dir and read by Hermes at boot.
 // Using a file avoids bracketed paste (ESC[200~) which is buggy in Hermes
 // (NousResearch/hermes-agent issue #7316 — leaked markers corrupt input).
-const STARTUP_PROMPT_FILE = '.cortextos-startup.md';
+const STARTUP_PROMPT_FILE = '.elevate-startup.md';
 
 /**
  * PTY wrapper for Hermes agents (NousResearch/hermes-agent, Python REPL).
@@ -72,7 +72,7 @@ export class HermesPTY extends AgentPTY {
    *
    * We cannot pass the startup prompt as a CLI arg (Hermes has no such flag)
    * and bracketed paste is buggy in Hermes (issue #7316). Instead:
-   *   1. Write prompt to .cortextos-startup.md in the agent dir
+   *   1. Write prompt to .elevate-startup.md in the agent dir
    *   2. Spawn Hermes normally
    *   3. After `❯` appears (isBootstrapped), inject a single-line read command
    */
@@ -90,7 +90,7 @@ export class HermesPTY extends AgentPTY {
 
   /**
    * Write the startup prompt to a temp file in the agent directory.
-   * The file is gitignored (.cortextos-startup.md is in .gitignore by convention).
+   * The file is gitignored (.elevate-startup.md is in .gitignore by convention).
    */
   private writeStartupFile(prompt: string): void {
     try {

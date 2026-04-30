@@ -9,7 +9,7 @@ external_calls: []
 
 > Spawn ephemeral Claude Code sessions for parallelized long-running tasks. Workers get a scoped task, produce deliverables, and are cleaned up when done. Use when work requires a full independent Claude Code session — not just a subagent tool call.
 
-> Worker session spawn is fully implemented. Use `cortextos spawn-worker` to launch isolated Claude Code sessions for parallelized tasks.
+> Worker session spawn is fully implemented. Use `elevate spawn-worker` to launch isolated Claude Code sessions for parallelized tasks.
 
 ---
 
@@ -55,17 +55,17 @@ Before spawning, answer:
 ### Step 2: Spawn Worker Session
 
 ```bash
-cortextos spawn-worker <worker-name> \
+elevate spawn-worker <worker-name> \
   --dir <absolute-path-to-project-dir> \
-  --prompt "Read AGENTS.md for your task. Deliverables: <list>. When done: cortextos bus send-message $CTX_AGENT_NAME normal 'Done: <summary>'" \
+  --prompt "Read AGENTS.md for your task. Deliverables: <list>. When done: elevate bus send-message $CTX_AGENT_NAME normal 'Done: <summary>'" \
   --parent $CTX_AGENT_NAME
 ```
 
 The worker:
 - Runs `claude --dangerously-skip-permissions` in the given directory
 - Gets a bus identity (`CTX_AGENT_NAME=<worker-name>`) for two-way communication
-- Logs to `~/.cortextos/<instance>/logs/<worker-name>/stdout.log`
-- Is tracked by the daemon — use `cortextos list-workers` to monitor status
+- Logs to `~/.elevate/<instance>/logs/<worker-name>/stdout.log`
+- Is tracked by the daemon — use `elevate list-workers` to monitor status
 
 ### Step 3: Inject Task Prompt
 
@@ -73,13 +73,13 @@ A good worker task prompt includes:
 - Exact deliverables (specific files or outputs to produce)
 - What NOT to touch (files other agents own)
 - Working directory scope
-- How to communicate back (`cortextos bus send-message <parent> normal '<update>'`)
+- How to communicate back (`elevate bus send-message <parent> normal '<update>'`)
 - Completion signal ("when done, send me a summary")
 
 ### Step 4: Log the Spawn
 
 ```bash
-cortextos bus log-event action worker_spawned info \
+elevate bus log-event action worker_spawned info \
   --meta '{"worker":"<worker-name>","parent":"'$CTX_AGENT_NAME'","task":"<title>"}'
 ```
 
@@ -88,12 +88,12 @@ cortextos bus log-event action worker_spawned info \
 Workers communicate back via the bus. Check your inbox:
 
 ```bash
-cortextos bus check-inbox
+elevate bus check-inbox
 ```
 
 Check all worker statuses:
 ```bash
-cortextos list-workers
+elevate list-workers
 # Output: worker-name  running (pid 12345) ← parent-agent  42s  /path/to/dir
 ```
 
@@ -104,17 +104,17 @@ cd <work-dir> && git log --oneline | head -5
 
 Nudge a stuck worker (equivalent of tmux send-keys):
 ```bash
-cortextos inject-worker <worker-name> "Continue with phase 3. What's blocking you?"
+elevate inject-worker <worker-name> "Continue with phase 3. What's blocking you?"
 ```
 
 ### Step 6: Cleanup
 
 ```bash
 # Terminate a running worker
-cortextos terminate-worker <worker-name>
+elevate terminate-worker <worker-name>
 
 # Log completion
-cortextos bus log-event action worker_completed info \
+elevate bus log-event action worker_completed info \
   --meta '{"worker":"<worker-name>","deliverables":"<summary>"}'
 ```
 

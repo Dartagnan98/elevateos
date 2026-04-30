@@ -67,7 +67,7 @@ describe('FastChecker', () => {
   let paths: BusPaths;
 
   beforeEach(() => {
-    testDir = mkdtempSync(join(tmpdir(), 'cortextos-fastchecker-test-'));
+    testDir = mkdtempSync(join(tmpdir(), 'elevate-fastchecker-test-'));
     paths = createTestPaths(testDir);
   });
 
@@ -325,7 +325,7 @@ describe('FastChecker', () => {
         'alice',
         '999',
         'Hello there',
-        '/opt/cortextos',
+        '/opt/elevate',
         undefined,
         'My previous reply to you',
       );
@@ -333,7 +333,7 @@ describe('FastChecker', () => {
       expect(result).toContain('[Your last message: "My previous reply to you"]');
       expect(result).toContain('=== TELEGRAM from [USER: alice] (chat_id:999) ===');
       expect(result).toContain('Hello there');
-      expect(result).toContain('cortextos bus send-telegram 999');
+      expect(result).toContain('elevate bus send-telegram 999');
     });
 
     it('works without last-sent context', () => {
@@ -341,7 +341,7 @@ describe('FastChecker', () => {
         'alice',
         '123',
         'Hi',
-        '/opt/cortextos',
+        '/opt/elevate',
       );
 
       expect(result).not.toContain('[Your last message');
@@ -355,7 +355,7 @@ describe('FastChecker', () => {
         'alice',
         '999',
         'Hello',
-        '/opt/cortextos',
+        '/opt/elevate',
         undefined,
         longText,
       );
@@ -371,7 +371,7 @@ describe('FastChecker', () => {
         'alice',
         '999',
         'Hello',
-        '/opt/cortextos',
+        '/opt/elevate',
         'Original message',
         'Last sent text',
       );
@@ -381,7 +381,7 @@ describe('FastChecker', () => {
     });
 
     it('instruction uses single quotes to prevent shell variable expansion of $-numbers', () => {
-      const result = FastChecker.formatTelegramTextMessage('alice', '999', 'Hello', '/opt/cortextos');
+      const result = FastChecker.formatTelegramTextMessage('alice', '999', 'Hello', '/opt/elevate');
       expect(result).toContain("send-telegram 999 '<your reply>'");
     });
   });
@@ -710,7 +710,7 @@ describe('FastChecker', () => {
       expect(result).toContain('caption:');
       expect(result).toContain('Check this out');
       expect(result).toContain('local_file: /tmp/telegram-images/20260403_abc12345678.jpg');
-      expect(result).toContain("cortextos bus send-telegram 123456789 '<your reply>'");
+      expect(result).toContain("elevate bus send-telegram 123456789 '<your reply>'");
     });
 
     it('formats photo message with empty caption', () => {
@@ -736,7 +736,7 @@ describe('FastChecker', () => {
       expect(result).toContain('Here is the file');
       expect(result).toContain('local_file: /tmp/telegram-images/report.pdf');
       expect(result).toContain('file_name: report.pdf');
-      expect(result).toContain("cortextos bus send-telegram 123456789 '<your reply>'");
+      expect(result).toContain("elevate bus send-telegram 123456789 '<your reply>'");
     });
   });
 
@@ -752,7 +752,7 @@ describe('FastChecker', () => {
       expect(result).toContain('=== TELEGRAM VOICE from Alice (chat_id:123456789) ===');
       expect(result).toContain('duration: 12s');
       expect(result).toContain('local_file: /tmp/telegram-images/voice_1743718313.ogg');
-      expect(result).toContain("cortextos bus send-telegram 123456789 '<your reply>'");
+      expect(result).toContain("elevate bus send-telegram 123456789 '<your reply>'");
     });
 
     it('uses "unknown" when duration is undefined', () => {
@@ -773,7 +773,7 @@ describe('FastChecker', () => {
       checker.start();
       await vi.advanceTimersByTimeAsync(50 * 60 * 1000);
       expect(execFile).toHaveBeenCalledWith(
-        'cortextos',
+        'elevate',
         expect.arrayContaining(['bus', 'update-heartbeat', expect.stringContaining('[watchdog] my-agent alive — idle session')]),
         expect.any(Function),
       );
@@ -804,7 +804,7 @@ describe('FastChecker', () => {
       checker.start();
       await vi.advanceTimersByTimeAsync(20 * 1000);
       expect(execFile).not.toHaveBeenCalledWith(
-        'cortextos',
+        'elevate',
         expect.arrayContaining([expect.stringContaining('[watchdog]')]),
         expect.any(Function),
       );
@@ -830,7 +830,7 @@ describe('FastChecker', () => {
       expect(result).toContain('duration: 45s');
       expect(result).toContain('local_file: /tmp/telegram-images/video_1743718313.mp4');
       expect(result).toContain('file_name: video_1743718313.mp4');
-      expect(result).toContain("cortextos bus send-telegram 123456789 '<your reply>'");
+      expect(result).toContain("elevate bus send-telegram 123456789 '<your reply>'");
     });
   });
 });

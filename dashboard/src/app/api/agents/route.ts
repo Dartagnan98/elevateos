@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Register with daemon via IPC (replaces Mac-only generate-launchd.sh + launchctl)
-    const instanceId = process.env.CTX_INSTANCE_ID ?? 'default';
+    const instanceId = process.env.ELEVATE_INSTANCE_ID ?? process.env.CTX_INSTANCE_ID ?? 'default';
     const ipc = new IPCClient(instanceId);
     const daemonRunning = await ipc.isDaemonRunning();
     if (daemonRunning) {

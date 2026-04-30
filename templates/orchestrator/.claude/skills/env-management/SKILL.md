@@ -1,12 +1,12 @@
 ---
 name: env-management
-description: "You need to add a new API key to the system, update an existing credential, check what secrets are configured for the org or a specific agent, onboard a new third-party tool that needs credentials, diagnose why an agent cannot access a service because a key appears missing, rotate a compromised or expired key, or restart affected agents after a credential change. This skill covers the full lifecycle of environment variables and secrets in cortextOS."
+description: "You need to add a new API key to the system, update an existing credential, check what secrets are configured for the org or a specific agent, onboard a new third-party tool that needs credentials, diagnose why an agent cannot access a service because a key appears missing, rotate a compromised or expired key, or restart affected agents after a credential change. This skill covers the full lifecycle of environment variables and secrets in ElevateOS."
 triggers: ["add key", "api key", "env file", ".env", "secret", "credential", "token", "environment variable", "configure key", "set key", "missing key", "key not set", "where do I put", "shared secret", "org secret", "agent secret", "key not loading", "configure credentials", "new api key", "add to env", "rotate key", "rotate token", "key compromised", "token expired", "update api key", "new bot token", "revoke key", "credential rotation", "key rotation", "secret rotation", "key was leaked", "compromised credential", "force rotation", "provider rotated", "expired key", "rotate credentials", "update secret"]
 ---
 
 # Environment Variable Management
 
-cortextOS uses a 4-layer env hierarchy. Later layers override earlier ones:
+ElevateOS uses a 4-layer env hierarchy. Later layers override earlier ones:
 
 ```
 1. Base shell (PATH, HOME, etc.)
@@ -42,9 +42,9 @@ echo 'NEW_KEY=value' >> "$ORG_ENV"
 chmod 600 "$ORG_ENV"
 
 # 3. Restart all running agents so they pick it up
-cortextos bus list-agents --format json | jq -r '.[].name' | while read agent; do
+elevate bus list-agents --format json | jq -r '.[].name' | while read agent; do
   echo "Restarting $agent..."
-  cortextos bus send-message "$agent" high "hard-restart" "new shared secret added: NEW_KEY"
+  elevate bus send-message "$agent" high "hard-restart" "new shared secret added: NEW_KEY"
   sleep 10
 done
 ```
@@ -62,7 +62,7 @@ echo 'MY_KEY=value' >> "$AGENT_ENV"
 chmod 600 "$AGENT_ENV"
 
 # 3. Restart THIS agent only
-cortextos bus self-restart --reason "new agent secret added: MY_KEY"
+elevate bus self-restart --reason "new agent secret added: MY_KEY"
 ```
 
 ---
@@ -107,14 +107,14 @@ ORG_ENV="$CTX_FRAMEWORK_ROOT/orgs/$CTX_ORG/secrets.env"
 # Update the value in the file (edit KEY_NAME line)
 
 # Restart all agents in sequence (stagger to avoid gaps)
-cortextos bus list-agents --format json | jq -r '.[].name' | while read agent; do
+elevate bus list-agents --format json | jq -r '.[].name' | while read agent; do
   echo "Restarting $agent..."
-  cortextos bus send-message "$agent" high "hard-restart" "secret rotation: KEY_NAME"
+  elevate bus send-message "$agent" high "hard-restart" "secret rotation: KEY_NAME"
   sleep 30
 done
 
 # Log the rotation
-cortextos bus log-event action secret_rotated info \
+elevate bus log-event action secret_rotated info \
   --meta "{\"key\":\"KEY_NAME\",\"scope\":\"org\",\"agent\":\"$CTX_AGENT_NAME\"}"
 ```
 
@@ -126,9 +126,9 @@ AGENT_ENV="$CTX_FRAMEWORK_ROOT/orgs/$CTX_ORG/agents/AGENT_NAME/.env"
 chmod 600 "$AGENT_ENV"
 
 # Hard-restart that agent (not soft — PTY must rebuild env)
-cortextos bus send-message AGENT_NAME high "hard-restart" "secret rotation: KEY_NAME"
+elevate bus send-message AGENT_NAME high "hard-restart" "secret rotation: KEY_NAME"
 
-cortextos bus log-event action secret_rotated info \
+elevate bus log-event action secret_rotated info \
   --meta "{\"key\":\"KEY_NAME\",\"scope\":\"agent\",\"agent\":\"AGENT_NAME\"}"
 ```
 

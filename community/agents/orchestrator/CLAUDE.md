@@ -1,6 +1,6 @@
 # Claude Remote Agent
 
-Persistent 24/7 Claude Code agent controlled via Telegram. Runs via cortextos daemon with auto-restart and crash recovery.
+Persistent 24/7 Claude Code agent controlled via Telegram. Runs via elevate daemon with auto-restart and crash recovery.
 
 ## First Boot Check
 
@@ -19,17 +19,17 @@ If `ONBOARDED`: continue with the session start protocol below.
 
 See AGENTS.md for the full 13-step session start checklist. Key steps:
 
-1. **Send boot message first**: `cortextos bus send-telegram $CTX_TELEGRAM_CHAT_ID "Booting up... one moment"`
+1. **Send boot message first**: `elevate bus send-telegram $CTX_TELEGRAM_CHAT_ID "Booting up... one moment"`
 2. Read all bootstrap files: IDENTITY.md, SOUL.md, GUARDRAILS.md, GOALS.md, HEARTBEAT.md, MEMORY.md, USER.md, TOOLS.md, SYSTEM.md
 3. Read org knowledge base: `../../knowledge.md`
-4. Discover available skills: `cortextos bus list-skills --format text`
-5. Discover active agents: `cortextos bus list-agents`
+4. Discover available skills: `elevate bus list-skills --format text`
+5. Discover active agents: `elevate bus list-agents`
 6. Restore crons from `config.json` — run CronList first (no duplicates)
 7. Check today's memory file for in-progress work
-8. If resuming a task, query KB: `cortextos bus kb-query "<task topic>" --org $CTX_ORG`
-9. Check inbox: `cortextos bus check-inbox`
-10. Update heartbeat: `cortextos bus update-heartbeat "online"`
-11. Log session start: `cortextos bus log-event action session_start info --meta '{"agent":"'$CTX_AGENT_NAME'"}'`
+8. If resuming a task, query KB: `elevate bus kb-query "<task topic>" --org $CTX_ORG`
+9. Check inbox: `elevate bus check-inbox`
+10. Update heartbeat: `elevate bus update-heartbeat "online"`
+11. Log session start: `elevate bus log-event action session_start info --meta '{"agent":"'$CTX_AGENT_NAME'"}'`
 12. Write session start entry to daily memory
 13. Send full online status — **only AFTER crons are confirmed set**
 
@@ -37,10 +37,10 @@ See AGENTS.md for the full 13-step session start checklist. Key steps:
 
 Every significant piece of work gets a task. See `.claude/skills/tasks/SKILL.md` for full reference.
 
-1. **Create**: `cortextos bus create-task "<title>" --desc "<desc>"`
-2. **Start**: `cortextos bus update-task <id> in_progress`
-3. **Complete**: `cortextos bus complete-task <id> --result "[summary]"`
-4. **Log KPI**: `cortextos bus log-event task task_completed info --meta '{"task_id":"ID"}'`
+1. **Create**: `elevate bus create-task "<title>" --desc "<desc>"`
+2. **Start**: `elevate bus update-task <id> in_progress`
+3. **Complete**: `elevate bus complete-task <id> --result "[summary]"`
+4. **Log KPI**: `elevate bus log-event task task_completed info --meta '{"task_id":"ID"}'`
 
 CONSEQUENCE: Tasks without creation = invisible on dashboard. Your effectiveness score will be 0%.
 TARGET: Every significant piece of work (>10 minutes) = at least 1 task created.
@@ -72,13 +72,13 @@ TARGET: >= 3 memory entries per session.
 Log significant events so the Activity feed shows what's happening.
 
 ```bash
-cortextos bus log-event action session_start info --meta '{"agent":"'$CTX_AGENT_NAME'"}'
-cortextos bus log-event task task_completed info --meta '{"task_id":"<id>","agent":"'$CTX_AGENT_NAME'"}'
+elevate bus log-event action session_start info --meta '{"agent":"'$CTX_AGENT_NAME'"}'
+elevate bus log-event task task_completed info --meta '{"task_id":"<id>","agent":"'$CTX_AGENT_NAME'"}'
 
 # Orchestrator-specific coordination events
-cortextos bus log-event action task_dispatched info --meta '{"to":"<agent>","task":"<title>"}'
-cortextos bus log-event action briefing_sent info --meta '{"type":"morning_review"}'
-cortextos bus log-event action briefing_sent info --meta '{"type":"evening_review"}'
+elevate bus log-event action task_dispatched info --meta '{"to":"<agent>","task":"<title>"}'
+elevate bus log-event action briefing_sent info --meta '{"type":"morning_review"}'
+elevate bus log-event action briefing_sent info --meta '{"type":"evening_review"}'
 ```
 
 CONSEQUENCE: Events without logging are invisible in the Activity feed.
@@ -93,7 +93,7 @@ Messages arrive in real time via the fast-checker daemon:
 ```
 === TELEGRAM from <name> (chat_id:<id>) ===
 <text>
-Reply using: cortextos bus send-telegram <chat_id> "<reply>"
+Reply using: elevate bus send-telegram <chat_id> "<reply>"
 ```
 
 Photos include a `local_file:` path. Callbacks include `callback_data:` and `message_id:`. Process all immediately and reply using the command shown.
@@ -107,10 +107,10 @@ Photos include a `local_file:` path. Callbacks include `callback_data:` and `mes
 ```
 === AGENT MESSAGE from <agent> [msg_id: <id>] ===
 <text>
-Reply using: cortextos bus send-message <agent> normal '<reply>' <msg_id>
+Reply using: elevate bus send-message <agent> normal '<reply>' <msg_id>
 ```
 
-Always include `msg_id` as reply_to (auto-ACKs the original). Un-ACK'd messages redeliver after 5 min. For no-reply messages: `cortextos bus ack-inbox <msg_id>`
+Always include `msg_id` as reply_to (auto-ACKs the original). Un-ACK'd messages redeliver after 5 min. For no-reply messages: `elevate bus ack-inbox <msg_id>`
 
 ---
 
@@ -128,8 +128,8 @@ Crons expire after 7 days but are recreated from config on each restart.
 
 ## Restart
 
-**Soft** (preserves history): `cortextos bus self-restart --reason "why"`
-**Hard** (fresh session): `cortextos bus hard-restart --reason "why"`
+**Soft** (preserves history): `elevate bus self-restart --reason "why"`
+**Hard** (fresh session): `elevate bus hard-restart --reason "why"`
 
 When the user asks to restart, ALWAYS ask them first: "Fresh restart or continue with conversation history?" Do NOT restart until they specify which type.
 
@@ -164,15 +164,15 @@ If it requires domain expertise (code, content, email, research), delegate to th
    ```bash
    curl -s "https://api.telegram.org/bot<TOKEN>/getUpdates?timeout=30" | jq '.result[-1].message.chat.id'
    ```
-3. Create the agent: `cortextos add-agent <name> --template agent`
+3. Create the agent: `elevate add-agent <name> --template agent`
 4. Edit `.env` with BOT_TOKEN and CHAT_ID
-5. Enable it: `cortextos start <name>`
+5. Enable it: `elevate start <name>`
 6. **Write initial goals for the new agent** (you have authority to write other agents' goals.json):
    ```bash
    cat > $CTX_FRAMEWORK_ROOT/orgs/$CTX_ORG/agents/<name>/goals.json << 'EOF'
    {"focus":"initial role focus","goals":["goal 1","goal 2"],"bottleneck":"","updated_at":"ISO_TIMESTAMP","updated_by":"$CTX_AGENT_NAME"}
    EOF
-   cortextos goals generate-md --agent <name> --org $CTX_ORG
+   elevate goals generate-md --agent <name> --org $CTX_ORG
    ```
 7. **Hand off to the new agent for onboarding.** Tell the user via Telegram:
    > "Your new agent is booting up! Switch to your Telegram chat with [bot name] and send `/onboarding` to start the setup process."
@@ -184,26 +184,26 @@ If it requires domain expertise (code, content, email, research), delegate to th
 ### Agent Lifecycle
 | Action | Command |
 |--------|---------|
-| Add agent | `cortextos add-agent <name> --template <type>` |
-| Start agent | `cortextos start <name>` |
-| Stop agent | `cortextos stop <name>` |
-| Check status | `cortextos status` |
+| Add agent | `elevate add-agent <name> --template <type>` |
+| Start agent | `elevate start <name>` |
+| Stop agent | `elevate stop <name>` |
+| Check status | `elevate status` |
 
 ### Communication
 | Action | Command |
 |--------|---------|
-| Send Telegram | `cortextos bus send-telegram <chat_id> "<msg>"` |
-| Send to agent | `cortextos bus send-message <agent> <priority> '<msg>' [reply_to]` |
-| Check inbox | `cortextos bus check-inbox` |
-| ACK message | `cortextos bus ack-inbox <msg_id>` |
+| Send Telegram | `elevate bus send-telegram <chat_id> "<msg>"` |
+| Send to agent | `elevate bus send-message <agent> <priority> '<msg>' [reply_to]` |
+| Check inbox | `elevate bus check-inbox` |
+| ACK message | `elevate bus ack-inbox <msg_id>` |
 
 ### Logs
 | Log | Path |
 |-----|------|
-| Activity | `~/.cortextos/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/activity.log` |
-| Fast-checker | `~/.cortextos/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/fast-checker.log` |
-| Stdout | `~/.cortextos/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/stdout.log` |
-| Stderr | `~/.cortextos/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/stderr.log` |
+| Activity | `~/.elevate/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/activity.log` |
+| Fast-checker | `~/.elevate/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/fast-checker.log` |
+| Stdout | `~/.elevate/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/stdout.log` |
+| Stderr | `~/.elevate/$CTX_INSTANCE_ID/logs/$CTX_AGENT_NAME/stderr.log` |
 
 ### State
 | File | Purpose |

@@ -4,14 +4,14 @@ import { join } from 'path';
 /**
  * Map an org name to its canonical filesystem casing.
  *
- * cortextOS treats the filesystem-exact spelling of an org directory as the
+ * ElevateOS treats the filesystem-exact spelling of an org directory as the
  * canonical identifier. When a caller supplies an org name with drifted
  * casing (e.g. "acmecorp" instead of "AcmeCorp"), every
  * downstream path join produces a SEPARATE state directory, which splits
  * runtime artifacts across two ghost dirs and pollutes every consumer that
  * scans the orgs/ parent. Before this helper existed, one lowercase
- * `cortextos bus kb-* --org acmecorp` invocation was enough to
- * bootstrap a phantom `~/.cortextos/default/orgs/acmecorp/` with a
+ * `elevate bus kb-* --org acmecorp` invocation was enough to
+ * bootstrap a phantom `~/.elevate/default/orgs/acmecorp/` with a
  * MMRAG config.json that then haunted dashboard sync forever.
  *
  * Resolution order:

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -138,24 +139,40 @@ export default function LoginPage() {
   return (
     <>
       {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
-    <div className={`flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-muted to-background ${showSplash ? 'invisible' : ''}`}>
-      <div className="w-full max-w-sm space-y-6 px-4">
+    <div className={`relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-10 ${showSplash ? 'invisible' : ''}`}>
+      <div aria-hidden className="absolute inset-x-0 top-0 h-[42vh] bg-primary" />
+      <div aria-hidden className="absolute inset-x-0 top-[42vh] h-1 bg-warning" />
+      <div className="relative z-10 w-full max-w-sm space-y-6">
         {/* Logo */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground text-lg font-bold">
-            cO
+        <div className="text-center space-y-2 text-primary-foreground">
+          <div className="mx-auto flex h-20 w-64 items-center justify-center rounded-xl bg-white px-5 shadow-[0_18px_42px_-22px_rgba(16,24,39,0.55)] dark:bg-white/10 dark:ring-1 dark:ring-white/15">
+            <Image
+              src="/elevateos-wordmark.png"
+              alt="ElevateOS"
+              width={300}
+              height={100}
+              priority
+              className="h-auto w-full object-contain dark:hidden"
+            />
+            <Image
+              src="/elevateos-wordmark-dark.png"
+              alt="ElevateOS"
+              width={300}
+              height={100}
+              priority
+              className="hidden h-auto w-full object-contain dark:block"
+            />
           </div>
-          <h1 className="text-xl font-semibold tracking-tight">cortextOS</h1>
-          <p className="text-sm text-muted-foreground">
-            Persistent AI Agent Orchestration
+          <p className="text-sm text-primary-foreground/75">
+            Real estate operating system
           </p>
         </div>
 
         {/* Login Card */}
-        <Card>
+        <Card className="border border-border bg-card shadow-[0_24px_70px_-42px_rgba(27,42,74,0.62)] ring-0">
           <CardHeader className="pb-4">
-            <CardTitle className="text-base">Sign in</CardTitle>
-            <CardDescription className="text-xs">
+            <CardTitle className="text-base font-bold text-primary">Sign in</CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">
               Enter your credentials to access the dashboard
             </CardDescription>
           </CardHeader>
@@ -163,7 +180,7 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} method="POST" action="/api/auth/callback/credentials" className="space-y-4" suppressHydrationWarning>
               <input type="hidden" name="csrfToken" defaultValue="" suppressHydrationWarning />
               <div className="space-y-1.5">
-                <Label htmlFor="username" className="text-xs">Username</Label>
+                <Label htmlFor="username" className="text-xs font-semibold text-foreground">Username</Label>
                 <Input
                   id="username"
                   name="username"
@@ -171,32 +188,34 @@ export default function LoginPage() {
                   required
                   autoFocus
                   placeholder="admin"
+                  className="bg-background/80"
                   suppressHydrationWarning
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-xs">Password</Label>
+                <Label htmlFor="password" className="text-xs font-semibold text-foreground">Password</Label>
                 <Input
                   id="password"
                   name="password"
                   type="password"
                   required
                   placeholder="Enter password"
+                  className="bg-background/80"
                   suppressHydrationWarning
                 />
               </div>
               {error && (
                 <p className="text-xs text-destructive">{error}</p>
               )}
-              <Button type="submit" className="w-full" disabled={loading || !csrfReady}>
+              <Button type="submit" className="h-10 w-full bg-primary font-bold hover:bg-[#121D35]" disabled={loading || !csrfReady}>
                 {loading ? 'Signing in...' : csrfReady ? 'Sign In' : 'Loading…'}
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        <p className="text-center text-[11px] text-muted-foreground/60">
-          cortextOS v2
+        <p className="text-center text-[11px] font-medium text-primary/55">
+          ElevateOS v1
         </p>
       </div>
     </div>

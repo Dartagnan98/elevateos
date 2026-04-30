@@ -22,7 +22,7 @@ export function DashboardShell({ orgs, children }: DashboardShellProps) {
       // Fall back to localStorage for the common case of navigating without a param.
       const urlOrg = new URLSearchParams(window.location.search).get('org');
       if (urlOrg && (urlOrg === 'all' || orgs.includes(urlOrg))) return urlOrg;
-      const saved = localStorage.getItem('cortextos-org');
+      const saved = localStorage.getItem('elevate-org') ?? localStorage.getItem('elevate-org');
       if (saved && (saved === 'all' || orgs.includes(saved))) return saved;
     }
     return 'all';
@@ -31,7 +31,8 @@ export function DashboardShell({ orgs, children }: DashboardShellProps) {
 
   // Persist org selection to localStorage
   useEffect(() => {
-    localStorage.setItem('cortextos-org', currentOrg);
+    localStorage.setItem('elevate-org', currentOrg);
+    localStorage.removeItem('elevate-org');
   }, [currentOrg]);
 
   return (

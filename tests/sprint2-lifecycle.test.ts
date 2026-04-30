@@ -4,7 +4,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 describe('Sprint 2: Onboarding & Lifecycle', () => {
-  const testDir = join(tmpdir(), `cortextos-sprint2-${Date.now()}`);
+  const testDir = join(tmpdir(), `elevate-sprint2-${Date.now()}`);
 
   beforeEach(() => {
     mkdirSync(testDir, { recursive: true });
@@ -118,7 +118,7 @@ describe('Sprint 2: Onboarding & Lifecycle', () => {
       const ecosystem = {
         apps: [
           {
-            name: 'cortextos-daemon',
+            name: 'elevate-daemon',
             script: '/path/to/daemon.js',
             max_restarts: 10,
             restart_delay: 5000,
@@ -128,14 +128,14 @@ describe('Sprint 2: Onboarding & Lifecycle', () => {
       };
       const content = `module.exports = ${JSON.stringify(ecosystem, null, 2)};\n`;
       expect(content).toContain('module.exports');
-      expect(content).toContain('cortextos-daemon');
+      expect(content).toContain('elevate-daemon');
       expect(content).toContain('max_restarts');
     });
   });
 
   describe('install creates proper directory structure', () => {
     it('creates all required state directories', () => {
-      const ctxRoot = join(testDir, 'cortextos-state');
+      const ctxRoot = join(testDir, 'elevate-state');
       const dirs = [
         ctxRoot,
         join(ctxRoot, 'config'),

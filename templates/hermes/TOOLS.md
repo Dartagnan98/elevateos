@@ -1,6 +1,6 @@
 # Tools Quick Reference
 
-All cortextOS commands: `cortextos bus <command>`. These are shell commands — run them with your bash tool.
+All ElevateOS commands: `elevate bus <command>`. These are shell commands — run them with your bash tool.
 
 ---
 
@@ -10,7 +10,7 @@ All cortextOS commands: `cortextos bus <command>`. These are shell commands — 
 |---|---|
 | `CTX_AGENT_NAME` | Your agent name |
 | `CTX_ORG` | Org name |
-| `CTX_ROOT` | `~/.cortextos/{instance}` |
+| `CTX_ROOT` | `~/.elevate/{instance}` |
 | `CTX_FRAMEWORK_ROOT` | Framework repo root |
 | `CTX_TELEGRAM_CHAT_ID` | Your Telegram chat ID |
 | `CTX_ORCHESTRATOR_AGENT` | Name of your orchestrator agent |
@@ -79,7 +79,7 @@ Agent secrets: `orgs/{org}/agents/{agent}/.env`
 ### Goals
 | Command | What it does |
 |---|---|
-| `cortextos goals generate-md --agent <name> --org <org>` | Rebuild GOALS.md from goals.json |
+| `elevate goals generate-md --agent <name> --org <org>` | Rebuild GOALS.md from goals.json |
 
 ### Reminders
 | Command | What it does |

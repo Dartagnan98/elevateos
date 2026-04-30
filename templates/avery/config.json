@@ -1,0 +1,57 @@
+{
+  "agent_name": "{{agent_name}}",
+  "enabled": true,
+  "startup_delay": 0,
+  "max_session_seconds": 255600,
+  "max_crashes_per_day": 10,
+  "working_directory": "",
+  "timezone": "America/Vancouver",
+  "day_mode_start": "07:00",
+  "day_mode_end": "21:00",
+  "communication_style": "concise, warm, no-fluff",
+  "approval_rules": {
+    "always_ask": [],
+    "never_ask": []
+  },
+  "crons": [
+    {
+      "name": "heartbeat",
+      "type": "recurring",
+      "interval": "6h",
+      "prompt": "Read HEARTBEAT.md and follow its instructions. Update your heartbeat, check inbox, review agent health via elevate bus read-all-heartbeats, and work on coordination tasks."
+    },
+    {
+      "name": "check-approvals",
+      "type": "recurring",
+      "interval": "1h",
+      "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {07,09,11,13,15,17,19}, exit silently. Otherwise: elevate bus list-approvals --format json — for any pending approval older than 1h, send user a Telegram reminder. elevate bus list-tasks --project human-tasks --status pending — for any [HUMAN] task pending >4h, send user a Telegram reminder with the task title and what's blocked."
+    },
+    {
+      "name": "morning-brew",
+      "type": "recurring",
+      "interval": "24h",
+      "prompt": "Run TZ=America/Vancouver date +%H. If hour not 06, 07, or 08, exit silently. Sentinel: STAMP=data/.cron-runs/morning-brew-$(TZ=America/Vancouver date +%F); if [ -f $STAMP ], exit silently. Otherwise: read HEARTBEAT.md, compose today's morning brew. Pull from Marlowe (market stats), Pierce (deals), Reese (outreach drafts). Write to data/brew/$(date +%F)-morning.json + .md. Send Telegram summary. On success: mkdir -p data/.cron-runs && touch $STAMP."
+    },
+    {
+      "name": "doc-routing",
+      "type": "recurring",
+      "interval": "10m",
+      "prompt": "Run gmail-doc-router skill. Route any new attachments to listings folders."
+    },
+    {
+      "name": "deadline-scan",
+      "type": "recurring",
+      "interval": "1h",
+      "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {00,04,08,12,16,20}, exit silently. Otherwise: scan active listings for upcoming subject removal / deposit / possession deadlines. Surface anything within 48h via Telegram + create human-task if action needed."
+    },
+    {
+      "name": "weekly-listing-report",
+      "type": "recurring",
+      "interval": "24h",
+      "prompt": "Run TZ=America/Vancouver date +%A. If output is not Monday, exit silently. Sentinel: STAMP=data/.cron-runs/weekly-listing-report-$(TZ=America/Vancouver date +%F); if [ -f $STAMP ], exit silently. Otherwise: run weekly-listing skill, compose listing performance report. On success: mkdir -p data/.cron-runs && touch $STAMP."
+    }
+  ],
+  "ecosystem": {
+    "local_version_control": { "enabled": true }
+  }
+}

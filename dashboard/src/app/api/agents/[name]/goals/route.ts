@@ -120,7 +120,7 @@ export async function PATCH(
   if (existsSync(distCliPath)) {
     import('child_process').then(({ spawn }) => {
       const child = spawn(process.execPath, [distCliPath, 'goals', 'generate-md', '--agent', name, '--org', org], {
-        env: { ...process.env, CTX_FRAMEWORK_ROOT: frameworkRoot },
+        env: { ...process.env, ELEVATE_FRAMEWORK_ROOT: frameworkRoot, ELEVATE_ORG: org, CTX_FRAMEWORK_ROOT: frameworkRoot, CTX_ORG: org },
         stdio: 'pipe',
       });
       child.on('error', (err) => console.error('[api/agents/goals] generate-md error:', err));

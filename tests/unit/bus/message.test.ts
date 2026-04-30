@@ -12,7 +12,7 @@ describe('Message Bus', () => {
   let receiverPaths: BusPaths;
 
   beforeEach(() => {
-    testDir = mkdtempSync(join(tmpdir(), 'cortextos-bus-test-'));
+    testDir = mkdtempSync(join(tmpdir(), 'elevate-bus-test-'));
     // Override ctxRoot to use temp directory
     senderPaths = {
       ctxRoot: testDir,

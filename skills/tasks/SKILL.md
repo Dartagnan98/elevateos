@@ -1,6 +1,6 @@
 ---
 name: Task System
-description: Create, manage, and complete tasks in cortextOS. Use when starting significant work, tracking progress, or completing deliverables.
+description: Create, manage, and complete tasks in ElevateOS. Use when starting significant work, tracking progress, or completing deliverables.
 ---
 
 # Task System
@@ -16,25 +16,25 @@ Every significant piece of work must have a corresponding task. Tasks enable coo
 
 ### 1. Create (BEFORE starting work)
 ```bash
-cortextos bus create-task \
+elevate bus create-task \
   "<title>" "<description>" [assignee] [priority] [project]
 ```
 
 ### 2. Mark in progress
 ```bash
-cortextos bus update-task <task_id> in_progress
+elevate bus update-task <task_id> in_progress
 ```
 
 ### 3. Execute the work
 
 ### 4. Complete
 ```bash
-cortextos bus complete-task <task_id> "[output summary]"
+elevate bus complete-task <task_id> "[output summary]"
 ```
 
 ### 5. Log KPI (if measurable)
 ```bash
-cortextos bus log-event action task_completed info \
+elevate bus log-event action task_completed info \
   '{"task_id":"ID","kpi_key":"metric_name","value":1}'
 ```
 
@@ -49,11 +49,11 @@ Tasks with `needs_approval: true` create an approval item that must be reviewed 
 
 | Action | Command |
 |--------|---------|
-| Create | `cortextos bus create-task "<title>" "<desc>" [assignee] [priority] [project]` |
-| List | `cortextos bus list-tasks [--status S] [--agent A] [--priority P]` |
-| Update | `cortextos bus update-task <id> <status> [note]` |
-| Complete | `cortextos bus complete-task <id> "[summary]"` |
-| Log event | `cortextos bus log-event <category> <event> <severity> '[json]'` |
+| Create | `elevate bus create-task "<title>" "<desc>" [assignee] [priority] [project]` |
+| List | `elevate bus list-tasks [--status S] [--agent A] [--priority P]` |
+| Update | `elevate bus update-task <id> <status> [note]` |
+| Complete | `elevate bus complete-task <id> "[summary]"` |
+| Log event | `elevate bus log-event <category> <event> <severity> '[json]'` |
 
 **Statuses:** pending, in_progress, blocked, completed
 

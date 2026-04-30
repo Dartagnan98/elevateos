@@ -2,7 +2,7 @@ node_modules/
 .claude/
 !.claude/commands/
 !.claude/commands/**
-!.claude/orchestration-cortextos-node/
+!.claude/orchestration-elevate-node/
 # Include template .claude dirs (needed for agent settings.json)
 !templates/**/.claude/
 !templates/**/.claude/**
@@ -19,7 +19,8 @@ orgs/
 .env
 !.env.example
 templates/*/.env
-.cortextos-env
+.elevate-env
+.elevate-startup.md
 
 # Agent runtime data
 orgs/*/agents/*/memory/
@@ -42,8 +43,16 @@ knowledge-base/__pycache__/
 knowledge-base/scripts/__pycache__/
 tests/playwright/dashboard-ui.spec.ts
 
-# Local ops docs (personal, not for public repo)
-docs/
+# Local ops docs (personal, not for public repo) — but ElevateOS install +
+# operator docs ARE part of this fork's deliverable, so list ignores per-file
+# instead of ignoring the whole directory.
+docs/*
+!docs/INSTALL.md
+!docs/ROLLBACK.md
+!docs/UPSTREAM_BUGS.md
+!docs/OPERATOR_NOTES.md
+!docs/SKILLS_AUDIT.md
+!docs/architecture/
 
 # Internal developer/planning notes (not for public repo)
 KNOWN-ISSUES.md
@@ -51,5 +60,6 @@ WINDOWS-IMPLEMENTATION-PLAN.md
 WINDOWS-SUPPORT-INVESTIGATION.md
 BRAINDUMP*.md
 AGENTS.md
+!templates/**/AGENTS.md
 dashboard/screenshots/
 dashboard/test-*.py

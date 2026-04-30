@@ -1,21 +1,25 @@
-// cortextOS Dashboard - SQLite database singleton
+// ElevateOS Dashboard - SQLite database singleton
 // Read cache for JSON/JSONL files on disk. WAL mode for concurrent reads.
 
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const instanceId = process.env.CTX_INSTANCE_ID ?? 'default';
-const ctxRoot = process.env.CTX_ROOT;
-const DB_PATH = ctxRoot
-  ? path.join(ctxRoot, 'dashboard', `cortextos-${instanceId}.db`)
-  : path.join(process.cwd(), '.data', `cortextos-${instanceId}.db`);
+const instanceId = process.env.ELEVATE_INSTANCE_ID ?? process.env.CTX_INSTANCE_ID ?? 'default';
+const ctxRoot = process.env.ELEVATE_ROOT ?? process.env.CTX_ROOT;
+const isNextProductionBuild = process.env.NEXT_PHASE === 'phase-production-build';
+const DB_PATH = isNextProductionBuild
+  ? ':memory:'
+  : ctxRoot
+  ? path.join(ctxRoot, 'dashboard', `elevate-${instanceId}.db`)
+  : path.join(process.cwd(), '.data', `elevate-${instanceId}.db`);
 
 function createDatabase(): Database.Database {
-  // Ensure .data directory exists
-  const dir = path.dirname(DB_PATH);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  if (DB_PATH !== ':memory:') {
+    const dir = path.dirname(DB_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
   }
 
   const db = new Database(DB_PATH, { timeout: 10000 });
@@ -25,17 +29,18 @@ function createDatabase(): Database.Database {
   // processes (like Next.js build workers) hit SQLITE_BUSY immediately.
   db.pragma('busy_timeout = 10000');
 
-  // Switch to WAL mode (requires exclusive lock on the DB file).
-  // Guard against SQLITE_BUSY when multiple Next.js build workers open the DB
-  // simultaneously: if the switch fails, check whether another worker already
-  // succeeded. If so, continue; otherwise re-throw.
-  try {
-    db.pragma('journal_mode = WAL');
-  } catch (err: unknown) {
-    if ((err as NodeJS.ErrnoException & { code?: string }).code !== 'SQLITE_BUSY') throw err;
-    const rows = db.pragma('journal_mode') as { journal_mode: string }[];
-    if (rows[0]?.journal_mode !== 'wal') throw err;
-    // Another worker already switched to WAL — we're fine.
+  if (DB_PATH !== ':memory:') {
+    // Switch to WAL mode (requires exclusive lock on the DB file).
+    // Guard against SQLITE_BUSY when multiple Next.js runtime workers open the
+    // DB simultaneously: if the switch fails, check whether another worker
+    // already succeeded. If so, continue; otherwise re-throw.
+    try {
+      db.pragma('journal_mode = WAL');
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException & { code?: string }).code !== 'SQLITE_BUSY') throw err;
+      const rows = db.pragma('journal_mode') as { journal_mode: string }[];
+      if (rows[0]?.journal_mode !== 'wal') throw err;
+    }
   }
   db.pragma('synchronous = NORMAL');
   db.pragma('foreign_keys = ON');
@@ -178,13 +183,13 @@ function initializeSchema(db: Database.Database): void {
 
 // globalThis singleton survives Next.js hot reload
 const globalForDb = globalThis as unknown as {
-  __cortextos_db: Database.Database | undefined;
+  __elevate_db: Database.Database | undefined;
 };
 
-export const db = globalForDb.__cortextos_db ?? createDatabase();
+export const db = globalForDb.__elevate_db ?? createDatabase();
 
 if (process.env.NODE_ENV !== 'production') {
-  globalForDb.__cortextos_db = db;
+  globalForDb.__elevate_db = db;
 }
 
 /** Re-export for explicit initialization (idempotent - db is created on import) */

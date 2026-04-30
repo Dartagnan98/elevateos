@@ -1,0 +1,38 @@
+{
+  "agent_name": "{{agent_name}}",
+  "enabled": true,
+  "startup_delay": 0,
+  "max_session_seconds": 255600,
+  "max_crashes_per_day": 10,
+  "working_directory": "",
+  "timezone": "America/Vancouver",
+  "crons": [
+    {
+      "name": "heartbeat",
+      "type": "recurring",
+      "interval": "6h",
+      "prompt": "Read HEARTBEAT.md and follow its instructions. Update your heartbeat, check inbox, work on assigned tasks."
+    },
+    {
+      "name": "draft-inbound",
+      "type": "recurring",
+      "interval": "10m",
+      "prompt": "Run draft-inbound skill. Scan new iMessages. Draft replies for anything needing response. Drop into approval queue. Match the user's voice — read voice_profile from org config before drafting."
+    },
+    {
+      "name": "morning-outreach",
+      "type": "recurring",
+      "interval": "24h",
+      "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {08,09,10}, exit silently. Sentinel: STAMP=data/.cron-runs/morning-outreach-$(TZ=America/Vancouver date +%F); if [ -f $STAMP ], exit silently. Otherwise: run outreach skill. Pull Lofty leads. Draft 5 cold or re-engage texts. Drop into approval queue with thread context for each. On success: mkdir -p data/.cron-runs && touch $STAMP."
+    },
+    {
+      "name": "cooldown-check",
+      "type": "recurring",
+      "interval": "1h",
+      "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {08,12,16,20}, exit silently. Otherwise: scan brew/events.jsonl. Anyone past cooldown ready for re-engage? Draft and queue."
+    }
+  ],
+  "ecosystem": {
+    "local_version_control": { "enabled": true }
+  }
+}

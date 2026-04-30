@@ -72,6 +72,13 @@ export class AgentPTY {
       CTX_ORG: this.env.org,
       CTX_AGENT_DIR: this.env.agentDir,
       CTX_PROJECT_ROOT: this.env.projectRoot,
+      ELEVATE_INSTANCE_ID: this.env.instanceId,
+      ELEVATE_ROOT: this.env.ctxRoot,
+      ELEVATE_FRAMEWORK_ROOT: this.env.frameworkRoot,
+      ELEVATE_AGENT_NAME: this.env.agentName,
+      ELEVATE_ORG: this.env.org,
+      ELEVATE_AGENT_DIR: this.env.agentDir,
+      ELEVATE_PROJECT_ROOT: this.env.projectRoot,
       // Backward compat
       CRM_AGENT_NAME: this.env.agentName,
       CRM_TEMPLATE_ROOT: this.env.frameworkRoot,
