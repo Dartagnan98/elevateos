@@ -21,7 +21,7 @@
       "name": "pipeline-scan",
       "type": "recurring",
       "interval": "24h",
-      "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {06,07,08}, exit silently. Sentinel: STAMP=data/.cron-runs/pipeline-scan-$(TZ=America/Vancouver date +%F); if [ -f $STAMP ], exit silently. Otherwise: scan Lofty for active deals. Score each by stage + age + last touch. Drop summary to data/brew/$(date +%F)-pipeline.md so Avery can pull it for the morning brew. On success: mkdir -p data/.cron-runs && touch $STAMP."
+      "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {06,07,08}, exit silently. Sentinel: STAMP=data/.cron-runs/pipeline-scan-$(TZ=America/Vancouver date +%F); if [ -f $STAMP ], exit silently. Otherwise: scan the configured CRM for active deals. Score each by stage + age + last touch. Drop summary to data/brew/$(date +%F)-pipeline.md so Avery can pull it for the morning brew. On success: mkdir -p data/.cron-runs && touch $STAMP."
     },
     {
       "name": "comps-refresh",

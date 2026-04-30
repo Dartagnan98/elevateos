@@ -1,6 +1,6 @@
 # ElevateOS — Operator Notes
 
-> Things you need to know to run, debug, or change ElevateOS v1. If something here surprises Skyleigh, surface it in the walkthrough rather than letting her discover it.
+> Things you need to know to run, debug, or change ElevateOS v1. If something here affects a customer workflow, surface it in the walkthrough rather than letting them discover it.
 
 ---
 
@@ -8,7 +8,7 @@
 
 Daily and weekly crons drift by up to 24h between daemon restarts. v1 uses `interval`-only crons; anchored real-time scheduling needs both a boot-prompt patch and a dashboard cron API patch (see `docs/SOURCE_FIXES.md` items 5 + 6) and is queued for Tier 2.
 
-**Practical impact for Skyleigh:** if the daemon restarts at 6:42 PM, the "morning brew" daily job will fire at 6:42 PM the next day, not 7:00 AM. We mitigate this with **hour-gate prompts** + **daily sentinel files** so the brew only actually runs during the morning window even if the cron tick fires off-hours. See "Sentinel pattern" below.
+**Practical impact:** if the daemon restarts at 6:42 PM, a morning daily-review job can fire at 6:42 PM the next day instead of the intended morning window. We mitigate this with **hour-gate prompts** + **daily sentinel files** so the job only actually runs during the configured morning window even if the cron tick fires off-hours. See "Sentinel pattern" below.
 
 ---
 
@@ -76,7 +76,7 @@ For repeating one-shots (e.g., "remind me about this contract subject removal in
 
 ## Skill ownership map
 
-Each skill in `~/skyleigh-tools/.claude/skills/` has a single intended owner among ElevateOS agents. INSTALL step 12 copies these to the per-agent `.claude/skills/` directories. Anything not copied at install keeps running on Skyleigh's existing launchd jobs and is invisible to ElevateOS — no regression.
+Each customer-provided skill in `$ELEVATE_TOOLS_ROOT/.claude/skills/` has a single intended owner among ElevateOS agents. INSTALL step 12 copies these to the per-agent `.claude/skills/` directories. Anything not copied at install keeps running in the customer's existing automation and is invisible to ElevateOS — no regression.
 
 | Skill | Owner | Tier 1 copied? | Notes |
 |---|---|---|---|
@@ -100,9 +100,9 @@ Each skill in `~/skyleigh-tools/.claude/skills/` has a single intended owner amo
 
 ## Approval flow — Tier 1 is read-only
 
-Skyleigh's existing approval queue at `~/skyleigh-tools/data/messages.db` (or wherever her current setup writes drafts) keeps running unchanged. Reese's `draft-inbound` cron writes there exactly as it does today.
+The configured customer approval queue at `data_roots.messages_db` (or wherever the current setup writes drafts) keeps running unchanged. Reese's `draft-inbound` cron writes there through the configured runtime adapter.
 
-ElevateOS dashboard does **not** mirror or write to that queue in v1. Tier 2 builds a sync layer (with explicit polling cadence + idempotency keys) before any cross-write happens. The Approvals page reads ElevateOS's own approval table, not Skyleigh's, so it'll appear empty in Tier 1 — that's expected.
+ElevateOS dashboard does **not** mirror or write to that queue in v1. Tier 2 builds a sync layer (with explicit polling cadence + idempotency keys) before any cross-write happens. The Approvals page reads ElevateOS's own approval table, not the external customer queue, so it may appear empty in Tier 1 — that's expected.
 
 ---
 
@@ -114,7 +114,7 @@ ElevateOS dashboard does **not** mirror or write to that queue in v1. Tier 2 bui
 | Telegram bot silent | `pm2 logs <agent>`. Usually `ALLOWED_USER` missing in `orgs/elevation/agents/<agent>/.env`. |
 | Cron didn't fire | Check the prompt's hour/day gate matches `TZ=America/Vancouver date +%H` (or `+%A`). Elevate has no scheduler validation, so a typo silently no-ops. |
 | Cron ran twice in one day | Sentinel file isn't being written. Check the prompt has the `mkdir -p data/.cron-runs && touch "$STAMP"` line on the success path. |
-| Leads page renders blank | `orgs/elevation/config.json` `data_roots.messages_db` path doesn't exist or sqlite schema doesn't match `messages-db.ts` query. Check the dashboard server log. |
+| Leads page renders blank | `data_roots.messages_db` is missing/schema-mismatched and no normalized connector records exist under `tools/data/sources/<source-id>`. Check Settings > Source Connectors and the dashboard server log. |
 | `cli.js status` shows wrong instance | INSTALL step 14 ran without `--instance elevation`. Regenerate ecosystem and restart PM2. |
 
 ---
@@ -122,7 +122,7 @@ ElevateOS dashboard does **not** mirror or write to that queue in v1. Tier 2 bui
 ## What's intentionally local-Mac-bound in v1
 
 - `better-sqlite3` in dashboard adapters means dashboard must run on the same machine as `messages.db`.
-- Lofty API key in `orgs/elevation/secrets.env` is read via `fs`, not env, because PM2's dashboard env doesn't carry org secrets.
+- CRM API keys in `orgs/<org>/secrets.env` are read via `fs`, not the dashboard process env, because PM2's dashboard env doesn't carry org secrets. The concrete secret name, auth mode, header/prefix or query param, base URL, endpoints, and CRM DB columns come from `integrations.crm`.
 - Cloudflare tunnel uses the per-instance `elevateos-<instance>` name.
 
 These are known v1 constraints. Hosted dashboard is Tier 3.

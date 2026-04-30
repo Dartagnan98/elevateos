@@ -20,6 +20,8 @@ import {
   IconTarget,
   IconMessages,
   IconUsers,
+  IconSend,
+  IconBriefcase,
 } from '@tabler/icons-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -31,27 +33,30 @@ interface NavItem {
   icon: React.ComponentType<{ size?: number; className?: string }>;
   badge?: number;
   section?: string;
+  tourId: string;
 }
 
 const navItems: NavItem[] = [
   // Core
-  { label: 'Overview', href: '/', icon: IconLayoutDashboard, section: 'core' },
-  { label: 'Leads', href: '/leads', icon: IconUsers, section: 'core' },
-  { label: 'Agents', href: '/agents', icon: IconRobot, section: 'core' },
-  { label: 'Tasks', href: '/tasks', icon: IconListCheck, section: 'core' },
-  { label: 'Activity', href: '/activity', icon: IconActivity, section: 'core' },
+  { label: 'Overview', href: '/', icon: IconLayoutDashboard, section: 'core', tourId: 'nav-overview' },
+  { label: 'Leads', href: '/leads', icon: IconUsers, section: 'core', tourId: 'nav-leads' },
+  { label: 'Deals', href: '/deals', icon: IconBriefcase, section: 'core', tourId: 'nav-deals' },
+  { label: 'Outreach', href: '/outreach', icon: IconSend, section: 'core', tourId: 'nav-outreach' },
+  { label: 'Agents', href: '/agents', icon: IconRobot, section: 'core', tourId: 'nav-agents' },
+  { label: 'Tasks', href: '/tasks', icon: IconListCheck, section: 'core', tourId: 'nav-tasks' },
+  { label: 'Activity', href: '/activity', icon: IconActivity, section: 'core', tourId: 'nav-activity' },
 
   // Operations
-  { label: 'Comms', href: '/comms', icon: IconMessages, section: 'ops' },
-  { label: 'Approvals', href: '/approvals', icon: IconShieldCheck, section: 'ops' },
-  { label: 'Workflows', href: '/workflows', icon: IconClock, section: 'ops' },
-  { label: 'Strategy', href: '/strategy', icon: IconTarget, section: 'ops' },
-  { label: 'Analytics', href: '/analytics', icon: IconChartDots3, section: 'ops' },
+  { label: 'Comms', href: '/comms', icon: IconMessages, section: 'ops', tourId: 'nav-comms' },
+  { label: 'Approvals', href: '/approvals', icon: IconShieldCheck, section: 'ops', tourId: 'nav-approvals' },
+  { label: 'Workflows', href: '/workflows', icon: IconClock, section: 'ops', tourId: 'nav-workflows' },
+  { label: 'Strategy', href: '/strategy', icon: IconTarget, section: 'ops', tourId: 'nav-strategy' },
+  { label: 'Analytics', href: '/analytics', icon: IconChartDots3, section: 'ops', tourId: 'nav-analytics' },
 
   // Intelligence
-  { label: 'Knowledge Base', href: '/knowledge-base', icon: IconBook2, section: 'intel' },
-  { label: 'Experiments', href: '/experiments', icon: IconFlask, section: 'intel' },
-  { label: 'Skills', href: '/skills', icon: IconPuzzle, section: 'intel' },
+  { label: 'Knowledge Base', href: '/knowledge-base', icon: IconBook2, section: 'intel', tourId: 'nav-knowledge-base' },
+  { label: 'Experiments', href: '/experiments', icon: IconFlask, section: 'intel', tourId: 'nav-experiments' },
+  { label: 'Skills', href: '/skills', icon: IconPuzzle, section: 'intel', tourId: 'nav-skills' },
 ];
 
 const sectionLabels: Record<string, string> = {
@@ -98,7 +103,7 @@ export function Sidebar({
   const sections = ['core', 'ops', 'intel'];
 
   return (
-    <aside className="flex h-screen w-56 shrink-0 flex-col border-r bg-card/50">
+    <aside data-tour="sidebar" className="flex h-screen w-56 shrink-0 flex-col border-r bg-card/50">
       {/* Logo */}
       <div className="flex h-[60px] items-center justify-center px-4">
         <Image
@@ -123,6 +128,7 @@ export function Sidebar({
       <div className="px-3 pb-2">
         <button
           onClick={onSearchClick}
+          data-tour="global-search"
           className="flex w-full items-center gap-2 rounded-md border bg-background/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-background hover:text-foreground transition-colors"
         >
           <IconSearch size={14} />
@@ -158,6 +164,7 @@ export function Sidebar({
                     key={item.href}
                     href={orgHref(item.href)}
                     onClick={onNavigate}
+                    data-tour={item.tourId}
                     className={cn(
                       'group flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] transition-all',
                       active
@@ -196,6 +203,7 @@ export function Sidebar({
         <Link
           href={orgHref('/settings')}
           onClick={onNavigate}
+          data-tour="settings-link"
           className={cn(
             'flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] transition-all',
             isActive('/settings')

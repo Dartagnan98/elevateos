@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 import { BottomNav } from './bottom-nav';
+import { OnboardingTour } from './onboarding-tour';
 import { OrgContext } from '@/hooks/use-org';
 import {
   Sheet,
@@ -22,7 +23,7 @@ export function DashboardShell({ orgs, children }: DashboardShellProps) {
       // Fall back to localStorage for the common case of navigating without a param.
       const urlOrg = new URLSearchParams(window.location.search).get('org');
       if (urlOrg && (urlOrg === 'all' || orgs.includes(urlOrg))) return urlOrg;
-      const saved = localStorage.getItem('elevate-org') ?? localStorage.getItem('elevate-org');
+      const saved = localStorage.getItem('elevate-org');
       if (saved && (saved === 'all' || orgs.includes(saved))) return saved;
     }
     return 'all';
@@ -32,7 +33,6 @@ export function DashboardShell({ orgs, children }: DashboardShellProps) {
   // Persist org selection to localStorage
   useEffect(() => {
     localStorage.setItem('elevate-org', currentOrg);
-    localStorage.removeItem('elevate-org');
   }, [currentOrg]);
 
   return (
@@ -57,13 +57,14 @@ export function DashboardShell({ orgs, children }: DashboardShellProps) {
             onOrgChange={setCurrentOrg}
             onMenuClick={() => setSidebarOpen(true)}
           />
-          <main className="flex-1 overflow-auto p-4 pb-20 md:pb-5 md:p-5 lg:p-6 bg-background">
+          <main data-tour="workspace" className="flex-1 overflow-auto p-4 pb-20 md:pb-5 md:p-5 lg:p-6 bg-background">
             {children}
           </main>
 
           {/* Mobile bottom navigation */}
           <BottomNav />
         </div>
+        <OnboardingTour />
       </div>
     </OrgContext.Provider>
   );

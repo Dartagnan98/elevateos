@@ -20,6 +20,9 @@ import {
   IconClock,
   IconTarget,
   IconX,
+  IconUsers,
+  IconSend,
+  IconBriefcase,
 } from '@tabler/icons-react';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +34,9 @@ const mainTabs = [
 ];
 
 const morePages = [
+  { label: 'Leads', href: '/leads', icon: IconUsers },
+  { label: 'Deals', href: '/deals', icon: IconBriefcase },
+  { label: 'Outreach', href: '/outreach', icon: IconSend },
   { label: 'Agents', href: '/agents', icon: IconRobot },
   { label: 'Comms', href: '/comms', icon: IconMessages },
   { label: 'Activity', href: '/activity', icon: IconActivity },
@@ -102,7 +108,7 @@ export function BottomNav() {
       )}
 
       {/* Bottom tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm md:hidden safe-area-bottom">
+      <nav data-tour="bottom-nav" className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm md:hidden safe-area-bottom">
         <div className="flex items-center justify-around h-14">
           {mainTabs.map((tab) => {
             const Icon = tab.icon;

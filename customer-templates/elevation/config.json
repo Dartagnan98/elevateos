@@ -2,13 +2,48 @@
   "name": "elevation",
   "display_name": "Elevation Real Estate",
   "data_roots": {
-    "messages_db": "/Users/admin/skyleigh-tools/data/messages.db",
-    "brew_dir": "/Users/admin/skyleigh-tools/data/brew",
-    "marketing_dir": "/Users/admin/skyleigh-tools/data/marketing",
-    "listings_state": "/Users/admin/skyleigh-tools/data",
-    "knowledge_seed": "/Users/admin/skyleigh-tools/knowledge"
+    "messages_db": "${ELEVATE_MESSAGES_DB}",
+    "brew_dir": "${ELEVATE_BREW_DIR}",
+    "marketing_dir": "${ELEVATE_MARKETING_DIR}",
+    "listings_state": "${ELEVATE_LISTINGS_STATE}",
+    "knowledge_seed": "${ELEVATE_KNOWLEDGE_SEED}"
+  },
+  "remote_runtime": {
+    "mode": "ssh",
+    "host": "${ELEVATE_REMOTE_HOST}",
+    "ssh_user": "${ELEVATE_REMOTE_USER}",
+    "tools_root": "${ELEVATE_TOOLS_ROOT}"
+  },
+  "integrations": {
+    "messages": {
+      "label": "Messages",
+      "source_label": "Configured runtime",
+      "owner_agent": "Outreach",
+      "drafts_label": "Daily review"
+    },
+    "crm": {
+      "provider": "custom",
+      "label": "CRM",
+      "api_key_env": "CRM_API_KEY",
+      "base_url": "${ELEVATE_CRM_BASE_URL}",
+      "auth": {
+        "type": "header",
+        "header": "Authorization",
+        "prefix": "Bearer "
+      },
+      "db_columns": {
+        "lead_id": "crm_lead_id",
+        "stage": "crm_stage",
+        "tags": "crm_tags"
+      },
+      "endpoints": {
+        "leads": "/v1/leads",
+        "lead": "/v1/leads/:id",
+        "notes": "/v1/leads/:id/notes"
+      }
+    }
   },
   "brokerage": "Forever Real Estate Group / EXP Realty",
-  "voice_profile": "/Users/admin/skyleigh-tools/knowledge/skyleigh-profile.md",
+  "voice_profile": "${ELEVATE_VOICE_PROFILE}",
   "agents": ["avery", "marlowe", "pierce", "reese"]
 }

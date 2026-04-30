@@ -1,11 +1,11 @@
 # ElevateOS — Install (Tier 1)
 
-> Customer #0: Skyleigh McCallum (Forever Real Estate / EXP). Mac install only. v1 is local-Mac-bound by design — hosted dashboard is Tier 3.
+> Customer Mac install only. v1 is local-Mac-bound by design for customer-owned data and local agent runtimes — hosted dashboard is Tier 3.
 
 ## Prerequisites
 
-- macOS, admin user with `~/skyleigh-tools/` already set up (the existing data this fork reads from).
-- Node 20+ (`node -v`)
+- macOS, admin user with a local tools/data root that contains any customer-provided `.claude/skills/` packages.
+- Node 20.19+ or 22.12+ (`node -v`)
 - npm 10+ (`npm -v`)
 - Git
 - PM2 (`npm i -g pm2`)
@@ -111,17 +111,19 @@ done
 #
 #    Cron prompts reference these skills. If the skills aren't present when
 #    the daemon starts, crons fire into nothing.
+: "${ELEVATE_TOOLS_ROOT:?Set ELEVATE_TOOLS_ROOT to the folder containing .claude/skills}"
 mkdir -p orgs/elevation/agents/avery/.claude/skills
 mkdir -p orgs/elevation/agents/marlowe/.claude/skills
 mkdir -p orgs/elevation/agents/reese/.claude/skills
-cp -R ~/skyleigh-tools/.claude/skills/gmail-doc-router      orgs/elevation/agents/avery/.claude/skills/
-cp -R ~/skyleigh-tools/.claude/skills/weekly-listing        orgs/elevation/agents/avery/.claude/skills/ 2>/dev/null || true
-cp -R ~/skyleigh-tools/.claude/skills/market-stats-watcher  orgs/elevation/agents/marlowe/.claude/skills/
-cp -R ~/skyleigh-tools/.claude/skills/draft-inbound         orgs/elevation/agents/reese/.claude/skills/
-cp -R ~/skyleigh-tools/.claude/skills/outreach              orgs/elevation/agents/reese/.claude/skills/
+cp -R "$ELEVATE_TOOLS_ROOT/.claude/skills/gmail-doc-router"      orgs/elevation/agents/avery/.claude/skills/
+cp -R "$ELEVATE_TOOLS_ROOT/.claude/skills/weekly-listing"        orgs/elevation/agents/avery/.claude/skills/ 2>/dev/null || true
+cp -R "$ELEVATE_TOOLS_ROOT/.claude/skills/market-stats-watcher"  orgs/elevation/agents/marlowe/.claude/skills/
+cp -R "$ELEVATE_TOOLS_ROOT/.claude/skills/draft-inbound"         orgs/elevation/agents/reese/.claude/skills/
+cp -R "$ELEVATE_TOOLS_ROOT/.claude/skills/outreach"              orgs/elevation/agents/reese/.claude/skills/
 
 # 13. Fill in credentials.
-nano orgs/elevation/secrets.env                # LOFTY_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY
+nano orgs/elevation/secrets.env                # CRM_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY
+nano orgs/elevation/config.json                # data_roots + CRM provider/base URL/auth/endpoints
 nano orgs/elevation/agents/avery/.env          # BOT_TOKEN, CHAT_ID, ALLOWED_USER
 nano orgs/elevation/agents/marlowe/.env
 nano orgs/elevation/agents/pierce/.env
@@ -144,7 +146,7 @@ node dist/cli.js tunnel start --instance elevation --port 3000
 
 ## Verify
 
-After step 15, `elevate status --instance elevation` should show 4 PTY agents healthy plus the dashboard process. Visit `http://localhost:3000` and log in with the admin password from `~/.elevate/elevation/dashboard.env`. The Leads page should render (it'll show data if `data_roots.messages_db` points to a real `~/skyleigh-tools/data/messages.db`, otherwise it'll show the "Lofty data isn't connected yet" fallback).
+After step 15, `elevate status --instance elevation` should show 4 PTY agents healthy plus the dashboard process. Visit `http://localhost:3000` and log in with the admin password from `~/.elevate/elevation/dashboard.env`. The Leads page should render from either `data_roots.messages_db` or normalized records under `tools/data/sources/<source-id>`. Settings > Integrations should show whether the CRM endpoint and API-key secret are configured.
 
 Each Telegram bot should send a "Booting up..." message to the chat ID you set in step 13. If a bot is silent, check `~/.elevate/elevation/logs/<agent>/stderr.log`.
 
@@ -153,8 +155,8 @@ Each Telegram bot should send a "Booting up..." message to the chat ID you set i
 - **Dashboard 500s on login** → `dashboard/.env.local` missing `ADMIN_PASSWORD`. Re-run step 4.
 - **Agent silent** → `pm2 logs <agent>` to see startup errors. Often `.env` missing `ALLOWED_USER`.
 - **Cron didn't fire** → check the prompt's hour/day gate matches `TZ=America/Vancouver date +%H` (or `%A`). Elevate has no scheduler validation, so a typo silently no-ops.
-- **Leads page renders blank** → `orgs/elevation/config.json` `data_roots.messages_db` path doesn't exist or sqlite schema doesn't match `messages-db.ts` query. Check the dashboard server log.
+- **Leads page renders blank** → `orgs/elevation/config.json` `data_roots.messages_db` path doesn't exist, sqlite schema doesn't match `messages-db.ts`, and no normalized source connector records exist under `tools/data/sources/<source-id>`. Check Settings > Source Connectors and the dashboard server log.
 
 ## Rollback
 
-`docs/ROLLBACK.md` covers full removal. Skyleigh's existing `~/skyleigh-tools/` setup is untouched by ElevateOS — the install is purely additive.
+`docs/ROLLBACK.md` covers full removal. Customer data and external tools folders are untouched by ElevateOS — the install is purely additive.

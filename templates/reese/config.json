@@ -23,7 +23,7 @@
       "name": "morning-outreach",
       "type": "recurring",
       "interval": "24h",
-      "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {08,09,10}, exit silently. Sentinel: STAMP=data/.cron-runs/morning-outreach-$(TZ=America/Vancouver date +%F); if [ -f $STAMP ], exit silently. Otherwise: run outreach skill. Pull Lofty leads. Draft 5 cold or re-engage texts. Drop into approval queue with thread context for each. On success: mkdir -p data/.cron-runs && touch $STAMP."
+      "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {08,09,10}, exit silently. Sentinel: STAMP=data/.cron-runs/morning-outreach-$(TZ=America/Vancouver date +%F); if [ -f $STAMP ], exit silently. Otherwise: run outreach skill. Pull CRM leads using org config + secrets. Draft 5 cold or re-engage texts. Drop into approval queue with thread context for each. On success: mkdir -p data/.cron-runs && touch $STAMP."
     },
     {
       "name": "cooldown-check",

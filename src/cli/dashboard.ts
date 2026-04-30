@@ -46,6 +46,7 @@ export const dashboardCommand = new Command('dashboard')
 
     const ctxRoot = getStateRoot(options.instance);
     const dashEnvPath = join(ctxRoot, 'dashboard.env');
+    mkdirSync(ctxRoot, { recursive: true });
 
     let dashCreds: Record<string, string> = {};
     if (existsSync(dashEnvPath)) {

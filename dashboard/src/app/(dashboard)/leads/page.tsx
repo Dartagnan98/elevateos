@@ -13,8 +13,8 @@ export default async function LeadsPage() {
       <div className="p-6 max-w-2xl">
         <h1 className="text-2xl font-semibold tracking-tight">Leads</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Lofty data isn&apos;t connected yet. Set <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">data_roots.messages_db</code> in
-          {' '}<code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">orgs/elevation/config.json</code> and reload.
+          The lead dashboard is not connected yet. Set <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">data_roots.messages_db</code>
+          {' '}or initialize a source connector in Settings and reload.
         </p>
       </div>
     );

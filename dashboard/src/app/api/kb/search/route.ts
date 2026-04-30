@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
   }
 
   const scope = searchParams.get('scope') || 'all';
+  const requestedCollection = searchParams.get('collection') || '';
   const limit = parseInt(searchParams.get('limit') || '10', 10);
   const threshold = parseFloat(searchParams.get('threshold') || '0.5');
 
@@ -55,6 +56,10 @@ export async function GET(request: NextRequest) {
 
   if (!['shared', 'private', 'all'].includes(scope)) {
     return Response.json({ error: 'scope must be shared, private, or all' }, { status: 400 });
+  }
+
+  if (requestedCollection && !/^[A-Za-z0-9_-]+$/.test(requestedCollection)) {
+    return Response.json({ error: 'Invalid collection' }, { status: 400 });
   }
 
   if (isNaN(limit) || limit < 1 || limit > 50) {
@@ -82,7 +87,9 @@ export async function GET(request: NextRequest) {
 
   // Determine collection(s) from scope (matching kb-query.sh logic)
   let collection = '';
-  if (scope === 'private') {
+  if (requestedCollection) {
+    collection = requestedCollection;
+  } else if (scope === 'private') {
     collection = `agent-${agent}`;
   } else if (scope === 'shared') {
     collection = `shared-${org}`;

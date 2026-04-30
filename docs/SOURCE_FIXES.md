@@ -6,10 +6,10 @@
 
 ## 1. KB collection-filter mismatch
 
-**Where:** `dashboard/src/app/api/kb/search/route.ts:31-52,84-91`
-**What:** Endpoint derives the collection name from `scope + agent` and ignores the client-sent `collection` param. Any call passing an explicit collection name silently gets routed to the derived one.
-**ElevateOS workaround:** Tier 1 inherits the existing KB UI as-is — we don't expose multi-collection search.
-**Proposed fix:** Accept `collection` as an explicit override; fall back to `scope + agent` only when omitted.
+**Where:** `dashboard/src/app/api/kb/search/route.ts`
+**What:** Endpoint used to derive the collection name from `scope + agent` and ignore the client-sent `collection` param.
+**ElevateOS status:** Fixed. `collection` is now validated and used as the explicit query target; `scope + agent` is only the fallback.
+**Next fix:** Add upload/folder-ingest endpoints so operators can create and refresh collections from the UI.
 
 ---
 
@@ -97,6 +97,6 @@
 ## 11. Dashboard env doesn't include org secrets
 
 **Where:** `src/cli/dashboard.ts:111-124` writes auth/root/instance/port only. `src/pty/agent-pty.ts:80-95` loads `orgs/<org>/secrets.env` for PTYs, not the dashboard server. PM2's dashboard env (`src/cli/ecosystem.ts:87-98`) sets `PORT` only.
-**What:** Dashboard server-side adapters that need API keys (Lofty, etc.) cannot read them from `process.env`.
-**ElevateOS workaround:** `dashboard/src/lib/realestate/lofty-client.ts` reads `LOFTY_API_KEY` directly from `orgs/elevation/secrets.env` via `fs.readFileSync` + an inline dotenv parser. Org name `elevation` is hardcoded in `dashboard/src/lib/realestate/org-config.ts` — Tier 2 lifts to multi-tenant via `getOrgs()` (`dashboard/src/lib/config.ts:122-150`).
+**What:** Dashboard server-side adapters that need API keys cannot rely on the PM2 dashboard process env.
+**ElevateOS workaround:** `dashboard/src/lib/realestate/crm-client.ts` reads the configured secret name from `integrations.crm.api_key_env`, then resolves it from `orgs/<org>/secrets.env` via `fs.readFileSync` + an inline dotenv parser. Auth header/prefix or query-param mode, base URL, endpoints, and DB column mappings are configured per org. The dashboard exposes the same fields in Settings without returning the raw API key.
 **Proposed fix:** Add an opt-in flag (`--load-org-secrets <org>`) that injects keys from `orgs/<org>/secrets.env` into the dashboard's PM2 env. Or have the dashboard read the secrets file lazily on first use, scoped per request via `CTX_ORG`.

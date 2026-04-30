@@ -1,14 +1,21 @@
-import { getOrgs, getFrameworkRoot } from '@/lib/config';
+import { getCTXRoot, getFrameworkRoot, getOrgs } from '@/lib/config';
 import { KnowledgeBaseClient } from '@/components/knowledge-base/kb-client';
+import { getActiveOrgName } from '@/lib/realestate/org-config';
 import fs from 'fs';
 import path from 'path';
 
-function getKnowledgeContent(org: string): string {
-  const frameworkRoot = getFrameworkRoot();
-  const kbPath = path.join(frameworkRoot, 'orgs', org, 'knowledge.md');
+function getKnowledgePath(org: string): string {
+  const statePath = path.join(getCTXRoot(), 'orgs', org, 'knowledge.md');
+  const frameworkPath = path.join(getFrameworkRoot(), 'orgs', org, 'knowledge.md');
+  if (fs.existsSync(statePath)) return statePath;
+  if (fs.existsSync(frameworkPath)) return frameworkPath;
+  return statePath;
+}
+
+function getKnowledgeContent(filePath: string): string {
   try {
-    if (fs.existsSync(kbPath)) {
-      return fs.readFileSync(kbPath, 'utf-8');
+    if (fs.existsSync(filePath)) {
+      return fs.readFileSync(filePath, 'utf-8');
     }
   } catch {
     // graceful fallback
@@ -20,18 +27,16 @@ export const dynamic = 'force-dynamic';
 
 export default function KnowledgeBasePage() {
   const orgs = getOrgs();
-  const org = orgs[0] ?? '';
-  const content = org ? getKnowledgeContent(org) : '';
-  const kbPath = org
-    ? path.join(getFrameworkRoot(), 'orgs', org, 'knowledge.md')
-    : '';
+  const org = orgs[0] ?? getActiveOrgName();
+  const kbPath = getKnowledgePath(org);
+  const content = getKnowledgeContent(kbPath);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Knowledge Base</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Search, browse, and manage your organization's shared knowledge. Powered by multimodal RAG.
+          Search, browse, and manage your organization&apos;s shared knowledge. Powered by multimodal RAG.
         </p>
       </div>
 

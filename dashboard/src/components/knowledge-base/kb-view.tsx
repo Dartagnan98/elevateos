@@ -17,22 +17,6 @@ export function KnowledgeBaseView({ content, org, filePath }: KnowledgeBaseViewP
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
-  if (!content) {
-    return (
-      <Card>
-        <CardContent className="py-8 text-center">
-          <p className="text-sm text-muted-foreground">
-            No knowledge file found. Create{' '}
-            <code className="bg-muted px-1.5 py-0.5 rounded text-xs">
-              orgs/{org}/knowledge.md
-            </code>{' '}
-            to get started.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   async function handleSave() {
     setSaving(true);
     setSaveError('');
@@ -51,8 +35,27 @@ export function KnowledgeBaseView({ content, org, filePath }: KnowledgeBaseViewP
       }
     } catch (err) {
       setSaveError(String(err));
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
+  }
+
+  if (!content && !editing) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            No knowledge file found for{' '}
+            <code className="bg-muted px-1.5 py-0.5 rounded text-xs">
+              orgs/{org}/knowledge.md
+            </code>
+          </p>
+          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+            Create Knowledge File
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (editing) {

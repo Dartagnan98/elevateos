@@ -2,13 +2,49 @@ import path from 'path';
 import fs from 'fs';
 import { CTX_FRAMEWORK_ROOT, CTX_ROOT } from '@/lib/config';
 
-// Tier 1 hardcodes the org as "elevation" (single-tenant fork). Multi-tenant
-// support lifts via getOrgs() in Tier 2 — see docs/SOURCE_FIXES.md #11.
-const ELEVATION_ORG = 'elevation';
+// Default to the bundled customer template, but let setup/runtime choose the
+// active org so this dashboard can ship to more than one brokerage.
+const ELEVATION_ORG = process.env.ELEVATE_ORG ?? process.env.CTX_ORG ?? 'elevation';
 
 export interface OrgConfig {
   name: string;
   display_name?: string;
+  remote_runtime?: {
+    mode?: 'ssh';
+    host?: string;
+    ssh_user?: string;
+    tools_root?: string;
+  };
+  integrations?: {
+    messages?: {
+      label?: string;
+      source_label?: string;
+      owner_agent?: string;
+      drafts_label?: string;
+    };
+    crm?: {
+      provider?: string;
+      label?: string;
+      api_key_env?: string;
+      base_url?: string;
+      auth?: {
+        type?: 'header' | 'query';
+        header?: string;
+        prefix?: string;
+        query_param?: string;
+      };
+      db_columns?: {
+        lead_id?: string;
+        stage?: string;
+        tags?: string;
+      };
+      endpoints?: {
+        leads?: string;
+        lead?: string;
+        notes?: string;
+      };
+    };
+  };
   data_roots?: {
     messages_db?: string;
     brew_dir?: string;
@@ -23,16 +59,32 @@ export interface OrgConfig {
 
 let cached: OrgConfig | null | undefined;
 
+export function getActiveOrgName(): string {
+  return ELEVATION_ORG;
+}
+
+export function clearOrgConfigCache(): void {
+  cached = undefined;
+}
+
 function expandTilde(p: string): string {
+  const withEnv = p.replace(/\$\{([A-Z0-9_]+)\}/g, (_, name: string) => process.env[name] ?? '');
+  p = withEnv;
   if (p.startsWith('~/') || p === '~') {
     return path.join(process.env.HOME ?? '', p.slice(1));
   }
   return p;
 }
 
+function expandOptional(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  return expandTilde(value);
+}
+
 /**
  * Read orgs/elevation/config.json — the place data_roots live for adapters.
- * Checks framework root first, then state dir. Returns null if neither exists.
+ * Runtime state overrides the bundled template so setup can safely customize a
+ * customer install without editing checked-in files.
  * Result cached per-process; adapters call this on every request but the
  * cache means we read disk once per server lifetime.
  */
@@ -40,10 +92,13 @@ export function getOrgConfig(): OrgConfig | null {
   if (cached !== undefined) return cached;
   const frameworkPath = path.join(CTX_FRAMEWORK_ROOT, 'orgs', ELEVATION_ORG, 'config.json');
   const statePath = path.join(CTX_ROOT, 'orgs', ELEVATION_ORG, 'config.json');
-  const target = fs.existsSync(frameworkPath)
-    ? frameworkPath
-    : fs.existsSync(statePath)
+  const templatePath = path.join(CTX_FRAMEWORK_ROOT, 'customer-templates', ELEVATION_ORG, 'config.json');
+  const target = fs.existsSync(statePath)
     ? statePath
+    : fs.existsSync(frameworkPath)
+    ? frameworkPath
+    : fs.existsSync(templatePath)
+    ? templatePath
     : null;
   if (!target) {
     cached = null;
@@ -60,6 +115,15 @@ export function getOrgConfig(): OrgConfig | null {
       if (roots.listings_state) roots.listings_state = expandTilde(roots.listings_state);
       if (roots.knowledge_seed) roots.knowledge_seed = expandTilde(roots.knowledge_seed);
     }
+    if (cfg.remote_runtime) {
+      cfg.remote_runtime.host = expandOptional(cfg.remote_runtime.host);
+      cfg.remote_runtime.ssh_user = expandOptional(cfg.remote_runtime.ssh_user);
+      cfg.remote_runtime.tools_root = expandOptional(cfg.remote_runtime.tools_root);
+    }
+    if (cfg.integrations?.crm) {
+      cfg.integrations.crm.base_url = expandOptional(cfg.integrations.crm.base_url);
+    }
+    cfg.voice_profile = expandOptional(cfg.voice_profile);
     cached = cfg;
     return cfg;
   } catch {
@@ -72,11 +136,12 @@ export function getOrgConfig(): OrgConfig | null {
  * Path to orgs/elevation/secrets.env — the place adapter API keys live.
  * The dashboard server doesn't get this in process.env (the elevate CLI
  * only puts auth/root/instance/port in dashboard/.env.local), so adapters
- * that need API keys (Lofty, etc.) must read this file directly.
+ * that need API keys must read this file directly.
  */
 export function getSecretsPath(): string {
   const frameworkPath = path.join(CTX_FRAMEWORK_ROOT, 'orgs', ELEVATION_ORG, 'secrets.env');
   const statePath = path.join(CTX_ROOT, 'orgs', ELEVATION_ORG, 'secrets.env');
+  if (fs.existsSync(statePath)) return statePath;
   if (fs.existsSync(frameworkPath)) return frameworkPath;
   return statePath;
 }
@@ -97,10 +162,15 @@ export function parseEnvFile(path: string): Record<string, string> {
     if (eq === -1) continue;
     const key = trimmed.slice(0, eq).trim();
     let value = trimmed.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
+    if (value.startsWith('"') && value.endsWith('"')) {
+      value = value
+        .slice(1, -1)
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r')
+        .replace(/\\t/g, '\t')
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
+    } else if (value.startsWith("'") && value.endsWith("'")) {
       value = value.slice(1, -1);
     }
     if (key) result[key] = value;

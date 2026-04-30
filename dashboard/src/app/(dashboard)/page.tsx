@@ -14,6 +14,8 @@ import { LiveActivity } from '@/components/overview/live-activity';
 import { SystemHealth } from '@/components/overview/system-health';
 import { MetricCards } from '@/components/overview/metric-cards';
 import { AgentStatusGrid } from '@/components/overview/agent-status-grid';
+import { RealtorCommandCenter } from '@/components/overview/realtor-command-center';
+import { getRealtorCommandCenter } from '@/lib/realestate/command-center';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +42,7 @@ export default async function OverviewPage({
     milestones,
     agents,
     heartbeatsList,
+    realtorCenter,
   ] = await Promise.all([
     Promise.resolve(getPendingCount(org || undefined)),
     Promise.resolve(getTasks({ status: 'blocked', org: org || undefined })),
@@ -51,6 +54,7 @@ export default async function OverviewPage({
     Promise.resolve(getMilestones(org || undefined)),
     discoverAgents(org || undefined),
     getAllHeartbeats(),
+    getRealtorCommandCenter(org || undefined),
   ]);
 
   // Convert heartbeats array to lookup map
@@ -96,6 +100,8 @@ export default async function OverviewPage({
         pendingApprovals={pendingCount}
         blockedTasks={blockedTasks.length}
       />
+
+      <RealtorCommandCenter data={realtorCenter.data} />
 
       {/* Action Required - only show if there are actions */}
       {totalActions > 0 && (

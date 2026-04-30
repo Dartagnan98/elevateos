@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 import { getLatestBrew, getBrewByDate, getBrewHistory } from '@/lib/realestate/brew-reader';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const date = req.nextUrl.searchParams.get('date');
   const history = req.nextUrl.searchParams.get('history');
 
