@@ -28,6 +28,14 @@ export function getFrameworkRoot(fallback: string = process.cwd()): string {
   );
 }
 
+export function getTunnelName(instanceId: string = getInstanceId()): string {
+  return `${TUNNEL_NAME_BASE}-${instanceId}`;
+}
+
+export function getTunnelPlistLabel(instanceId: string = getInstanceId()): string {
+  return `${TUNNEL_PLIST_LABEL}.${instanceId}`;
+}
+
 export function buildRuntimeEnv(options: {
   instanceId: string;
   stateRoot: string;

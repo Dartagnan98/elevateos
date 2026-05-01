@@ -123,6 +123,6 @@ ElevateOS dashboard does **not** mirror or write to that queue in v1. Tier 2 bui
 
 - `better-sqlite3` in dashboard adapters means dashboard must run on the same machine as `messages.db`.
 - CRM API keys in `orgs/<org>/secrets.env` are read via `fs`, not the dashboard process env, because PM2's dashboard env doesn't carry org secrets. The concrete secret name, auth mode, header/prefix or query param, base URL, endpoints, and CRM DB columns come from `integrations.crm`.
-- Cloudflare tunnel uses the per-instance `elevateos-<instance>` name.
+- Cloudflare tunnel uses the per-instance `elevateos-<instance>` name. Quick tunnels are temporary `trycloudflare.com` foreground sessions; persistent phone access uses a named tunnel, `cloudflared tunnel route dns`, and a launchd service.
 
 These are known v1 constraints. Hosted dashboard is Tier 3.

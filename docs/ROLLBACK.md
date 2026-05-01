@@ -12,6 +12,7 @@ pm2 save
 # 2. Remove the cloudflared launchd entry, if step 16 of INSTALL was run.
 launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.elevateos.tunnel.elevation.plist 2>/dev/null
 rm -f ~/Library/LaunchAgents/com.elevateos.tunnel.elevation.plist
+rm -rf ~/.elevate/elevation/cloudflared
 
 # 3. Wipe the install. Customer data roots stay where they are.
 rm -rf ~/elevateos

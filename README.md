@@ -80,6 +80,27 @@ node dist/cli.js install --instance elevation
 
 After install, `localhost:3000` shows the dashboard with local agent chat, tools, crons, memory, and settings surfaces. Telegram and gateway connectors can be configured after the local dashboard is up.
 
+### Phone access with Cloudflare
+
+For a quick no-account phone test, start the dashboard and run:
+
+```bash
+node dist/cli.js tunnel quick --instance elevation --port 3000
+```
+
+Keep that terminal open. Quick tunnels use a temporary `trycloudflare.com` URL and are not persistent.
+
+For a persistent phone URL, use a free Cloudflare account with a domain managed by Cloudflare:
+
+```bash
+brew install cloudflared
+cloudflared login
+node dist/cli.js tunnel start --instance elevation --port 3000 --hostname dashboard.example.com
+node dist/cli.js tunnel status --instance elevation
+```
+
+`tunnel start` creates or reuses the named tunnel `elevateos-elevation`, routes the hostname with `cloudflared tunnel route dns`, writes a per-instance cloudflared config under `~/.elevate/elevation/cloudflared/config.yaml`, and installs a macOS launchd service at `~/Library/LaunchAgents/com.elevateos.tunnel.elevation.plist` so the tunnel starts again after login. Use Cloudflare Access or an equivalent outer auth policy before treating a tunneled dashboard as production Internet exposure.
+
 ---
 
 ## What's in v1

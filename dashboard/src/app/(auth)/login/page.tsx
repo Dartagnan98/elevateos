@@ -83,7 +83,7 @@ export default function LoginPage() {
 
     const body = new URLSearchParams();
     body.set('csrfToken', csrfTokenRef.current || '');
-    body.set('username', usernameInput?.value || '');
+    body.set('username', usernameInput?.value.trim() || '');
     body.set('password', passwordInput?.value || '');
     body.set('callbackUrl', '/');
 
@@ -220,6 +220,10 @@ export default function LoginPage() {
                   type="text"
                   required
                   autoFocus
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="username"
+                  spellCheck={false}
                   placeholder="admin"
                   className="bg-background/80"
                   suppressHydrationWarning
@@ -232,6 +236,10 @@ export default function LoginPage() {
                   name="password"
                   type="password"
                   required
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="current-password"
+                  spellCheck={false}
                   placeholder="Enter password"
                   className="bg-background/80"
                   suppressHydrationWarning

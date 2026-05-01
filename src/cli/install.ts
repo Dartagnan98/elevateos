@@ -55,12 +55,37 @@ function tryInstallJq(): boolean {
   return false;
 }
 
+function tryInstallCloudflared(): boolean {
+  if (IS_MAC && commandExists('brew')) {
+    try { execSync('brew install cloudflared', { stdio: 'inherit' }); return true; } catch { return false; }
+  }
+  if (IS_WINDOWS) {
+    if (commandExists('winget')) {
+      try { execSync('winget install Cloudflare.cloudflared --silent', { stdio: 'inherit' }); return true; } catch { /* try choco */ }
+    }
+    if (commandExists('choco')) {
+      try { execSync('choco install cloudflared -y', { stdio: 'inherit' }); return true; } catch { return false; }
+    }
+  }
+  return false;
+}
+
 export const installCommand = new Command('install')
   .option('--instance <id>', 'Instance ID', 'default')
   .option('--starter-org <org>', 'Starter organization name', 'skyleigh-elevate')
   .option('--no-starter-agents', 'Skip creating the starter Executive Assistant / specialist roster')
+  .option('--with-cloudflare', 'Install/check cloudflared and print tunnel setup steps')
+  .option('--cloudflare-hostname <hostname>', 'Persistent Cloudflare hostname to route after install, e.g. dashboard.example.com')
+  .option('--cloudflare-port <port>', 'Dashboard port for Cloudflare Tunnel', '3000')
   .description(`Install ${PRODUCT_NAME} — create state directories, check and install dependencies`)
-  .action(async (options: { instance: string; starterOrg: string; starterAgents?: boolean }) => {
+  .action(async (options: {
+    instance: string;
+    starterOrg: string;
+    starterAgents?: boolean;
+    withCloudflare?: boolean;
+    cloudflareHostname?: string;
+    cloudflarePort: string;
+  }) => {
     const instanceId = options.instance;
     const ctxRoot = getStateRoot(instanceId);
 
@@ -230,6 +255,33 @@ export const installCommand = new Command('install')
         console.log(`  ✓ jq: ${v}`);
       } catch {
         console.log('  ✓ jq: installed');
+      }
+    }
+
+    // Cloudflare Tunnel — optional phone/remote dashboard access.
+    // Persistent mode still requires `cloudflared login` and a hostname on a
+    // Cloudflare-managed domain; quick tunnels work without an account but are
+    // intentionally foreground/temporary.
+    if (options.withCloudflare || options.cloudflareHostname) {
+      if (!commandExists('cloudflared')) {
+        console.log('  - cloudflared: not found. Installing...');
+        const installed = tryInstallCloudflared();
+        if (installed && commandExists('cloudflared')) {
+          const v = execSync('cloudflared --version', { encoding: 'utf-8', stdio: 'pipe' }).trim();
+          console.log(`  ✓ cloudflared: ${v} (just installed)`);
+        } else {
+          console.log('  ! cloudflared: could not auto-install.');
+          if (IS_MAC) console.log('    Install with: brew install cloudflared');
+          else if (IS_WINDOWS) console.log('    Install with: winget install Cloudflare.cloudflared');
+          else console.log('    Install from: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/');
+        }
+      } else {
+        try {
+          const v = execSync('cloudflared --version', { encoding: 'utf-8', stdio: 'pipe' }).trim();
+          console.log(`  ✓ cloudflared: ${v}`);
+        } catch {
+          console.log('  ✓ cloudflared: installed');
+        }
       }
     }
 
@@ -416,6 +468,49 @@ export const installCommand = new Command('install')
       }
     }
 
+    if (options.withCloudflare || options.cloudflareHostname) {
+      console.log('\nCloudflare Tunnel setup:');
+      const cliPath = join(process.cwd(), 'dist', 'cli.js');
+      const cfCert = join(process.env.HOME || '', '.cloudflared', 'cert.pem');
+      if (options.cloudflareHostname && commandExists('cloudflared') && existsSync(cfCert) && existsSync(cliPath)) {
+        const tunnelResult = spawnSync(
+          process.execPath,
+          [
+            cliPath,
+            'tunnel',
+            'start',
+            '--instance',
+            instanceId,
+            '--port',
+            options.cloudflarePort,
+            '--hostname',
+            options.cloudflareHostname,
+          ],
+          { stdio: 'inherit', cwd: process.cwd(), timeout: 60000 },
+        );
+        if (tunnelResult.status !== 0) {
+          console.log(`  ! Persistent tunnel setup failed. Re-run manually: ${CLI_NAME} tunnel start --instance ${instanceId} --port ${options.cloudflarePort} --hostname ${options.cloudflareHostname}`);
+        }
+      } else {
+        if (!commandExists('cloudflared')) {
+          console.log('  ! cloudflared is not installed yet.');
+        }
+        if (!existsSync(cfCert)) {
+          console.log('  ! Cloudflare login is not complete yet. Run: cloudflared login');
+        }
+        if (options.cloudflareHostname) {
+          console.log(`  Persistent phone URL after login/domain setup:`);
+          console.log(`    ${CLI_NAME} tunnel start --instance ${instanceId} --port ${options.cloudflarePort} --hostname ${options.cloudflareHostname}`);
+        } else {
+          console.log('  Temporary no-account phone URL:');
+          console.log(`    ${CLI_NAME} tunnel quick --instance ${instanceId} --port ${options.cloudflarePort}`);
+          console.log('  Persistent phone URL with a Cloudflare-managed domain:');
+          console.log(`    cloudflared login`);
+          console.log(`    ${CLI_NAME} tunnel start --instance ${instanceId} --port ${options.cloudflarePort} --hostname dashboard.example.com`);
+        }
+      }
+    }
+
     console.log('\n  Installation complete.');
     console.log(`  State directory: ${ctxRoot}`);
     console.log(`\n  Dashboard credentials saved to: ${dashEnvPath}`);
@@ -425,7 +520,8 @@ export const installCommand = new Command('install')
     console.log('\n  Next steps:');
     console.log(`    1. ${CLI_NAME} start executive-assistant --instance ${instanceId}`);
     console.log(`    2. ${CLI_NAME} dashboard --instance ${instanceId} --install --build --open`);
-    console.log(`    3. Open Agents → Executive Assistant → Chat / Tools\n`);
+    console.log(`    3. For phone access: ${CLI_NAME} tunnel quick --instance ${instanceId} --port 3000`);
+    console.log(`    4. Open Agents → Executive Assistant → Chat / Tools\n`);
   });
 
 /**

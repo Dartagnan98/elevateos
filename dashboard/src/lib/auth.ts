@@ -70,17 +70,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         if (!credentials?.username || !credentials?.password) return null;
+        const username = String(credentials.username).trim();
+        const password = String(credentials.password);
+        if (!username || !password) return null;
 
         // Seed admin user on first auth attempt if no users exist
         await seedAdminUser();
 
         const user = db
-          .prepare('SELECT * FROM users WHERE username = ?')
-          .get(credentials.username as string) as User | undefined;
+          .prepare('SELECT * FROM users WHERE username = ? COLLATE NOCASE ORDER BY id LIMIT 1')
+          .get(username) as User | undefined;
         if (!user) return null;
 
         const valid = await bcrypt.compare(
-          credentials.password as string,
+          password,
           user.password_hash
         );
         if (!valid) return null;

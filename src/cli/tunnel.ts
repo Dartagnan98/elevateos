@@ -3,33 +3,60 @@ import { execSync, spawnSync } from 'child_process';
 import { existsSync, writeFileSync, readFileSync, mkdirSync, chmodSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import { CLI_NAME, PRODUCT_NAME, TUNNEL_NAME_BASE, getStateRoot } from '../utils/elevate.js';
+import {
+  CLI_NAME,
+  PRODUCT_NAME,
+  TUNNEL_NAME_BASE,
+  getStateRoot,
+  getTunnelName,
+  getTunnelPlistLabel,
+} from '../utils/elevate.js';
 
 const CLOUDFLARED_CERT = join(homedir(), '.cloudflared', 'cert.pem');
-const CLOUDFLARED_CONFIG = join(homedir(), '.cloudflared', 'config.yaml');
+const GLOBAL_CLOUDFLARED_CONFIG = join(homedir(), '.cloudflared', 'config.yaml');
 
 interface TunnelConfig {
   tunnelId?: string;
   tunnelName?: string;
   tunnelUrl?: string;
+  publicHostname?: string;
   port?: number;
   createdAt?: string;
 }
 
-function getTunnelName(instance: string): string {
-  return `${TUNNEL_NAME_BASE}-${instance}`;
-}
-
 function getPlistLabel(instance: string): string {
-  return `com.elevateos.tunnel.${instance}`;
+  return getTunnelPlistLabel(instance);
 }
 
 function getPlistPath(instance: string): string {
   return join(homedir(), 'Library', 'LaunchAgents', `${getPlistLabel(instance)}.plist`);
 }
 
+function getCloudflaredConfigPath(instance: string): string {
+  return join(getStateRoot(instance), 'cloudflared', 'config.yaml');
+}
+
 function getTunnelConfigPath(instance: string): string {
   return join(getStateRoot(instance), 'tunnel.json');
+}
+
+function normalizeHostname(input: string | undefined): string | undefined {
+  if (!input) return undefined;
+  let hostname = input.trim().toLowerCase();
+  if (!hostname) return undefined;
+  if (hostname.startsWith('http://') || hostname.startsWith('https://')) {
+    try {
+      hostname = new URL(hostname).hostname;
+    } catch {
+      throw new Error(`Invalid hostname: ${input}`);
+    }
+  }
+  hostname = hostname.replace(/\.$/, '');
+  const valid = /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(hostname);
+  if (!valid) {
+    throw new Error(`Invalid hostname: ${input}`);
+  }
+  return hostname;
 }
 
 function readTunnelConfig(instance: string): TunnelConfig {
@@ -150,16 +177,16 @@ function findExistingTunnel(instance: string): CloudflaredTunnel | null {
 function createTunnel(instance: string): CloudflaredTunnel {
   const tunnelName = getTunnelName(instance);
   let output = '';
-  try {
-    output = execSync(`cloudflared tunnel create --output json ${tunnelName}`, {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      timeout: 30000,
-    });
-  } catch (err) {
-    console.error('  Failed to create tunnel:', err);
+  const result = spawnSync('cloudflared', ['tunnel', 'create', '--output', 'json', tunnelName], {
+    encoding: 'utf-8',
+    stdio: 'pipe',
+    timeout: 30000,
+  });
+  if (result.status !== 0) {
+    console.error('  Failed to create tunnel:', result.stderr || result.stdout);
     process.exit(1);
   }
+  output = result.stdout;
   try {
     const created: CloudflaredCreateOutput = JSON.parse(output);
     return { id: created.id, name: created.name };
@@ -174,15 +201,47 @@ function createTunnel(instance: string): CloudflaredTunnel {
   }
 }
 
-function writeCloudflaredConfig(tunnelId: string, port: number): void {
+function routeDns(tunnelName: string, hostname: string): void {
+  const result = spawnSync('cloudflared', ['tunnel', 'route', 'dns', tunnelName, hostname], {
+    encoding: 'utf-8',
+    stdio: 'pipe',
+    timeout: 30000,
+  });
+  const output = `${result.stdout || ''}\n${result.stderr || ''}`.trim();
+  if (result.status === 0) {
+    console.log(`  DNS route: ${hostname} -> ${tunnelName}`);
+    return;
+  }
+  if (/already exists|record.*exists/i.test(output)) {
+    console.log(`  DNS route: ${hostname} already exists`);
+    return;
+  }
+  throw new Error(output || `cloudflared tunnel route dns exited ${result.status}`);
+}
+
+function writeCloudflaredConfig(instance: string, tunnelId: string, port: number, hostname?: string): void {
   const credFile = join(homedir(), '.cloudflared', `${tunnelId}.json`);
+  const configPath = getCloudflaredConfigPath(instance);
+  mkdirSync(join(getStateRoot(instance), 'cloudflared'), { recursive: true });
+
+  const ingress = hostname
+    ? [
+      `  - hostname: ${hostname}`,
+      `    service: http://localhost:${port}`,
+      `  - service: http_status:404`,
+    ]
+    : [
+      `  - service: http://localhost:${port}`,
+      `  - service: http_status:404`,
+    ];
+
   const config = [
     `tunnel: ${tunnelId}`,
     `credentials-file: ${credFile}`,
     `ingress:`,
-    `  - service: http://localhost:${port}`,
+    ...ingress,
   ].join('\n') + '\n';
-  writeFileSync(CLOUDFLARED_CONFIG, config, 'utf-8');
+  writeFileSync(configPath, config, 'utf-8');
 }
 
 function writePlist(instance: string, port: number): void {
@@ -192,6 +251,7 @@ function writePlist(instance: string, port: number): void {
   const tunnelName = getTunnelName(instance);
   const plistLabel = getPlistLabel(instance);
   const plistPath = getPlistPath(instance);
+  const configPath = getCloudflaredConfigPath(instance);
   const ctxRoot = getStateRoot(instance);
   const logDir = join(ctxRoot, 'logs', 'tunnel');
 
@@ -219,6 +279,8 @@ function writePlist(instance: string, port: number): void {
     <array>
         <string>${cfPath}</string>
         <string>tunnel</string>
+        <string>--config</string>
+        <string>${configPath}</string>
         <string>--no-autoupdate</string>
         <string>run</string>
         <string>${tunnelName}</string>
@@ -321,11 +383,25 @@ function unloadService(instance: string): void {
 const startCommand = new Command('start')
   .option('--instance <id>', 'Instance ID', 'default')
   .option('--port <port>', 'Dashboard port', '3000')
+  .option('--hostname <hostname>', 'Public hostname to route to this tunnel, e.g. dashboard.example.com')
+  .option('--no-route-dns', 'Do not run `cloudflared tunnel route dns` when --hostname is provided')
   .description('Create (or reuse) the Cloudflare tunnel and start it as a launchd service')
-  .action(async (options: { instance: string; port: string }) => {
+  .action(async (options: { instance: string; port: string; hostname?: string; routeDns?: boolean }) => {
     const port = parseInt(options.port, 10);
+    if (!Number.isFinite(port) || port <= 0 || port > 65535) {
+      console.error(`Invalid port: ${options.port}`);
+      process.exit(1);
+    }
     const tunnelName = getTunnelName(options.instance);
     const plistPath = getPlistPath(options.instance);
+    const savedConfig = readTunnelConfig(options.instance);
+    let publicHostname: string | undefined;
+    try {
+      publicHostname = normalizeHostname(options.hostname ?? savedConfig.publicHostname);
+    } catch (err) {
+      console.error(`  ${(err as Error).message}`);
+      process.exit(1);
+    }
 
     checkPlatform();
     console.log(`\n${PRODUCT_NAME} Tunnel\n`);
@@ -348,11 +424,22 @@ const startCommand = new Command('start')
       console.log(`  Tunnel: ${tunnel.name} (${tunnel.id}) — created`);
     }
 
-    const tunnelUrl = `https://${tunnel.id}.cfargotunnel.com`;
+    if (publicHostname && options.routeDns !== false) {
+      try {
+        routeDns(tunnel.name, publicHostname);
+      } catch (err) {
+        console.error(`  DNS route failed: ${(err as Error).message}`);
+        console.error('  Fix the hostname in Cloudflare or re-run with --no-route-dns if you route DNS manually.');
+        process.exit(1);
+      }
+    }
 
-    // 4. Write cloudflared config.yaml
-    writeCloudflaredConfig(tunnel.id, port);
-    console.log(`  Config: ${CLOUDFLARED_CONFIG}`);
+    const tunnelUrl = publicHostname ? `https://${publicHostname}` : undefined;
+
+    // 4. Write per-instance cloudflared config.yaml. Avoid ~/.cloudflared/config.yaml
+    // so quick tunnels and other apps are not broken by this installer.
+    writeCloudflaredConfig(options.instance, tunnel.id, port, publicHostname);
+    console.log(`  Config: ${getCloudflaredConfigPath(options.instance)}`);
 
     // 5. Write launchd plist
     writePlist(options.instance, port);
@@ -392,15 +479,24 @@ const startCommand = new Command('start')
     writeTunnelConfig(options.instance, {
       tunnelId: tunnel.id,
       tunnelName: tunnel.name,
-      tunnelUrl,
+      ...(tunnelUrl ? { tunnelUrl } : {}),
+      ...(publicHostname ? { publicHostname } : {}),
       port,
       createdAt: new Date().toISOString(),
     });
 
-    console.log(`\n  Dashboard URL: ${tunnelUrl}`);
+    if (tunnelUrl) {
+      console.log(`\n  Dashboard URL: ${tunnelUrl}`);
+    } else {
+      console.log(`\n  No public hostname configured yet.`);
+      console.log(`  For persistent phone access, add a domain to Cloudflare and run:`);
+      console.log(`    ${CLI_NAME} tunnel start --instance ${options.instance} --port ${port} --hostname dashboard.example.com`);
+      console.log(`  For a temporary no-account link, run:`);
+      console.log(`    ${CLI_NAME} tunnel quick --instance ${options.instance} --port ${port}`);
+    }
     console.log(`  TUNNEL_URL saved to: ${getTunnelConfigPath(options.instance)}\n`);
     console.log(`  The tunnel will restart automatically after reboot.`);
-    console.log(`  Start the dashboard with: ${CLI_NAME} dashboard\n`);
+    console.log(`  Start the dashboard with: ${CLI_NAME} dashboard --instance ${options.instance} --build\n`);
   });
 
 const stopCommand = new Command('stop')
@@ -456,8 +552,9 @@ const statusCommand = new Command('status')
     if (config.tunnelUrl) {
       console.log(`  Dashboard URL: ${config.tunnelUrl}`);
     } else {
-      console.log(`  Dashboard URL: not set (run: ${CLI_NAME} tunnel start)`);
+      console.log(`  Dashboard URL: not set (run: ${CLI_NAME} tunnel start --hostname dashboard.example.com)`);
     }
+    console.log(`  Config file: ${getCloudflaredConfigPath(options.instance)}`);
 
     if (config.createdAt) {
       console.log(`  Tunnel created: ${new Date(config.createdAt).toLocaleString()}`);
@@ -478,11 +575,45 @@ const urlCommand = new Command('url')
     process.stdout.write(config.tunnelUrl + '\n');
   });
 
+const quickCommand = new Command('quick')
+  .option('--instance <id>', 'Instance ID', 'default')
+  .option('--port <port>', 'Dashboard port', '3000')
+  .description('Start a temporary trycloudflare.com tunnel in the foreground')
+  .action(async (options: { instance: string; port: string }) => {
+    const port = parseInt(options.port, 10);
+    if (!Number.isFinite(port) || port <= 0 || port > 65535) {
+      console.error(`Invalid port: ${options.port}`);
+      process.exit(1);
+    }
+
+    console.log(`\n${PRODUCT_NAME} Quick Tunnel\n`);
+    const version = checkCloudflared();
+    console.log(`  cloudflared: ${version}`);
+    if (existsSync(GLOBAL_CLOUDFLARED_CONFIG)) {
+      console.log(`  note: ${GLOBAL_CLOUDFLARED_CONFIG} exists; if quick tunnels fail, move that file aside or use persistent named tunnels.`);
+    }
+    console.log(`  Instance: ${options.instance}`);
+    console.log(`  Target: http://localhost:${port}`);
+    console.log('');
+    console.log('  This is the free no-account trycloudflare mode.');
+    console.log('  Keep this terminal open; the URL changes when the process stops.');
+    console.log('  For a persistent URL, use:');
+    console.log(`    ${CLI_NAME} tunnel start --instance ${options.instance} --port ${port} --hostname dashboard.example.com`);
+    console.log('');
+
+    const cfPath = getCloudflaredPath();
+    const result = spawnSync(cfPath, ['tunnel', '--url', `http://localhost:${port}`], {
+      stdio: 'inherit',
+    });
+    process.exit(result.status ?? 0);
+  });
+
 // ─── Parent command ───────────────────────────────────────────────────────────
 
 export const tunnelCommand = new Command('tunnel')
   .description('Manage Cloudflare tunnel for persistent dashboard access')
   .addCommand(startCommand)
+  .addCommand(quickCommand)
   .addCommand(stopCommand)
   .addCommand(statusCommand)
   .addCommand(urlCommand);

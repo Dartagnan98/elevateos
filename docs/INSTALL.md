@@ -10,7 +10,7 @@
 - Git
 - Python Elevate Agent CLI (`elevate`) installed and configured if you want the dashboard chat/memory connector live on first boot
 - PM2 (`npm i -g pm2`)
-- cloudflared (`brew install cloudflared`)
+- cloudflared (`brew install cloudflared`) if you want phone/remote dashboard access
 - jq (`brew install jq`)
 
 ## Steps
@@ -25,14 +25,17 @@ curl -fsSL https://raw.githubusercontent.com/Dartagnan98/elevateos/main/install.
 Set `ELEVATEOS_LAUNCH=0` if you only want to install/update without launching the app.
 By default, `elevateos install` creates the starter `skyleigh-elevate` org with Executive Assistant, Outreach, Marketing, and Social Media agents. Use `--starter-org <org>` to change the org name, or `--no-starter-agents` for a blank/custom install.
 
+For phone access during install, add `--with-cloudflare`. For a persistent phone URL, first put a domain on Cloudflare, run `cloudflared login`, then pass `--cloudflare-hostname dashboard.example.com`.
+
 Manual install:
 
 ```bash
 # 0. Preflight — fail fast if anything is missing.
-for bin in node npm git pm2 cloudflared jq; do
+for bin in node npm git pm2 jq; do
   command -v "$bin" >/dev/null || { echo "Missing $bin; install it before continuing"; exit 1; }
 done
 command -v elevate >/dev/null || echo "Elevate Agent CLI not found yet; dashboard install can continue, gateway connector waits for it"
+command -v cloudflared >/dev/null || echo "cloudflared not found yet; install it later for phone/remote access"
 
 # 1. Clone.
 cd ~
@@ -168,9 +171,40 @@ pm2 save
 pm2 startup        # follow PM2's printed sudo command
 
 # 16. (Optional) Cloudflare Tunnel for phone access.
-#     Uses the per-instance tunnel name "elevateos-elevation".
-node dist/cli.js tunnel start --instance elevation --port 3000
+#
+# Temporary/no-account link. Keep the terminal open; this URL changes when
+# cloudflared stops and has no uptime guarantee.
+node dist/cli.js tunnel quick --instance elevation --port 3000
+
+# Persistent/free Cloudflare URL. Requires a free Cloudflare account and a
+# domain managed by Cloudflare. This creates or reuses "elevateos-elevation",
+# routes DNS, writes ~/.elevate/elevation/cloudflared/config.yaml, and installs
+# ~/Library/LaunchAgents/com.elevateos.tunnel.elevation.plist so it restarts
+# after the Mac logs in.
+brew install cloudflared
+cloudflared login
+node dist/cli.js tunnel start --instance elevation --port 3000 --hostname dashboard.example.com
+node dist/cli.js tunnel status --instance elevation
 ```
+
+## Cloudflare persistence model
+
+There are two Cloudflare modes:
+
+- `elevateos tunnel quick` uses `trycloudflare.com`. It is free and does not require an account, but it is a foreground development tunnel. The URL changes whenever the process stops.
+- `elevateos tunnel start --hostname <host>` uses a named Cloudflare Tunnel. It is persistent on the Mac through launchd, but it needs `cloudflared login` and a public hostname on a domain in the Cloudflare account. Cloudflare routes that hostname to the tunnel using `cloudflared tunnel route dns`.
+
+For full persistence after reboot, keep both layers supervised:
+
+```bash
+pm2 start ecosystem.config.js
+pm2 save
+pm2 startup     # follow the printed sudo command
+
+node dist/cli.js tunnel start --instance elevation --port 3000 --hostname dashboard.example.com
+```
+
+Tunnel alone does not add outer identity protection. For Internet-facing production use, add Cloudflare Access on the hostname so the dashboard login is behind Cloudflare's auth gate too.
 
 ## Verify
 

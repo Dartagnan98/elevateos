@@ -1,9 +1,9 @@
 import { Command } from 'commander';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import { existsSync, readFileSync, readdirSync, statSync, chmodSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import { CLI_NAME, PRODUCT_NAME, TUNNEL_NAME_BASE, TUNNEL_PLIST_LABEL, getStateRoot } from '../utils/elevate.js';
+import { CLI_NAME, PRODUCT_NAME, getStateRoot, getTunnelName, getTunnelPlistLabel } from '../utils/elevate.js';
 
 interface Check {
   name: string;
@@ -211,26 +211,25 @@ export const doctorCommand = new Command('doctor')
           timeout: 10000,
         });
         const tunnels: Array<{ name: string }> = JSON.parse(listOut);
-        tunnelExists = tunnels.some((t) => t.name === TUNNEL_NAME_BASE || t.name.startsWith(`${TUNNEL_NAME_BASE}-`));
+        tunnelExists = tunnels.some((t) => t.name === getTunnelName(options.instance));
       } catch { /* not authenticated or cloudflared not installed */ }
       checks.push({
-        name: `Tunnel '${TUNNEL_NAME_BASE}'`,
+        name: `Tunnel '${getTunnelName(options.instance)}'`,
         status: tunnelExists ? 'pass' : 'warn',
         message: tunnelExists ? 'Exists' : 'Not created',
-        fix: !tunnelExists ? `Run: ${CLI_NAME} tunnel start` : undefined,
+        fix: !tunnelExists ? `Run: ${CLI_NAME} tunnel start --instance ${options.instance} --hostname dashboard.example.com` : undefined,
       });
 
       // launchd service running?
       let serviceRunning = false;
       try {
-        const launchctlOut = execSync('launchctl list', { encoding: 'utf-8', stdio: 'pipe' });
-        serviceRunning = launchctlOut.includes(TUNNEL_PLIST_LABEL);
+        serviceRunning = spawnSync('launchctl', ['list', getTunnelPlistLabel(options.instance)], { stdio: 'pipe' }).status === 0;
       } catch { /* launchctl not available */ }
       checks.push({
         name: 'Tunnel service (launchd)',
         status: serviceRunning ? 'pass' : 'warn',
         message: serviceRunning ? 'Running' : 'Not running',
-        fix: !serviceRunning ? `Run: ${CLI_NAME} tunnel start` : undefined,
+        fix: !serviceRunning ? `Run: ${CLI_NAME} tunnel start --instance ${options.instance}` : undefined,
       });
 
       // Tunnel URL saved?
@@ -244,7 +243,7 @@ export const doctorCommand = new Command('doctor')
         name: 'Tunnel URL',
         status: tunnelUrl ? 'pass' : 'warn',
         message: tunnelUrl ?? 'Not set',
-        fix: !tunnelUrl ? `Run: ${CLI_NAME} tunnel start` : undefined,
+        fix: !tunnelUrl ? `Run: ${CLI_NAME} tunnel start --instance ${options.instance} --hostname dashboard.example.com` : undefined,
       });
     }
 

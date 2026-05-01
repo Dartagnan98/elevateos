@@ -291,12 +291,17 @@ Commands:
 
 ```bash
 elevateos tunnel --instance elevation --help
+elevateos tunnel quick --instance elevation --port 3000
+elevateos tunnel start --instance elevation --port 3000 --hostname dashboard.example.com
+elevateos tunnel status --instance elevation
 ```
 
 What it does:
 
-- Helps configure Cloudflare tunnel naming and launchd labels per instance.
+- `quick` starts a temporary no-account `trycloudflare.com` tunnel in the foreground for phone testing.
+- `start --hostname` creates or reuses a named tunnel, routes the hostname with Cloudflare DNS, writes a per-instance config, and installs a macOS launchd service.
 - Tunnel exposure is optional; local-only installs do not need it.
+- Persistent phone access requires `cloudflared login` and a hostname on a Cloudflare-managed domain.
 - If exposed, use Cloudflare Access or equivalent outer auth in addition to dashboard auth.
 
 ### Rollback and uninstall
