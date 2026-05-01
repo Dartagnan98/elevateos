@@ -7,6 +7,9 @@ import bcrypt from 'bcryptjs';
 import { db } from './db';
 import { checkRateLimit, resetRateLimit } from './rate-limit';
 import type { User } from './types';
+import { useSecureAuthCookies } from './auth-cookies';
+
+const secureAuthCookies = useSecureAuthCookies();
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -14,31 +17,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // NextAuth v5 auto-enables these for HTTPS (including Cloudflare tunnels via
   // X-Forwarded-Proto), but tunnel proxies may not forward Secure-prefixed
   // cookies reliably. The proxy verifies this JWT cookie name, so this must
-  // stay consistent.
+  // stay consistent. Secure cookies are enabled only when an HTTPS dashboard
+  // URL is configured, so local `next start` on http://localhost can still
+  // complete the CSRF round trip.
   cookies: {
     sessionToken: {
       name: 'authjs.session-token',
-      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: process.env.NODE_ENV === 'production' },
+      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: secureAuthCookies },
     },
     csrfToken: {
       name: 'authjs.csrf-token',
-      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: process.env.NODE_ENV === 'production' },
+      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: secureAuthCookies },
     },
     callbackUrl: {
       name: 'authjs.callback-url',
-      options: { sameSite: 'lax', path: '/', secure: process.env.NODE_ENV === 'production' },
+      options: { sameSite: 'lax', path: '/', secure: secureAuthCookies },
     },
     pkceCodeVerifier: {
       name: 'authjs.pkce.code_verifier',
-      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: process.env.NODE_ENV === 'production' },
+      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: secureAuthCookies },
     },
     state: {
       name: 'authjs.state',
-      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: process.env.NODE_ENV === 'production' },
+      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: secureAuthCookies },
     },
     nonce: {
       name: 'authjs.nonce',
-      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: process.env.NODE_ENV === 'production' },
+      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: secureAuthCookies },
     },
   },
   providers: [

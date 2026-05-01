@@ -193,6 +193,7 @@ Production notes:
 - Use `--build` or `next start` for remote/tunnel use.
 - Do not expose `next dev` over a tunnel.
 - Keep `dashboard/.env.local` populated from `dashboard.env`.
+- Local `http://localhost` production starts intentionally use non-secure auth cookies so the CSRF login flow works. Set `NEXTAUTH_URL=https://...` or `AUTH_SECURE_COOKIES=true` when serving only over HTTPS.
 
 ### PM2 ecosystem
 
