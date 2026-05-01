@@ -14,7 +14,9 @@ vi.mock('jose', () => ({
 
 const { proxy } = await import('../proxy');
 
-function request(path: string, init?: RequestInit): NextRequest {
+type NextRequestInit = ConstructorParameters<typeof NextRequest>[1];
+
+function request(path: string, init?: NextRequestInit): NextRequest {
   return new NextRequest(new URL(path, 'http://localhost:3000'), init);
 }
 
