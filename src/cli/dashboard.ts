@@ -1,12 +1,12 @@
 import { Command } from 'commander';
 import { existsSync, readFileSync, writeFileSync, chmodSync, mkdirSync, openSync } from 'fs';
-import { join } from 'path';
-import { platform } from 'os';
+import { delimiter, dirname, join } from 'path';
 import { createServer } from 'net';
 import { randomBytes } from 'crypto';
+import { execFileSync, spawn } from 'child_process';
 import { CLI_NAME, PRODUCT_NAME, buildRuntimeEnv, getStateRoot } from '../utils/elevate.js';
 
-const IS_WINDOWS = platform() === 'win32';
+const MIN_DASHBOARD_NODE = { major: 20, minor: 19, patch: 0 };
 
 function parseEnvFile(filePath: string): Record<string, string> {
   const result: Record<string, string> = {};
@@ -54,7 +54,6 @@ async function findOpenPort(startPort: number): Promise<number | null> {
 }
 
 function openBrowser(url: string): void {
-  const { spawn } = require('child_process');
   const command = process.platform === 'darwin'
     ? { bin: 'open', args: [url] }
     : process.platform === 'win32'
@@ -68,6 +67,54 @@ function openBrowser(url: string): void {
   }
 }
 
+function parseNodeVersion(version: string): { major: number; minor: number; patch: number } | null {
+  const match = version.replace(/^v/, '').match(/^(\d+)\.(\d+)\.(\d+)/);
+  if (!match) return null;
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+  };
+}
+
+function isSupportedDashboardNode(version: string): boolean {
+  const parsed = parseNodeVersion(version);
+  if (!parsed) return false;
+  if (parsed.major !== MIN_DASHBOARD_NODE.major) return parsed.major > MIN_DASHBOARD_NODE.major;
+  if (parsed.minor !== MIN_DASHBOARD_NODE.minor) return parsed.minor > MIN_DASHBOARD_NODE.minor;
+  return parsed.patch >= MIN_DASHBOARD_NODE.patch;
+}
+
+function assertSupportedDashboardNode(): void {
+  if (isSupportedDashboardNode(process.version)) return;
+  console.error(`\nERROR: The dashboard requires Node.js ${MIN_DASHBOARD_NODE.major}.${MIN_DASHBOARD_NODE.minor}.${MIN_DASHBOARD_NODE.patch} or newer.`);
+  console.error(`Current Node.js: ${process.version} (${process.execPath})`);
+  console.error('Install/use a newer Node, then reinstall dashboard dependencies:');
+  console.error(`  ${CLI_NAME} dashboard --install --build`);
+  process.exit(1);
+}
+
+function getNextCliPath(dashboardDir: string): string {
+  return join(dashboardDir, 'node_modules', 'next', 'dist', 'bin', 'next');
+}
+
+function getNpmInstallCommand(): { bin: string; args: string[] } {
+  if (process.env.npm_execpath) {
+    return { bin: process.execPath, args: [process.env.npm_execpath, 'install'] };
+  }
+  return { bin: 'npm', args: ['install'] };
+}
+
+function withCurrentNodeOnPath(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const nodeDir = dirname(process.execPath);
+  const currentPath = env.PATH || process.env.PATH || '';
+  const pathParts = currentPath.split(delimiter).filter(Boolean);
+  const nextPath = pathParts.includes(nodeDir)
+    ? currentPath
+    : [nodeDir, currentPath].filter(Boolean).join(delimiter);
+  return { ...env, PATH: nextPath };
+}
+
 export const dashboardCommand = new Command('dashboard')
   .option('--port <port>', 'Port to run dashboard on', '3000')
   .option('--instance <id>', 'Instance ID', 'default')
@@ -76,7 +123,7 @@ export const dashboardCommand = new Command('dashboard')
   .option('--open', 'Open the dashboard in your browser after launch')
   .description(`Start the ${PRODUCT_NAME} dashboard (Next.js)`)
   .action(async (options: { port: string; instance: string; build?: boolean; install?: boolean; open?: boolean }) => {
-    const { execSync, spawn } = require('child_process');
+    assertSupportedDashboardNode();
 
     // Find dashboard directory
     const dashboardDir = findDashboardDir();
@@ -148,11 +195,24 @@ export const dashboardCommand = new Command('dashboard')
     if (options.install || !existsSync(join(dashboardDir, 'node_modules'))) {
       console.log('\nInstalling dashboard dependencies...');
       try {
-        execSync('npm install', { cwd: dashboardDir, stdio: 'inherit', timeout: 120000 });
+        const npmInstall = getNpmInstallCommand();
+        execFileSync(npmInstall.bin, npmInstall.args, {
+          cwd: dashboardDir,
+          stdio: 'inherit',
+          timeout: 120000,
+          env: withCurrentNodeOnPath(),
+        });
       } catch (err) {
         console.error('Failed to install dashboard dependencies:', err);
         process.exit(1);
       }
+    }
+
+    const nextCliPath = getNextCliPath(dashboardDir);
+    if (!existsSync(nextCliPath)) {
+      console.error(`\nERROR: Next.js CLI not found at ${nextCliPath}`);
+      console.error(`Run: ${CLI_NAME} dashboard --install`);
+      process.exit(1);
     }
 
     // ─── Build for production (required for tunnel / remote access) ──────────
@@ -160,15 +220,15 @@ export const dashboardCommand = new Command('dashboard')
     if (options.build) {
       console.log('\nBuilding dashboard for production...');
       try {
-        execSync('npm run build', { cwd: dashboardDir, stdio: 'inherit', timeout: 300000,
-          env: { ...process.env, AUTH_SECRET: authSecret, ADMIN_PASSWORD: adminPassword,
+        execFileSync(process.execPath, [nextCliPath, 'build'], { cwd: dashboardDir, stdio: 'inherit', timeout: 300000,
+          env: withCurrentNodeOnPath({ ...process.env, AUTH_SECRET: authSecret, ADMIN_PASSWORD: adminPassword,
                  ADMIN_USERNAME: adminUsername,
                  ELEVATE_ROOT: ctxRoot,
                  ELEVATE_FRAMEWORK_ROOT: process.cwd(),
                  ELEVATE_INSTANCE_ID: options.instance,
                  CTX_ROOT: ctxRoot,
                  CTX_FRAMEWORK_ROOT: process.cwd(),
-                 CTX_INSTANCE_ID: options.instance } });
+                 CTX_INSTANCE_ID: options.instance }) });
       } catch (err) {
         console.error('Dashboard build failed:', err);
         process.exit(1);
@@ -198,7 +258,7 @@ export const dashboardCommand = new Command('dashboard')
 
     // ─── Start server ─────────────────────────────────────────────────────────
 
-    const dashEnv = {
+    const dashEnv = withCurrentNodeOnPath({
       ...buildRuntimeEnv({
         instanceId: options.instance,
         stateRoot: ctxRoot,
@@ -209,12 +269,12 @@ export const dashboardCommand = new Command('dashboard')
       ADMIN_USERNAME: adminUsername,
       ADMIN_PASSWORD: adminPassword,
       AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST || 'true',
-    };
+    });
 
     const startMode = options.build ? 'start' : 'dev';
     const startArgs = startMode === 'start'
-      ? ['next', 'start', '--port', port]
-      : ['next', 'dev', '--port', port];
+      ? [nextCliPath, 'start', '--port', port]
+      : [nextCliPath, 'dev', '--port', port];
 
     const dashboardUrl = `http://localhost:${port}`;
     console.log(`\nDashboard starting on ${dashboardUrl}`);
@@ -237,11 +297,7 @@ export const dashboardCommand = new Command('dashboard')
     const logPath = join(logDir, 'dashboard.log');
     const logFd = openSync(logPath, 'a');
 
-    // On Windows, npx is a .cmd wrapper requiring shell resolution.
-    // Pass as single string to avoid Node.js DEP0190 deprecation warning.
-    const child = IS_WINDOWS
-      ? spawn(['npx', ...startArgs].join(' '), { cwd: dashboardDir, stdio: ['ignore', logFd, logFd], env: dashEnv, shell: true, detached: true })
-      : spawn('npx', startArgs, { cwd: dashboardDir, stdio: ['ignore', logFd, logFd], env: dashEnv, detached: true });
+    const child = spawn(process.execPath, startArgs, { cwd: dashboardDir, stdio: ['ignore', logFd, logFd], env: dashEnv, detached: true });
 
     // Detach the child from our event loop so parent exit does not take
     // it down. SIGHUP at the parent (tty close) then just terminates the

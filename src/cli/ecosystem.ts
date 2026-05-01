@@ -60,6 +60,7 @@ export const ecosystemCommand = new Command('ecosystem')
     const distDir = join(projectRoot, 'dist');
     const daemonScript = join(distDir, 'daemon.js');
     const dashboardDir = join(projectRoot, 'dashboard');
+    const dashboardNextScript = join(dashboardDir, 'node_modules', 'next', 'dist', 'bin', 'next');
     // BUG-019 + cycle-2 finding: require BOTH package.json AND node_modules/.bin/next.
     // Without the second check, running `elevateos ecosystem` before
     // `npm install` in dashboard/ produces a crash-looped PM2 entry that the
@@ -67,7 +68,7 @@ export const ecosystemCommand = new Command('ecosystem')
     // dashboard entry if its deps aren't installed yet — the user can re-run
     // `elevateos ecosystem` after `npm install` to add it.
     const hasDashboard = existsSync(join(dashboardDir, 'package.json')) &&
-      existsSync(join(dashboardDir, 'node_modules', '.bin', 'next'));
+      existsSync(dashboardNextScript);
 
     // BUG-002 fix: emit ecosystem.config.js as raw JS that resolves
     // process.env.CTX_INSTANCE_ID at PM2-startup time, not at generation time.
@@ -92,15 +93,18 @@ export const ecosystemCommand = new Command('ecosystem')
       ? `,
     {
       name: ${JSON.stringify(PM2_DASHBOARD_NAME)},
-      script: 'npx',
-      args: 'next start',
+      script: ${JSON.stringify(dashboardNextScript)},
+      args: 'start --port ' + (process.env.PORT || '3000'),
       cwd: ${JSON.stringify(dashboardDir)},
+      interpreter: process.env.ELEVATE_NODE_PATH || process.execPath,
       env: {
         PORT: process.env.PORT || '3000',
       },
       // Dashboard reads its real config from dashboard/.env.local — populated
       // by the dashboard command/install flow. Build before starting PM2:
-      // npm --prefix dashboard run build
+      // elevateos dashboard --build, or npm --prefix dashboard run build.
+      // Set ELEVATE_NODE_PATH if PM2's Node differs from the Node used for
+      // dashboard/node_modules native dependencies.
       max_restarts: 50,
       restart_delay: 5000,
       autorestart: true,

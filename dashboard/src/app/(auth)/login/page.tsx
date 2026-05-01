@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,22 +15,9 @@ import {
 import { SplashScreen } from '@/components/layout/splash-screen';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
-
-  // Redirect to setup if no users exist
-  useEffect(() => {
-    fetch('/api/setup')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.needsSetup) {
-          router.push('/setup');
-        }
-      })
-      .catch(() => {});
-  }, [router]);
 
   // CSRF token strategy: fetch once, hold in a ref, inject on submit.
   // React state bound with value={csrfToken} and imperative writes via
@@ -43,28 +29,35 @@ export default function LoginPage() {
   const csrfTokenRef = useRef<string>('');
   const [csrfReady, setCsrfReady] = useState(false);
 
+  const refreshCsrfToken = useCallback(async () => {
+    const res = await fetch('/api/auth/csrf', { credentials: 'same-origin', cache: 'no-store' });
+    const data = await res.json();
+    const token = data?.csrfToken;
+    if (!token) {
+      console.error('[login] /api/auth/csrf returned no token', data);
+      return '';
+    }
+    csrfTokenRef.current = token;
+    setCsrfReady(true);
+    return token;
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/auth/csrf', { credentials: 'same-origin' });
-        const data = await res.json();
+        const token = await refreshCsrfToken();
         if (cancelled) return;
-        const token = data?.csrfToken;
-        if (!token) {
-          console.error('[login] /api/auth/csrf returned no token', data);
-          return;
-        }
-        csrfTokenRef.current = token;
-        setCsrfReady(true);
+        if (!token) setCsrfReady(false);
       } catch (err) {
         console.error('[login] csrf fetch failed:', err);
+        if (!cancelled) setCsrfReady(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshCsrfToken]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     // POST the credentials callback ourselves with an
@@ -81,8 +74,15 @@ export default function LoginPage() {
     const usernameInput = form.querySelector('input[name="username"]') as HTMLInputElement | null;
     const passwordInput = form.querySelector('input[name="password"]') as HTMLInputElement | null;
 
+    const csrfToken = await refreshCsrfToken();
+    if (!csrfToken) {
+      setError('Could not prepare sign-in. Please try again.');
+      setLoading(false);
+      return;
+    }
+
     const body = new URLSearchParams();
-    body.set('csrfToken', csrfTokenRef.current || '');
+    body.set('csrfToken', csrfToken);
     body.set('username', usernameInput?.value.trim() || '');
     body.set('password', passwordInput?.value || '');
     body.set('callbackUrl', '/');
