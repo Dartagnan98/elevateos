@@ -85,15 +85,48 @@ export default function LoginPage() {
     body.set('csrfToken', csrfTokenRef.current || '');
     body.set('username', usernameInput?.value || '');
     body.set('password', passwordInput?.value || '');
+    body.set('callbackUrl', '/');
 
     try {
       const res = await fetch(form.action, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          // Ask Auth.js to return the redirect target as JSON instead of
+          // issuing a 302. This avoids tunneled/mobile browsers following a
+          // proxy-derived localhost callback URL.
+          'X-Auth-Return-Redirect': '1',
+        },
         body: body.toString(),
         credentials: 'same-origin',
-        redirect: 'follow',
+        redirect: 'manual',
       });
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await res.json().catch(() => null) as { url?: string } | null;
+        if (data?.url) {
+          const target = new URL(data.url, window.location.origin);
+          const code = target.searchParams.get('error');
+          if (target.pathname.startsWith('/login') || code) {
+            const msg = code === 'CallbackRouteError'
+              ? 'Too many attempts. Please wait a few minutes and try again.'
+              : code === 'CredentialsSignin'
+                ? 'Invalid username or password.'
+                : `Sign-in failed: ${code || 'Unknown'}`;
+            setError(msg);
+            setLoading(false);
+            return;
+          }
+          const callbackParam = new URL(window.location.href).searchParams.get('callbackUrl');
+          const safeTarget = callbackParam && callbackParam.startsWith('/') && !callbackParam.startsWith('//') ? callbackParam : '/';
+          window.location.href = safeTarget;
+          return;
+        }
+      }
+      if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) {
+        window.location.href = '/';
+        return;
+      }
       if (res.redirected) {
         const target = new URL(res.url);
         if (target.pathname.startsWith('/login')) {
