@@ -31,6 +31,11 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
           )}
           <TimeAgo date={task.created_at} className="text-xs" />
         </div>
+        {task.scheduled_for && (
+          <div className="rounded-md bg-primary/5 px-2 py-1 text-xs text-primary">
+            Run <TimeAgo date={task.scheduled_for} className="text-xs text-primary" />
+          </div>
+        )}
       </div>
     </Card>
   );

@@ -6,7 +6,7 @@ Skipping steps = broken system.
 ## Step 1: Update heartbeat (DO THIS FIRST)
 
 ```bash
-elevate bus update-heartbeat "<1-sentence summary of current work>"
+elevateos bus update-heartbeat "<1-sentence summary of current work>"
 ```
 
 If this fails, your agent shows as DEAD on the dashboard. Fix it before anything else.
@@ -14,12 +14,12 @@ If this fails, your agent shows as DEAD on the dashboard. Fix it before anything
 ## Step 2: Check inbox
 
 ```bash
-elevate bus check-inbox
+elevateos bus check-inbox
 ```
 
 Process ALL messages. ACK every single one:
 ```bash
-elevate bus ack-inbox "<message_id>"
+elevateos bus ack-inbox "<message_id>"
 ```
 
 Un-ACK'd messages are re-delivered in 5 minutes.
@@ -28,8 +28,8 @@ Target: 0 un-ACK'd messages after this step.
 ## Step 3: Check task queue
 
 ```bash
-elevate bus list-tasks --agent $CTX_AGENT_NAME --status pending
-elevate bus list-tasks --agent $CTX_AGENT_NAME --status in_progress
+elevateos bus list-tasks --agent $CTX_AGENT_NAME --status pending
+elevateos bus list-tasks --agent $CTX_AGENT_NAME --status in_progress
 ```
 
 - Pending tasks: pick the highest priority one and start it
@@ -39,7 +39,7 @@ elevate bus list-tasks --agent $CTX_AGENT_NAME --status in_progress
 ## Step 4: Log heartbeat event
 
 ```bash
-elevate bus log-event heartbeat agent_heartbeat info --meta '{"agent":"'$CTX_AGENT_NAME'"}'
+elevateos bus log-event heartbeat agent_heartbeat info --meta '{"agent":"'$CTX_AGENT_NAME'"}'
 ```
 
 ## Step 5: Write daily memory
@@ -60,7 +60,7 @@ MEMORY
 ## Step 6: Re-index memory to KB
 
 ```bash
-elevate bus kb-ingest ./MEMORY.md ./memory/$(date -u +%Y-%m-%d).md \
+elevateos bus kb-ingest ./MEMORY.md ./memory/$(date -u +%Y-%m-%d).md \
   --org $CTX_ORG --agent $CTX_AGENT_NAME --scope private --collection memory-$CTX_AGENT_NAME --force
 ```
 
@@ -68,7 +68,7 @@ elevate bus kb-ingest ./MEMORY.md ./memory/$(date -u +%Y-%m-%d).md \
 
 Read GOALS.md for any new objectives. If goals changed, create tasks:
 ```bash
-elevate bus create-task "<title>" --desc "<description>" --assignee $CTX_AGENT_NAME
+elevateos bus create-task "<title>" --desc "<description>" --assignee $CTX_AGENT_NAME
 ```
 
 ## Step 8: Resume work
@@ -76,9 +76,9 @@ elevate bus create-task "<title>" --desc "<description>" --assignee $CTX_AGENT_N
 Pick your highest priority task and work on it.
 
 ```bash
-elevate bus update-task "<task_id>" in_progress
+elevateos bus update-task "<task_id>" in_progress
 # ... do the work ...
-elevate bus complete-task "<task_id>" "<summary of what was produced>"
+elevateos bus complete-task "<task_id>" "<summary of what was produced>"
 ```
 
 ---

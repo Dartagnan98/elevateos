@@ -80,7 +80,7 @@ Then continue from step 8.
 
 8. **Discover your team:**
    ```bash
-   elevate bus read-all-heartbeats
+   elevateos bus read-all-heartbeats
    # Fallback if no heartbeats yet: ls "${CTX_ROOT}/state/" 2>/dev/null
    ```
    List all agents found and ask:
@@ -228,7 +228,7 @@ After workflows and tools are configured:
     Then set up the initial ingestion:
     ```bash
     # Ingest existing memory and key docs
-    elevate bus kb-ingest \
+    elevateos bus kb-ingest \
       "$CTX_AGENT_DIR/MEMORY.md" \
       "$CTX_AGENT_DIR/GOALS.md" \
       "$CTX_AGENT_DIR/IDENTITY.md" \
@@ -352,14 +352,14 @@ Do NOT rewrite TOOLS.md from memory. The template contains the authoritative ref
 ENABLED=$(cat "${CTX_ROOT}/config/enabled-agents.json" 2>/dev/null || echo '[]')
 if ! echo "$ENABLED" | jq -e --arg name "$CTX_AGENT_NAME" '.[] | select(. == $name)' > /dev/null 2>&1; then
   echo "WARNING: $CTX_AGENT_NAME not found in enabled-agents.json"
-  elevate bus send-telegram "$CTX_TELEGRAM_CHAT_ID" "Warning: I completed onboarding but I'm not in enabled-agents.json. Run: elevate start $CTX_AGENT_NAME"
+  elevateos bus send-telegram "$CTX_TELEGRAM_CHAT_ID" "Warning: I completed onboarding but I'm not in enabled-agents.json. Run: elevateos start $CTX_AGENT_NAME"
 fi
 ```
 
 19. **Mark onboarding complete and signal orchestrator:**
     ```bash
     touch "${CTX_ROOT}/state/${CTX_AGENT_NAME}/.onboarded"
-    elevate bus log-event action onboarding_complete info --meta '{"agent":"'$CTX_AGENT_NAME'","role":"specialist"}'
+    elevateos bus log-event action onboarding_complete info --meta '{"agent":"'$CTX_AGENT_NAME'","role":"specialist"}'
     ```
 
     Signal the orchestrator that this specialist is fully configured and ready:
@@ -367,7 +367,7 @@ fi
     # Find orchestrator from org context
     ORCH_NAME=$(cat "${CTX_FRAMEWORK_ROOT}/orgs/${CTX_ORG}/context.json" 2>/dev/null | jq -r '.orchestrator // empty')
     if [ -n "$ORCH_NAME" ]; then
-      elevate bus send-message "${ORCH_NAME}" normal "Specialist agent ${CTX_AGENT_NAME} onboarding complete and ready to work."
+      elevateos bus send-message "${ORCH_NAME}" normal "Specialist agent ${CTX_AGENT_NAME} onboarding complete and ready to work."
     fi
     ```
 
@@ -398,7 +398,7 @@ fi
 
 if [ -n "$MISSING" ]; then
   echo "BOOTSTRAP CHECK FAILED - missing or incomplete:${MISSING}"
-  elevate bus log-event error bootstrap_check_failed warning --meta '{"agent":"'$CTX_AGENT_NAME'","missing":"'"${MISSING}"'"}'
+  elevateos bus log-event error bootstrap_check_failed warning --meta '{"agent":"'$CTX_AGENT_NAME'","missing":"'"${MISSING}"'"}'
   # Attempt to fix TOOLS.md by copying from template
   if echo "$MISSING" | grep -q "TOOLS.md"; then
     cp "${CTX_FRAMEWORK_ROOT}/templates/agent/TOOLS.md" "${CTX_AGENT_DIR}/TOOLS.md" 2>/dev/null
@@ -444,7 +444,7 @@ fi
     EOF
 
     # Register the cycle
-    elevate bus manage-cycle create $CTX_AGENT_NAME \
+    elevateos bus manage-cycle create $CTX_AGENT_NAME \
       --cycle "<metric_name>" \
       --metric "<metric_name>" \
       --metric-type "<quantitative|qualitative>" \

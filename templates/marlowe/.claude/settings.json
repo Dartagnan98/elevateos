@@ -11,7 +11,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "elevate bus hook-context-status",
+    "command": "elevateos bus hook-context-status",
     "refreshInterval": 5,
     "timeout": 2
   },
@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "elevate bus hook-planmode-telegram",
+            "command": "elevateos bus hook-planmode-telegram",
             "timeout": 1860
           }
         ]
@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "elevate bus hook-permission-telegram",
+            "command": "elevateos bus hook-permission-telegram",
             "timeout": 1860
           }
         ]
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "elevate bus hook-ask-telegram",
+            "command": "elevateos bus hook-ask-telegram",
             "timeout": 10
           }
         ]
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "elevate bus hook-idle-flag",
+            "command": "elevateos bus hook-idle-flag",
             "timeout": 5
           }
         ]
@@ -65,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "elevate crash-alert",
+            "command": "elevateos crash-alert",
             "timeout": 10
           }
         ]
@@ -76,7 +76,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "elevate bus hook-compact-telegram",
+            "command": "elevateos bus hook-compact-telegram",
             "timeout": 10
           }
         ]

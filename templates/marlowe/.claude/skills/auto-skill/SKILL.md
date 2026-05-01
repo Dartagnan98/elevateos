@@ -105,10 +105,10 @@ After saving the draft:
 
 ```bash
 # Log the creation
-elevate bus log-event action skill_draft_created info --meta "{\"skill\":\"[skill-name]\",\"source_task\":\"[task_id]\",\"agent\":\"$CTX_AGENT_NAME\"}"
+elevateos bus log-event action skill_draft_created info --meta "{\"skill\":\"[skill-name]\",\"source_task\":\"[task_id]\",\"agent\":\"$CTX_AGENT_NAME\"}"
 
 # Notify orchestrator — it will surface in the next morning digest
-elevate bus send-message $CTX_ORCHESTRATOR_AGENT normal "Skill candidate drafted: [skill-name] — source task [task_id]. Check skills/drafts/[skill-name]/SKILL.md. Awaiting digest review."
+elevateos bus send-message $CTX_ORCHESTRATOR_AGENT normal "Skill candidate drafted: [skill-name] — source task [task_id]. Check skills/drafts/[skill-name]/SKILL.md. Awaiting digest review."
 ```
 
 The orchestrator includes it in the next morning briefing for the user. The user replies `approve [skill-name]`, `reject [skill-name] [reason]`, or `revise [skill-name] [feedback]`.
@@ -129,13 +129,13 @@ mv skills/drafts/[skill-name]/ .claude/skills/[skill-name]/
 sed -i '' 's/status: draft/status: active/' .claude/skills/[skill-name]/SKILL.md
 
 # Log activation
-elevate bus log-event action skill_activated info --meta "{\"skill\":\"[skill-name]\",\"agent\":\"$CTX_AGENT_NAME\"}"
+elevateos bus log-event action skill_activated info --meta "{\"skill\":\"[skill-name]\",\"agent\":\"$CTX_AGENT_NAME\"}"
 
 # Notify the user
-elevate bus send-telegram $CTX_TELEGRAM_CHAT_ID "Skill activated: [skill-name] is now live and will be used in future sessions."
+elevateos bus send-telegram $CTX_TELEGRAM_CHAT_ID "Skill activated: [skill-name] is now live and will be used in future sessions."
 
 # ACK the inbox message
-elevate bus ack-inbox [msg_id]
+elevateos bus ack-inbox [msg_id]
 ```
 
 ### Rejected
@@ -149,9 +149,9 @@ mv skills/drafts/[skill-name]/SKILL.md skills/archive/[skill-name]/SKILL.md
 echo "\n## Rejection\nReason: [reason]\nDate: $(date -u +%Y-%m-%d)" >> skills/archive/[skill-name]/SKILL.md
 
 # Log
-elevate bus log-event action skill_rejected info --meta "{\"skill\":\"[skill-name]\",\"reason\":\"[reason]\"}"
+elevateos bus log-event action skill_rejected info --meta "{\"skill\":\"[skill-name]\",\"reason\":\"[reason]\"}"
 
-elevate bus ack-inbox [msg_id]
+elevateos bus ack-inbox [msg_id]
 ```
 
 ### Revise
@@ -159,8 +159,8 @@ elevate bus ack-inbox [msg_id]
 ```bash
 # Apply feedback and re-save the draft
 # Then re-notify orchestrator for another digest cycle
-elevate bus send-message $CTX_ORCHESTRATOR_AGENT normal "Skill candidate [skill-name] revised per feedback. Ready for re-review."
-elevate bus ack-inbox [msg_id]
+elevateos bus send-message $CTX_ORCHESTRATOR_AGENT normal "Skill candidate [skill-name] revised per feedback. Ready for re-review."
+elevateos bus ack-inbox [msg_id]
 ```
 
 ---

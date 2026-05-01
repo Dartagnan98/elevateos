@@ -53,7 +53,7 @@ export default function ApprovalsPage() {
       }
       if (humanRes.ok) {
         const allHuman: Task[] = await humanRes.json();
-        setHumanTasks(allHuman.filter(t => t.status !== 'completed'));
+        setHumanTasks(allHuman.filter(t => t.status !== 'completed' && t.status !== 'cancelled'));
       }
     } catch {
       // Silently fail

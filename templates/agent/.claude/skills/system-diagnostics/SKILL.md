@@ -15,7 +15,7 @@ Use these to detect and surface problems before they become crises.
 Find tasks that have been in-progress too long or pending without action:
 
 ```bash
-elevate bus check-stale-tasks
+elevateos bus check-stale-tasks
 ```
 
 Flags:
@@ -34,13 +34,13 @@ Detect agents whose GOALS.md hasn't been updated recently:
 
 ```bash
 # Default threshold (7 days)
-elevate bus check-goal-staleness
+elevateos bus check-goal-staleness
 
 # Custom threshold
-elevate bus check-goal-staleness --threshold 3
+elevateos bus check-goal-staleness --threshold 3
 
 # JSON output for parsing
-elevate bus check-goal-staleness --json
+elevateos bus check-goal-staleness --json
 ```
 
 **When to run:** Weekly, or when an agent seems directionless.
@@ -52,7 +52,7 @@ elevate bus check-goal-staleness --json
 Check for human-assigned tasks that are waiting too long:
 
 ```bash
-elevate bus check-human-tasks
+elevateos bus check-human-tasks
 ```
 
 Sends reminders for overdue human tasks. Run daily (orchestrator) or when blocked waiting on a human.
@@ -64,10 +64,10 @@ Sends reminders for overdue human tasks. Run daily (orchestrator) or when blocke
 Read all agent heartbeats at once:
 
 ```bash
-elevate bus read-all-heartbeats
+elevateos bus read-all-heartbeats
 
 # JSON for parsing
-elevate bus read-all-heartbeats --format json
+elevateos bus read-all-heartbeats --format json
 ```
 
 Stale threshold: agent hasn't updated in >6h = investigate.
@@ -79,7 +79,7 @@ Stale threshold: agent hasn't updated in >6h = investigate.
 Collect and record system metrics snapshot:
 
 ```bash
-elevate bus collect-metrics
+elevateos bus collect-metrics
 ```
 
 Run nightly (analyst cron). Captures task counts, completion rates, agent activity.
@@ -92,16 +92,16 @@ Run this during morning review or when something feels off:
 
 ```bash
 echo "=== Fleet Heartbeats ==="
-elevate bus read-all-heartbeats
+elevateos bus read-all-heartbeats
 
 echo "=== Stale Tasks ==="
-elevate bus check-stale-tasks
+elevateos bus check-stale-tasks
 
 echo "=== Stale Goals ==="
-elevate bus check-goal-staleness
+elevateos bus check-goal-staleness
 
 echo "=== Human Tasks ==="
-elevate bus check-human-tasks
+elevateos bus check-human-tasks
 ```
 
 Surface any findings to the user via Telegram if critical.

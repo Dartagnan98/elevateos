@@ -2,14 +2,47 @@ import { NextRequest } from 'next/server';
 import { existsSync, readFileSync, writeFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { getFrameworkRoot, getAllAgents, getAgentDir } from '@/lib/config';
+import { getElevateAgent, updateElevateAgent } from '@/lib/elevate-gateway-client';
 import { spawnSync } from 'child_process';
 
 export const dynamic = 'force-dynamic';
 
-function resolveAgentConfigPath(frameworkRoot: string, name: string): string | null {
+const SAFE_ORG_RE = /^[A-Za-z0-9_-]+$/;
+const SYNCED_CONFIG_KEYS = [
+  'timezone',
+  'day_mode_start',
+  'day_mode_end',
+  'communication_style',
+  'approval_rules',
+  'max_session_seconds',
+  'max_crashes_per_day',
+  'startup_delay',
+  'model',
+  'ctx_warning_threshold',
+  'ctx_handoff_threshold',
+] as const;
+
+function objectValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function syncedConfig(config: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of SYNCED_CONFIG_KEYS) {
+    if (config[key] !== undefined) out[key] = config[key];
+  }
+  return out;
+}
+
+function resolveAgentConfigPath(frameworkRoot: string, name: string, requestedOrg?: string): string | null {
   // First check via getAllAgents (uses enabled-agents.json + filesystem scan)
   const allAgents = getAllAgents();
-  const entry = allAgents.find(a => a.name.toLowerCase() === name.toLowerCase());
+  const entry = allAgents.find(a => (
+    a.name.toLowerCase() === name.toLowerCase() &&
+    (!requestedOrg || a.org === requestedOrg)
+  ));
   if (entry) {
     const agentDir = getAgentDir(entry.name, entry.org || undefined);
     const p = join(agentDir, 'config.json');
@@ -20,6 +53,7 @@ function resolveAgentConfigPath(frameworkRoot: string, name: string): string | n
   const orgsDir = join(frameworkRoot, 'orgs');
   if (!existsSync(orgsDir)) return null;
   for (const org of readdirSync(orgsDir)) {
+    if (requestedOrg && org !== requestedOrg) continue;
     const p = join(orgsDir, org, 'agents', name, 'config.json');
     if (existsSync(p)) return p;
   }
@@ -27,15 +61,19 @@ function resolveAgentConfigPath(frameworkRoot: string, name: string): string | n
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ name: string }> },
 ) {
   const { name } = await params;
   if (!/^[a-z0-9_-]+$/.test(name)) {
     return Response.json({ error: 'Invalid agent name' }, { status: 400 });
   }
+  const requestedOrg = request.nextUrl.searchParams.get('org') || undefined;
+  if (requestedOrg && !SAFE_ORG_RE.test(requestedOrg)) {
+    return Response.json({ error: 'Invalid org name' }, { status: 400 });
+  }
   const frameworkRoot = getFrameworkRoot();
-  const configPath = resolveAgentConfigPath(frameworkRoot, name);
+  const configPath = resolveAgentConfigPath(frameworkRoot, name, requestedOrg);
   if (!configPath) {
     return Response.json({ error: 'Agent config not found' }, { status: 404 });
   }
@@ -55,8 +93,12 @@ export async function PATCH(
   if (!/^[a-z0-9_-]+$/.test(name)) {
     return Response.json({ error: 'Invalid agent name' }, { status: 400 });
   }
+  const requestedOrg = request.nextUrl.searchParams.get('org') || undefined;
+  if (requestedOrg && !SAFE_ORG_RE.test(requestedOrg)) {
+    return Response.json({ error: 'Invalid org name' }, { status: 400 });
+  }
   const frameworkRoot = getFrameworkRoot();
-  const configPath = resolveAgentConfigPath(frameworkRoot, name);
+  const configPath = resolveAgentConfigPath(frameworkRoot, name, requestedOrg);
   if (!configPath) {
     return Response.json({ error: 'Agent config not found' }, { status: 404 });
   }
@@ -127,6 +169,36 @@ export async function PATCH(
     }
     writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
 
+    let gatewaySync: { ok: boolean; error: string | null } = { ok: false, error: null };
+    try {
+      const currentGatewayAgent = await getElevateAgent(name);
+      const currentMetadata = objectValue(currentGatewayAgent.metadata);
+      const currentConfigMetadata = objectValue(currentMetadata.config);
+      await updateElevateAgent(name, {
+        org: requestedOrg || (typeof config.org === 'string' ? config.org : undefined),
+        metadata: {
+          ...currentMetadata,
+          config: {
+            ...currentConfigMetadata,
+            ...syncedConfig(config),
+          },
+          settings_sync: {
+            source: 'elevateos',
+            direction: 'dashboard-to-gateway',
+            config_path: configPath,
+            updated_at: new Date().toISOString(),
+          },
+        },
+      });
+      gatewaySync = { ok: true, error: null };
+    } catch (syncErr) {
+      gatewaySync = {
+        ok: false,
+        error: syncErr instanceof Error ? syncErr.message : 'Gateway sync failed',
+      };
+      console.error(`[api/agents/${name}/config] PATCH: gateway sync failed (non-fatal):`, syncErr);
+    }
+
     // Notify agent immediately (non-fatal if offline)
     try {
       const sendMsg = join(frameworkRoot, 'bus', 'send-message.sh');
@@ -151,7 +223,7 @@ export async function PATCH(
       console.error(`[api/agents/${name}/config] PATCH: send-message.sh failed (non-fatal):`, notifyErr);
     }
 
-    return Response.json({ success: true, config, name });
+    return Response.json({ success: true, config, name, gateway_sync: gatewaySync });
   } catch {
     return Response.json({ error: 'Failed to write config' }, { status: 500 });
   }

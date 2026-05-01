@@ -11,7 +11,7 @@ import { sendMessage } from './message.js';
  *   1. The framework directory scan (`${CTX_FRAMEWORK_ROOT}/orgs/<org>/agents/`)
  *      — this is what the daemon discovers and runs.
  *   2. `enabled-agents.json` — explicit user-set enable/disable state from
- *      `elevate enable`/`disable` and the dashboard.
+ *      `elevateos enable`/`disable` and the dashboard.
  *
  * BUG-028: previously this function treated `enabled-agents.json` as
  * authoritative — if the file existed, the directory scan was skipped, causing

@@ -51,7 +51,8 @@ export function getTasks(filters?: TaskFilters): Task[] {
     const rows = db
       .prepare(
         `SELECT id, title, description, status, priority, assignee, org, project,
-                needs_approval, created_at, updated_at, completed_at, notes, source_file
+                needs_approval, created_at, updated_at, completed_at, due_date,
+                scheduled_for, scheduled_fired_at, notes, source_file
          FROM tasks ${where}
          ORDER BY created_at DESC`
       )
@@ -72,7 +73,8 @@ export function getTaskById(id: string): Task | null {
     const row = db
       .prepare(
         `SELECT id, title, description, status, priority, assignee, org, project,
-                needs_approval, created_at, updated_at, completed_at, notes, source_file
+                needs_approval, created_at, updated_at, completed_at, due_date,
+                scheduled_for, scheduled_fired_at, notes, source_file
          FROM tasks WHERE id = ?`
       )
       .get(id) as Record<string, unknown> | undefined;
@@ -120,7 +122,8 @@ export function getTasksCompletedToday(org?: string): Task[] {
     const rows = db
       .prepare(
         `SELECT id, title, description, status, priority, assignee, org, project,
-                needs_approval, created_at, updated_at, completed_at, notes, source_file
+                needs_approval, created_at, updated_at, completed_at, due_date,
+                scheduled_for, scheduled_fired_at, notes, source_file
          FROM tasks ${where}
          ORDER BY completed_at DESC`
       )
@@ -189,6 +192,9 @@ function rowToTask(row: Record<string, unknown>): Task {
     created_at: row.created_at as string,
     updated_at: (row.updated_at as string) ?? undefined,
     completed_at: (row.completed_at as string) ?? undefined,
+    due_date: (row.due_date as string) ?? null,
+    scheduled_for: (row.scheduled_for as string) ?? null,
+    scheduled_fired_at: (row.scheduled_fired_at as string) ?? null,
     notes: (row.notes as string) ?? undefined,
     source_file: (row.source_file as string) ?? undefined,
   };

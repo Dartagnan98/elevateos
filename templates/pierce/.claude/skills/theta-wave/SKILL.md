@@ -25,15 +25,15 @@ When your theta-wave cron fires:
 ### Phase 1: Initiate
 **First action**: Message the orchestrator that theta wave is starting.
 ```bash
-elevate bus send-message <orchestrator> high "Theta wave initiated. Running deep system scan. Stand by for findings."
+elevateos bus send-message <orchestrator> high "Theta wave initiated. Running deep system scan. Stand by for findings."
 ```
 
 ### Phase 2: Deep System Scan
 Scan EVERYTHING:
-- All agent heartbeats: `elevate bus read-all-heartbeats`
-- All agent tasks: `elevate bus list-tasks`
-- All experiment results: `elevate bus list-experiments --json`
-- Per-agent experiment context: `elevate bus gather-context --agent <name> --format json` (for each agent)
+- All agent heartbeats: `elevateos bus read-all-heartbeats`
+- All agent tasks: `elevateos bus list-tasks`
+- All experiment results: `elevateos bus list-experiments --json`
+- Per-agent experiment context: `elevateos bus gather-context --agent <name> --format json` (for each agent)
 - Org goals and north star: read GOALS.md
 - Agent memories: read each agent's MEMORY.md and recent daily memory
 - Analytics reports if available
@@ -94,7 +94,7 @@ Based on the conversation, decide what to change:
 
 **Create new cycles for agents:**
 ```bash
-elevate bus manage-cycle create <agent> \
+elevateos bus manage-cycle create <agent> \
   --cycle <cycle_name> \
   --metric <metric_name> \
   --metric-type <quantitative|qualitative> \
@@ -106,12 +106,12 @@ elevate bus manage-cycle create <agent> \
 ```
 Then send the agent a message to set up the corresponding safe recurring cron:
 ```bash
-elevate bus send-message <agent> normal "New autoresearch cycle created: <cycle_name> optimizing <metric_name>. Add a safe interval entry to config.json, run CronList, and create the live cron with CronCreate. Use only 10m, 30m, 1h, 6h, or 24h; if the requested cadence is longer than 24h, gate inside the prompt."
+elevateos bus send-message <agent> normal "New autoresearch cycle created: <cycle_name> optimizing <metric_name>. Add a safe interval entry to config.json, run CronList, and create the live cron with CronCreate. Use only 10m, 30m, 1h, 6h, or 24h; if the requested cadence is longer than 24h, gate inside the prompt."
 ```
 
 **Modify existing cycles:**
 ```bash
-elevate bus manage-cycle modify <agent> --cycle <name> \
+elevateos bus manage-cycle modify <agent> --cycle <name> \
   --window <new_window> \
   --loop-interval 24h \
   --surface <new_surface> \
@@ -123,7 +123,7 @@ Use `--enabled false` to pause a stale or converged cycle instead of removing it
 
 **Remove converged or irrelevant cycles:**
 ```bash
-elevate bus manage-cycle remove <agent> --cycle <name>
+elevateos bus manage-cycle remove <agent> --cycle <name>
 ```
 
 If `auto_create_agent_cycles` or `auto_modify_agent_cycles` is false, create approvals instead of executing directly.

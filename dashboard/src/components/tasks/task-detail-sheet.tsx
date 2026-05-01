@@ -29,7 +29,7 @@ import {
 } from '@/components/shared';
 import { IconPencil, IconFile, IconPhoto, IconFileText, IconCode } from '@tabler/icons-react';
 import { DeliverablePreview } from '@/components/tasks/deliverable-preview';
-import type { Task, TaskOutput, TaskStatus, TaskPriority } from '@/lib/types';
+import type { Task, TaskOutput, TaskStatus } from '@/lib/types';
 
 export interface TaskDetailSheetProps {
   task: Task | null;
@@ -44,17 +44,23 @@ const STATUS_TRANSITIONS: Record<TaskStatus, { label: string; status: TaskStatus
   pending: [
     { label: 'Start', status: 'in_progress', variant: 'default' },
     { label: 'Block', status: 'blocked', variant: 'destructive' },
+    { label: 'Cancel', status: 'cancelled', variant: 'outline' },
   ],
   in_progress: [
     { label: 'Complete', status: 'completed', variant: 'default' },
     { label: 'Block', status: 'blocked', variant: 'destructive' },
+    { label: 'Cancel', status: 'cancelled', variant: 'outline' },
     { label: 'Back to Pending', status: 'pending', variant: 'outline' },
   ],
   blocked: [
     { label: 'Unblock', status: 'in_progress', variant: 'default' },
+    { label: 'Cancel', status: 'cancelled', variant: 'outline' },
     { label: 'Back to Pending', status: 'pending', variant: 'outline' },
   ],
   completed: [
+    { label: 'Reopen', status: 'pending', variant: 'outline' },
+  ],
+  cancelled: [
     { label: 'Reopen', status: 'pending', variant: 'outline' },
   ],
 };
@@ -271,6 +277,24 @@ export function TaskDetailSheet({
               <div>
                 <span className="text-muted-foreground">Completed</span>
                 <div><TimeAgo date={task.completed_at} /></div>
+              </div>
+            )}
+            {task.scheduled_for && (
+              <div>
+                <span className="text-muted-foreground">Run at</span>
+                <div><TimeAgo date={task.scheduled_for} /></div>
+              </div>
+            )}
+            {task.scheduled_fired_at && (
+              <div>
+                <span className="text-muted-foreground">Delivered</span>
+                <div><TimeAgo date={task.scheduled_fired_at} /></div>
+              </div>
+            )}
+            {task.due_date && (
+              <div>
+                <span className="text-muted-foreground">Due by</span>
+                <div><TimeAgo date={task.due_date} /></div>
               </div>
             )}
           </div>

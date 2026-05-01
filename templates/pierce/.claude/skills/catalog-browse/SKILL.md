@@ -20,16 +20,16 @@ Discover new skills, agent templates, and org templates from the community catal
 
 ```bash
 # Browse all items
-RESULT=$(elevate bus browse-catalog)
+RESULT=$(elevateos bus browse-catalog)
 
 # Filter by type
-RESULT=$(elevate bus browse-catalog --type skill)
+RESULT=$(elevateos bus browse-catalog --type skill)
 
 # Filter by tag
-RESULT=$(elevate bus browse-catalog --type skill --tag email)
+RESULT=$(elevateos bus browse-catalog --type skill --tag email)
 
 # Search by keyword
-RESULT=$(elevate bus browse-catalog --search "content")
+RESULT=$(elevateos bus browse-catalog --search "content")
 ```
 
 ### Step 2: Review results
@@ -51,10 +51,10 @@ For items that look useful:
 
 ```bash
 # Dry run first
-elevate bus install-community-item <item-name> --dry-run
+elevateos bus install-community-item <item-name> --dry-run
 
 # Install after user approves
-elevate bus install-community-item <item-name>
+elevateos bus install-community-item <item-name>
 ```
 
 ## Config
@@ -63,6 +63,6 @@ Requires `ecosystem.catalog_browse.enabled: true` in config.json.
 
 ## Notes
 
-- The catalog is fetched during upstream sync (`elevate bus check-upstream`) and lives at `community/catalog.json` in the framework root
+- The catalog is fetched during upstream sync (`elevateos bus check-upstream`) and lives at `community/catalog.json` in the framework root
 - Items are reviewed by the community before being listed
 - Always dry-run before installing

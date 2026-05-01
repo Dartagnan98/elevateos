@@ -9,7 +9,7 @@ import { TaskListTable } from '@/components/tasks/task-list-table';
 import { TaskDetailSheet } from '@/components/tasks/task-detail-sheet';
 import { CreateTaskDialog } from '@/components/tasks/create-task-dialog';
 import { TaskFilters } from '@/components/tasks/task-filters';
-import type { Task, TaskStatus } from '@/lib/types';
+import type { Agent, Task, TaskStatus } from '@/lib/types';
 
 type ViewMode = 'kanban' | 'list';
 
@@ -27,6 +27,7 @@ export default function TasksPage() {
   const [view, setView] = useState<ViewMode>('kanban');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [completedToday, setCompletedToday] = useState<Task[]>([]);
+  const [agentOptions, setAgentOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
@@ -35,7 +36,8 @@ export default function TasksPage() {
 
   // Derive unique values for filter dropdowns
   const allTasks = tasks;
-  const agents = [...new Set(allTasks.map((t) => t.assignee).filter(Boolean) as string[])];
+  const taskAgents = allTasks.map((t) => t.assignee).filter(Boolean) as string[];
+  const agents = [...new Set([...agentOptions, ...taskAgents])].sort();
   const projects = [...new Set(allTasks.map((t) => t.project).filter(Boolean) as string[])];
   const orgs = [...new Set(allTasks.map((t) => t.org))];
 
@@ -55,9 +57,10 @@ export default function TasksPage() {
       completedParams.delete('status'); // remove any existing non-completed status
       completedParams.set('status', 'completed');
 
-      const [tasksRes, completedRes] = await Promise.all([
+      const [tasksRes, completedRes, agentsRes] = await Promise.all([
         fetch(`/api/tasks?${params.toString()}`),
         fetch(`/api/tasks?${completedParams.toString()}`),
+        fetch('/api/agents'),
       ]);
 
       if (tasksRes.ok) {
@@ -71,6 +74,15 @@ export default function TasksPage() {
         todayStart.setHours(0, 0, 0, 0);
         setCompletedToday(
           data.filter((t) => t.completed_at && new Date(t.completed_at) >= todayStart)
+        );
+      }
+      if (agentsRes.ok) {
+        const data: Agent[] = await agentsRes.json();
+        setAgentOptions(
+          data
+            .filter((agent) => !effectiveOrg || agent.org === effectiveOrg || agent.org === '')
+            .map((agent) => agent.name)
+            .filter(Boolean)
         );
       }
     } catch {
@@ -133,6 +145,9 @@ export default function TasksPage() {
   const displayTasks = view === 'kanban'
     ? tasks.filter((t) => t.status !== 'completed')
     : tasks;
+  const createTaskOrg = currentOrg !== 'all'
+    ? currentOrg
+    : (filters.org !== 'all' ? filters.org : undefined);
 
   if (loading) {
     return (
@@ -177,6 +192,7 @@ export default function TasksPage() {
           <CreateTaskDialog
             agents={agents}
             projects={projects}
+            org={createTaskOrg}
             onCreated={fetchTasks}
           />
         </div>
@@ -203,6 +219,7 @@ export default function TasksPage() {
           <CreateTaskDialog
             agents={agents}
             projects={projects}
+            org={createTaskOrg}
             onCreated={fetchTasks}
           />
         </div>

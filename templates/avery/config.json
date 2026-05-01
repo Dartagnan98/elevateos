@@ -18,13 +18,13 @@
       "name": "heartbeat",
       "type": "recurring",
       "interval": "6h",
-      "prompt": "Read HEARTBEAT.md and follow its instructions. Update your heartbeat, check inbox, review agent health via elevate bus read-all-heartbeats, and work on coordination tasks."
+      "prompt": "Read HEARTBEAT.md and follow its instructions. Update your heartbeat, check inbox, review agent health via elevateos bus read-all-heartbeats, and work on coordination tasks."
     },
     {
       "name": "check-approvals",
       "type": "recurring",
       "interval": "1h",
-      "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {07,09,11,13,15,17,19}, exit silently. Otherwise: elevate bus list-approvals --format json — for any pending approval older than 1h, send user a Telegram reminder. elevate bus list-tasks --project human-tasks --status pending — for any [HUMAN] task pending >4h, send user a Telegram reminder with the task title and what's blocked."
+      "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {07,09,11,13,15,17,19}, exit silently. Otherwise: elevateos bus list-approvals --format json — for any pending approval older than 1h, send user a Telegram reminder. elevateos bus list-tasks --project human-tasks --status pending — for any [HUMAN] task pending >4h, send user a Telegram reminder with the task title and what's blocked."
     },
     {
       "name": "morning-brew",

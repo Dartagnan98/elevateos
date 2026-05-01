@@ -20,14 +20,14 @@ Package a local skill, agent template, or org template for sharing with the Elev
 
 ```bash
 # Dry run - shows what would be packaged and any PII found
-elevate bus prepare-submission <type> <source-path> <item-name> --dry-run
+elevateos bus prepare-submission <type> <source-path> <item-name> --dry-run
 ```
 
 Types: skill, agent, org
 
 Example:
 ```bash
-elevate bus prepare-submission skill ./skills/morning-review morning-review --dry-run
+elevateos bus prepare-submission skill ./skills/morning-review morning-review --dry-run
 ```
 
 ### Step 2: Review PII scan results
@@ -55,10 +55,10 @@ Send via Telegram:
 
 ```bash
 # Local submission only (adds to local catalog, no PR)
-elevate bus submit-community-item <item-name> <type> "<description>" --author "<your-name>"
+elevateos bus submit-community-item <item-name> <type> "<description>" --author "<your-name>"
 
 # Full contribution (branch + push to origin + open PR against upstream)
-elevate bus submit-community-item <item-name> <type> "<description>" --author "<your-name>" --contribute
+elevateos bus submit-community-item <item-name> <type> "<description>" --author "<your-name>" --contribute
 ```
 
 The `--contribute` flag:

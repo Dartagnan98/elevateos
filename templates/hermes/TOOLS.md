@@ -1,6 +1,6 @@
 # Tools Quick Reference
 
-All ElevateOS commands: `elevate bus <command>`. These are shell commands — run them with your bash tool.
+All ElevateOS commands: `elevateos bus <command>`. These are shell commands — run them with your bash tool.
 
 ---
 
@@ -26,7 +26,7 @@ Agent secrets: `orgs/{org}/agents/{agent}/.env`
 ### Tasks
 | Command | What it does |
 |---|---|
-| `create-task "<title>" --desc "<desc>"` | Create a task (visible on dashboard) |
+| `create-task "<title>" --desc "<desc>" [--run-at ISO]` | Create a task or timed task (visible on dashboard) |
 | `update-task <id> <status>` | Update status: pending / in_progress / blocked / completed |
 | `complete-task <id> --result "<what>"` | Mark done with result |
 | `list-tasks [--status S] [--agent A]` | List / filter tasks |
@@ -79,7 +79,7 @@ Agent secrets: `orgs/{org}/agents/{agent}/.env`
 ### Goals
 | Command | What it does |
 |---|---|
-| `elevate goals generate-md --agent <name> --org <org>` | Rebuild GOALS.md from goals.json |
+| `elevateos goals generate-md --agent <name> --org <org>` | Rebuild GOALS.md from goals.json |
 
 ### Reminders
 | Command | What it does |

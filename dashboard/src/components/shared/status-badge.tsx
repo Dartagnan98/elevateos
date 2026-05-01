@@ -19,6 +19,11 @@ const statusConfig: Record<
     className: 'bg-success/10 text-success',
     label: 'Completed',
   },
+  cancelled: {
+    variant: 'outline',
+    className: 'text-muted-foreground',
+    label: 'Cancelled',
+  },
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

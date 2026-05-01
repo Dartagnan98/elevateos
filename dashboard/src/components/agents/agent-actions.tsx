@@ -104,7 +104,7 @@ export function AgentActions({
   }
 
   const isDown = health === 'down' || health === 'stale';
-  const isHealthy = health === 'healthy';
+  const isActive = health === 'healthy' || health === 'starting';
 
   return (
     <>
@@ -130,7 +130,7 @@ export function AgentActions({
               Start
             </DropdownMenuItem>
           )}
-          {isHealthy && (
+          {isActive && (
             <DropdownMenuItem onClick={() => handleLifecycle('stop')}>
               <IconPlayerStop className="h-4 w-4" />
               Stop

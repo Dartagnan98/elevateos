@@ -289,13 +289,13 @@ interface AgentConfig {
 
 ```bash
 # Start A2A adapter manually (without daemon)
-elevate bus a2a-start [--port 41241] [--agent <name>]
+elevateos bus a2a-start [--port 41241] [--agent <name>]
 
 # Test the Agent Card
-elevate bus a2a-card [--agent <name>]
+elevateos bus a2a-card [--agent <name>]
 
 # List active A2A tasks
-elevate bus a2a-tasks [--agent <name>]
+elevateos bus a2a-tasks [--agent <name>]
 ```
 
 ---

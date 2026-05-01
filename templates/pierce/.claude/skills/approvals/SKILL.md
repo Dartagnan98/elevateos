@@ -30,7 +30,7 @@ Before any external, irreversible, or high-stakes action — stop and create an 
 ### 1. Create the approval
 
 ```bash
-APPR_ID=$(elevate bus create-approval \
+APPR_ID=$(elevateos bus create-approval \
   "<what you want to do>" \
   "<category>" \
   "<context: draft content, target, why needed>")
@@ -42,13 +42,13 @@ Categories: `external-comms` | `financial` | `deployment` | `data-deletion` | `o
 ### 2. Block your task on the approval
 
 ```bash
-elevate bus update-task "$TASK_ID" blocked "Awaiting approval: $APPR_ID" "$APPR_ID"
+elevateos bus update-task "$TASK_ID" blocked "Awaiting approval: $APPR_ID" "$APPR_ID"
 ```
 
 ### 3. Notify the user
 
 ```bash
-elevate bus send-telegram "$CTX_TELEGRAM_CHAT_ID" \
+elevateos bus send-telegram "$CTX_TELEGRAM_CHAT_ID" \
   "Approval needed: <title> — check dashboard or reply to approve/reject"
 ```
 
@@ -66,15 +66,15 @@ note: <user's note>
 **Approved:**
 ```bash
 # Unblock task
-elevate bus update-task "$TASK_ID" in_progress "Approval received — executing"
+elevateos bus update-task "$TASK_ID" in_progress "Approval received — executing"
 # Execute the action
 # Complete the task
-elevate bus complete-task "$TASK_ID" --result "<what was done>"
+elevateos bus complete-task "$TASK_ID" --result "<what was done>"
 ```
 
 **Rejected:**
 ```bash
-elevate bus complete-task "$TASK_ID" --result "Cancelled — approval rejected: <note>"
+elevateos bus complete-task "$TASK_ID" --result "Cancelled — approval rejected: <note>"
 ```
 
 ---
@@ -84,7 +84,7 @@ elevate bus complete-task "$TASK_ID" --result "Cancelled — approval rejected: 
 If an approval is still pending after 4 hours during day mode, send one re-ping:
 
 ```bash
-elevate bus send-telegram "$CTX_TELEGRAM_CHAT_ID" \
+elevateos bus send-telegram "$CTX_TELEGRAM_CHAT_ID" \
   "Reminder: approval for '<title>' is still pending. No rush, just flagging."
 ```
 
@@ -95,7 +95,7 @@ Send only ONE re-ping. Do not spam.
 ## Listing Pending Approvals
 
 ```bash
-elevate bus list-approvals --status pending
+elevateos bus list-approvals --status pending
 ```
 
 ---

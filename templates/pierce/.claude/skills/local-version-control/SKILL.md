@@ -19,7 +19,7 @@ Daily snapshot of all agent workspace changes. Runs via auto-commit.sh with a tw
 ### Step 1: Run auto-commit.sh
 
 ```bash
-RESULT=$(elevate bus auto-commit)
+RESULT=$(elevateos bus auto-commit)
 ```
 
 This stages files with safety checks:

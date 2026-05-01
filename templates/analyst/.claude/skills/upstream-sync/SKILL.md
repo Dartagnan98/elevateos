@@ -19,7 +19,7 @@ Check for ElevateOS framework updates from the remote repository. Never auto-mer
 ### Step 1: Check for updates
 
 ```bash
-RESULT=$(elevate bus check-upstream)
+RESULT=$(elevateos bus check-upstream)
 ```
 
 The script fetches from upstream and returns a JSON summary categorizing changes by type (bus scripts, templates, skills, dashboard, etc.).
@@ -37,7 +37,7 @@ The script fetches from upstream and returns a JSON summary categorizing changes
 ### Step 3: Apply (only after approval)
 
 ```bash
-elevate bus check-upstream --apply
+elevateos bus check-upstream --apply
 ```
 
 ### Step 4: Security audit gate

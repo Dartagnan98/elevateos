@@ -33,7 +33,7 @@ Every entry in TOOLS.md needs:
 
 ## Adding a New Bus Script
 
-Bus scripts live in `$CTX_FRAMEWORK_ROOT/bus/` and are invoked as `elevate bus <command>`.
+Bus scripts live in `$CTX_FRAMEWORK_ROOT/bus/` and are invoked as `elevateos bus <command>`.
 
 When a new wrapper is added, add an entry in the `## Bus Scripts` section of TOOLS.md:
 
@@ -42,7 +42,7 @@ When a new wrapper is added, add an entry in the `## Bus Scripts` section of TOO
 Brief description of what it does.
 
 ```bash
-elevate bus new-command <required_arg> [--optional flag]
+elevateos bus new-command <required_arg> [--optional flag]
 ```
 
 - **required_arg**: What it is
@@ -50,7 +50,7 @@ elevate bus new-command <required_arg> [--optional flag]
 
 Example:
 ```bash
-elevate bus new-command "my value" --flag result
+elevateos bus new-command "my value" --flag result
 ```
 ```
 
@@ -84,7 +84,7 @@ Add a dedicated section at the bottom of TOOLS.md under the `## Third-Party Tool
 
 1. Notify the orchestrator so it can update its own TOOLS.md if the tool is org-wide:
 ```bash
-elevate bus send-message "$CTX_ORCHESTRATOR_AGENT" normal "New tool registered in TOOLS.md: <tool name>. Update your TOOLS.md if applicable."
+elevateos bus send-message "$CTX_ORCHESTRATOR_AGENT" normal "New tool registered in TOOLS.md: <tool name>. Update your TOOLS.md if applicable."
 ```
 
 2. If it is a shared tool all agents should have, the orchestrator should broadcast to all agents.

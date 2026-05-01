@@ -67,11 +67,11 @@ For each active agent, based on their role and today's daily focus:
    ```
 3. Regenerate GOALS.md from goals.json:
    ```bash
-   elevate goals generate-md --agent <agent> --org $CTX_ORG
+   elevateos goals generate-md --agent <agent> --org $CTX_ORG
    ```
 4. Message the agent:
    ```bash
-   elevate bus send-message <agent> normal "New goals for today. Check GOALS.md and create tasks."
+   elevateos bus send-message <agent> normal "New goals for today. Check GOALS.md and create tasks."
    ```
 
 **If an agent's goals.json already has `daily_focus_set_at` matching today: skip — don't overwrite.**
@@ -89,7 +89,7 @@ cat > $CTX_FRAMEWORK_ROOT/orgs/$CTX_ORG/agents/$CTX_AGENT_NAME/goals.json << 'EO
   "updated_by": "$CTX_AGENT_NAME"
 }
 EOF
-elevate goals generate-md --agent $CTX_AGENT_NAME --org $CTX_ORG
+elevateos goals generate-md --agent $CTX_AGENT_NAME --org $CTX_ORG
 ```
 
 ### 6. Confirm task plans
@@ -106,7 +106,7 @@ When a new agent comes online with an empty `goals.json`, they will message you 
 Handle by:
 1. Checking their role from `IDENTITY.md`
 2. Writing their `goals.json` with appropriate starter goals
-3. Running `elevate goals generate-md --agent <name> --org $CTX_ORG`
+3. Running `elevateos goals generate-md --agent <name> --org $CTX_ORG`
 4. Replying with confirmation
 
 ## Evening Goal Update
@@ -120,7 +120,7 @@ At end of day:
        '.bottleneck = $b | .updated_at = $ts | .updated_by = "'$CTX_AGENT_NAME'"' \
        $CTX_FRAMEWORK_ROOT/orgs/$CTX_ORG/agents/<agent>/goals.json > /tmp/agent-goals.tmp \
      && mv /tmp/agent-goals.tmp $CTX_FRAMEWORK_ROOT/orgs/$CTX_ORG/agents/<agent>/goals.json
-   elevate goals generate-md --agent <agent> --org $CTX_ORG
+   elevateos goals generate-md --agent <agent> --org $CTX_ORG
    ```
 4. Carry forward unfinished goals to tomorrow's morning discussion
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,6 +23,7 @@ export function ProfileForm({
   identity: initialIdentity,
   soul: initialSoul,
 }: ProfileFormProps) {
+  const router = useRouter();
   const [identity, setIdentity] = useState<IdentityFields>(initialIdentity);
   const [soul, setSoul] = useState<SoulFields>(initialSoul);
   const [saving, setSaving] = useState(false);
@@ -49,18 +51,54 @@ export function ProfileForm({
     setError(null);
 
     try {
-      const res = await fetch(`/api/agents/${encodeURIComponent(agentName)}`, {
+      let gatewaySaved = false;
+      let localSaved = false;
+      let gatewayError: string | null = null;
+      let localError: string | null = null;
+
+      const gatewayRes = await fetch(`/api/elevate/agents/${encodeURIComponent(agentName)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          display_name: identity.name,
+          role: identity.role,
+          org,
+          metadata: {
+            identity: {
+              emoji: identity.emoji,
+              vibe: identity.vibe,
+              workStyle: identity.workStyle,
+            },
+          },
+        }),
+      });
+
+      if (gatewayRes.ok) {
+        gatewaySaved = true;
+      } else {
+        const data = await gatewayRes.json().catch(() => null);
+        gatewayError = data?.error ?? 'Gateway profile save failed';
+      }
+
+      const localRes = await fetch(`/api/agents/${encodeURIComponent(agentName)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identity, soul, org }),
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? 'Failed to save');
+      if (localRes.ok) {
+        localSaved = true;
+      } else {
+        const data = await localRes.json().catch(() => null);
+        localError = data?.error ?? 'Local profile save failed';
+      }
+
+      if (!gatewaySaved && !localSaved) {
+        throw new Error(gatewayError ?? localError ?? 'Failed to save');
       }
 
       setSaved(true);
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {

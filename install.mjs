@@ -43,6 +43,7 @@ const ok   = (msg) => console.log(`${G}  ✓${R} ${msg}`);
 const warn = (msg) => console.log(`${Y}  !${R} ${msg}`);
 const fail = (msg) => { console.error(`${RED}  ✗${R} ${msg}`); process.exit(1); };
 const info = (msg) => console.log(`    ${msg}`);
+let hasElevateAgentCli = false;
 
 function run(cmd, opts = {}) {
   return execSync(cmd, { encoding: 'utf8', stdio: 'pipe', ...opts }).trim();
@@ -62,6 +63,19 @@ function commandExists(cmd) {
   }
 }
 
+function parseSemver(version) {
+  const [major = 0, minor = 0, patch = 0] = version
+    .replace(/^v/, '')
+    .split('.')
+    .map((part) => parseInt(part, 10));
+  return { major, minor, patch };
+}
+
+function supportedNode(version) {
+  const { major, minor } = parseSemver(version);
+  return major > 20 || (major === 20 && minor >= 19);
+}
+
 function tryInstall(label, installFn) {
   try {
     installFn();
@@ -74,16 +88,15 @@ function tryInstall(label, installFn) {
 
 console.log('');
 console.log(`${BOLD}ElevateOS installer${R}`);
-console.log('Persistent 24/7 Claude Code agents with Telegram control');
+console.log('Local real-estate control app for the Elevate Agent gateway');
 console.log('');
 
 // ─── 1. Node.js version ──────────────────────────────────────────────────────
 
 log('Checking Node.js...');
 const nodeVersion = run('node --version').replace('v', '');
-const nodeMajor = parseInt(nodeVersion.split('.')[0], 10);
-if (nodeMajor < 20) {
-  fail(`Node.js v${nodeVersion} is too old. v20 or later required.\n    Install from https://nodejs.org`);
+if (!supportedNode(nodeVersion)) {
+  fail(`Node.js v${nodeVersion} is too old. v20.19.0 or later required.\n    Install from https://nodejs.org`);
 }
 ok(`Node.js v${nodeVersion}`);
 
@@ -236,57 +249,24 @@ if (!hasPython) {
   } catch { ok('python3: installed'); }
 }
 
-// ─── 4. Claude Code ───────────────────────────────────────────────────────────
+// ─── 4. Elevate Agent CLI ─────────────────────────────────────────────────────
 
-log('Checking Claude Code...');
-if (commandExists('claude')) {
+log('Checking Elevate Agent CLI...');
+if (commandExists('elevate')) {
+  hasElevateAgentCli = true;
   try {
-    const claudeVersion = run('claude --version').split('\n')[0];
-    ok(`Claude Code ${claudeVersion}`);
+    const elevateVersion = run('elevate --version').split('\n')[0];
+    ok(`Elevate Agent CLI ${elevateVersion}`);
   } catch {
-    ok('Claude Code (installed)');
+    ok('Elevate Agent CLI installed');
   }
 } else {
-  warn('Claude Code is not installed. Installing now...');
-  try {
-    runVisible('npm install -g @anthropic-ai/claude-code');
-    ok('Claude Code installed');
-  } catch {
-    console.log('');
-    console.log(`${Y}  Could not auto-install Claude Code. Install manually:${R}`);
-    console.log(`    npm install -g @anthropic-ai/claude-code`);
-    console.log('');
-  }
-}
-
-// Check claude authentication — use `claude auth status` which covers all auth methods (OAuth, API key, etc.)
-{
-  let authenticated = false;
-  try {
-    const authOutput = run('claude auth status');
-    if (authOutput.includes('"loggedIn": true') || authOutput.includes('"loggedIn":true')) {
-      authenticated = true;
-    }
-  } catch {
-    // claude auth status failed — check env var as fallback
-    if (process.env.ANTHROPIC_API_KEY) {
-      authenticated = true;
-    }
-  }
-
-  if (!authenticated) {
-    console.log('');
-    console.log(`${Y}  ! Claude Code authentication required before agents can start.${R}`);
-    console.log('');
-    console.log(`    ${BOLD}Run this now to authenticate:${R}`);
-    console.log(`    ${Y}  claude login${R}`);
-    console.log('');
-    console.log('    You can complete authentication after this installer finishes.');
-    console.log('    Agents will not start until you run: claude login');
-    console.log('');
-  } else {
-    ok('Claude Code authenticated');
-  }
+  warn('Elevate Agent CLI is not installed yet.');
+  console.log('    ElevateOS can still install, but chat/memory connector features need the local gateway.');
+  console.log('    Install the Python Elevate Agent CLI, then run:');
+  console.log(`    ${Y}  elevate gateway install${R}`);
+  console.log(`    ${Y}  elevate gateway status${R}`);
+  console.log('');
 }
 
 // ─── 5. jq ────────────────────────────────────────────────────────────────────
@@ -470,7 +450,7 @@ ok('Build complete');
 
 // ─── 10. Link CLI globally ────────────────────────────────────────────────────
 
-log('Linking elevate CLI...');
+log('Linking elevateos CLI...');
 try {
   runVisible('npm link', { cwd: INSTALL_DIR });
 } catch {
@@ -481,10 +461,10 @@ try {
   }
 }
 
-if (commandExists('elevate')) {
-  ok('elevate CLI available');
+if (commandExists('elevateos')) {
+  ok('elevateos CLI available');
 } else {
-  warn('elevate not in PATH yet. You may need to restart your terminal.');
+  warn('elevateos not in PATH yet. You may need to restart your terminal.');
 }
 
 // ─── 11. PM2 ─────────────────────────────────────────────────────────────────
@@ -502,13 +482,56 @@ if (!commandExists('pm2')) {
   ok(`PM2 ${run('pm2 --version')}`);
 }
 
-// ─── 12. Run elevate install ────────────────────────────────────────────────
+// ─── 12. Run elevateos install ───────────────────────────────────────────────
 
-log('Running elevate install...');
+log('Running elevateos install...');
 try {
   runVisible('node dist/cli.js install', { cwd: INSTALL_DIR });
 } catch {
-  warn('elevate install had warnings — see above');
+  warn('elevateos install had warnings — see above');
+}
+
+// ─── 13. Configure local gateway connector ──────────────────────────────────
+
+if (hasElevateAgentCli) {
+  log('Configuring local Elevate Agent gateway connector...');
+  try {
+    runVisible('elevate config set platforms.api_server.enabled true');
+    runVisible('elevate config set platforms.api_server.extra.host 127.0.0.1');
+    runVisible('elevate config set platforms.api_server.extra.port 8642');
+    ok('Gateway API connector configured at http://127.0.0.1:8642');
+    log('Starting local Elevate Agent gateway...');
+    try {
+      runVisible('elevate gateway restart');
+      ok('Gateway restart requested');
+    } catch {
+      warn('Could not restart the gateway automatically.');
+    }
+    try {
+      runVisible('elevate gateway status');
+    } catch {
+      warn('Gateway status check failed — open Settings > Elevate Agent after launch.');
+    }
+  } catch {
+    warn('Could not configure the gateway API connector automatically.');
+    console.log(`    Run manually: ${Y}elevate config set platforms.api_server.enabled true${R}`);
+  }
+}
+
+// ─── 14. Launch dashboard app ───────────────────────────────────────────────
+
+const shouldLaunchApp = process.env.ELEVATEOS_LAUNCH !== '0' && process.env.CI !== '1';
+if (shouldLaunchApp) {
+  log('Launching ElevateOS dashboard...');
+  try {
+    runVisible('node dist/cli.js dashboard --instance default --install --build --open', { cwd: INSTALL_DIR });
+    ok('Dashboard launch requested');
+  } catch {
+    warn('Could not launch dashboard automatically.');
+    console.log(`    Run manually: ${Y}cd ${INSTALL_DIR} && elevateos dashboard --instance default --install --build --open${R}`);
+  }
+} else {
+  warn('Dashboard auto-launch skipped. Set ELEVATEOS_LAUNCH=1 or run the dashboard command manually.');
 }
 
 // ─── Done ─────────────────────────────────────────────────────────────────────
@@ -517,25 +540,21 @@ console.log('');
 console.log(`${G}${BOLD}ElevateOS installed successfully!${R}`);
 console.log('');
 
-if (!commandExists('claude')) {
-  console.log(`${Y}  IMPORTANT: Install and authenticate Claude Code before continuing:${R}`);
-  console.log(`    npm install -g @anthropic-ai/claude-code`);
-  console.log(`    claude login`);
-  console.log('');
-}
-
 console.log(`${BOLD}Next steps:${R}`);
 console.log('');
-console.log(`  1. Open ${BOLD}${INSTALL_DIR}${R} in Claude Code:`);
-if (IS_WINDOWS) {
-  console.log(`     ${Y}claude "${INSTALL_DIR}"${R}`);
-} else {
-  console.log(`     ${Y}claude ${INSTALL_DIR}${R}`);
-}
+console.log(`  1. Start the seeded Executive Assistant when Claude auth is ready:`);
+console.log(`     ${Y}elevateos start executive-assistant --instance default${R}`);
 console.log('');
-console.log(`  2. In Claude Code, run:`);
-console.log(`     ${Y}/onboarding${R}`);
+console.log(`  2. Start or verify the local Elevate Agent gateway:`);
+console.log(`     ${Y}elevate gateway restart${R}`);
+console.log(`     ${Y}elevate gateway status${R}`);
+console.log(`     ${Y}curl -fsS http://127.0.0.1:8642/health${R}`);
 console.log('');
-console.log('  That\'s it. The /onboarding command walks you through everything:');
-console.log('  org setup, agent creation, Telegram bots, dashboard, and more.');
+console.log(`  3. Open the ElevateOS dashboard:`);
+console.log(`     ${Y}elevateos dashboard --instance default --install --build --open${R}`);
+console.log('');
+console.log('  ElevateOS seeds Executive Assistant, Outreach, Marketing, and Social Media by default.');
+console.log('  The dashboard shows local chat, tools, crons, memory, logs, and settings for those agents.');
+console.log('  ElevateOS connects to the local gateway at http://127.0.0.1:8642 by default.');
+console.log('  Set ELEVATE_GATEWAY_URL if your gateway uses a different local port.');
 console.log('');

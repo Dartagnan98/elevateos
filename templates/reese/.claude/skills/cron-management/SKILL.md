@@ -6,7 +6,7 @@ triggers: ["remind me", "every day", "every hour", "every week", "schedule", "re
 
 # Cron Management
 
-`config.json` under the `crons` array is the single source of truth for ALL scheduled tasks — recurring AND one-shot reminders. Every cron you create must be written to config.json first so it survives restarts.
+`config.json` under the `crons` array is the source of truth for recurring crons and one-shot reminders. Timed work tasks are different: use `elevateos bus create-task ... --run-at <ISO>` so the daemon delivers the task to the assignee when due.
 
 ## Two cron types
 
@@ -45,6 +45,18 @@ Restore all crons from config.json:
    ```
 2. Create the live cron with CronCreate by converting the safe interval (`1h` -> `0 */1 * * *`, `6h` -> `0 */6 * * *`, `24h` -> `0 0 * * *`, `10m`/`30m` -> `*/N * * * *`)
 3. Confirm to the user that the cron is active and persisted
+
+---
+
+## Creating a Timed Work Task
+
+When the user asks you to do real work later (for example, "tomorrow around 2, follow up with this lead"), create a timed task instead of a cron:
+
+```bash
+elevateos bus create-task "Follow up with lead" --desc "Context and success criteria" --assignee "" --run-at "2026-05-02T21:00:00Z"
+```
+
+Use `--due-date` only for deadline tracking. It does not wake the agent by itself.
 
 ---
 

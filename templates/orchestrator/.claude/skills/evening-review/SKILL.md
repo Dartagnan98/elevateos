@@ -35,20 +35,20 @@ triggers: ["evening review", "end of day", "nightly review", "run evening review
 
 ```bash
 # All tasks completed today
-elevate bus list-tasks --status completed
+elevateos bus list-tasks --status completed
 
 # Tasks still in progress
-elevate bus list-tasks --status in_progress
+elevateos bus list-tasks --status in_progress
 
 # All agent heartbeats
-elevate bus read-all-heartbeats
+elevateos bus read-all-heartbeats
 
 # Today's memory
 TODAY=$(date -u +%Y-%m-%d)
 cat memory/${TODAY}.md 2>/dev/null
 
 # Inbox for agent reports
-elevate bus check-inbox
+elevateos bus check-inbox
 ```
 
 ### Summary Structure
@@ -144,9 +144,9 @@ Read `.claude/skills/nighttime-mode/SKILL.md` before proposing any overnight tas
 ### Scan for autonomous work
 
 ```bash
-elevate bus list-tasks --status pending
+elevateos bus list-tasks --status pending
 cat GOALS.md
-elevate bus read-all-heartbeats
+elevateos bus read-all-heartbeats
 ```
 
 ### Task classification
@@ -201,17 +201,17 @@ Reply:
 
 For each approved overnight task:
 ```bash
-TASK_ID=$(elevate bus create-task "<title>" --desc "<description>" --assignee $CTX_AGENT_NAME --priority high)
-elevate bus update-task "$TASK_ID" in_progress
-elevate bus send-message <agent> high '<full task details>'
-elevate bus log-event action task_dispatched info --meta '{"to":"<agent>","task":"<title>"}'
+TASK_ID=$(elevateos bus create-task "<title>" --desc "<description>" --assignee $CTX_AGENT_NAME --priority high)
+elevateos bus update-task "$TASK_ID" in_progress
+elevateos bus send-message <agent> high '<full task details>'
+elevateos bus log-event action task_dispatched info --meta '{"to":"<agent>","task":"<title>"}'
 TODAY=$(date -u +%Y-%m-%d)
 echo "DISPATCHED: $TASK_ID - <title> -> <agent>" >> "memory/$TODAY.md"
 ```
 
 Confirm to user:
 ```bash
-elevate bus send-telegram $CTX_TELEGRAM_CHAT_ID "Queued X tasks for overnight work:
+elevateos bus send-telegram $CTX_TELEGRAM_CHAT_ID "Queued X tasks for overnight work:
 - [Task 1] -> [agent]
 - [Task 2] -> [agent]
 
@@ -244,10 +244,10 @@ jq '.daily_focus = "" | .daily_focus_set_at = ""' \
 
 ```bash
 # Log event
-elevate bus log-event action briefing_sent info --meta '{"type":"evening_review"}'
+elevateos bus log-event action briefing_sent info --meta '{"type":"evening_review"}'
 
 # Update heartbeat
-elevate bus update-heartbeat "evening review complete - transitioning to nighttime mode"
+elevateos bus update-heartbeat "evening review complete - transitioning to nighttime mode"
 
 # Write to memory
 TODAY=$(date -u +%Y-%m-%d)

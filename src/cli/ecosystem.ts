@@ -17,7 +17,7 @@ export const ecosystemCommand = new Command('ecosystem')
   .description('Generate PM2 ecosystem.config.js from agent configs')
   .action(async (options: { instance: string; org?: string; output: string }) => {
     const ctxRoot = getStateRoot(options.instance);
-    // Same project-root discovery as enable-agent.ts so `elevate ecosystem`
+    // Same project-root discovery as enable-agent.ts so `elevateos ecosystem`
     // works from outside the source checkout.
     let projectRoot: string;
     if (process.env.ELEVATE_FRAMEWORK_ROOT || process.env.CTX_FRAMEWORK_ROOT || process.env.CTX_PROJECT_ROOT) {
@@ -61,11 +61,11 @@ export const ecosystemCommand = new Command('ecosystem')
     const daemonScript = join(distDir, 'daemon.js');
     const dashboardDir = join(projectRoot, 'dashboard');
     // BUG-019 + cycle-2 finding: require BOTH package.json AND node_modules/.bin/next.
-    // Without the second check, running `elevate ecosystem` before
+    // Without the second check, running `elevateos ecosystem` before
     // `npm install` in dashboard/ produces a crash-looped PM2 entry that the
     // user sees as "dashboard keeps restarting". Better to silently skip the
     // dashboard entry if its deps aren't installed yet — the user can re-run
-    // `elevate ecosystem` after `npm install` to add it.
+    // `elevateos ecosystem` after `npm install` to add it.
     const hasDashboard = existsSync(join(dashboardDir, 'package.json')) &&
       existsSync(join(dashboardDir, 'node_modules', '.bin', 'next'));
 

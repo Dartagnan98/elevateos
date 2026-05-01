@@ -477,7 +477,7 @@ export class AgentProcess {
     // before cron restoration, before heartbeat, before anything else. Placing this instruction
     // immediately after the handoffBlock in the prompt ensures it is not buried.
     const handoffUxOverride = isHandoffRestart
-      ? ' HANDOFF UX: This is a context handoff restart — your memory is intact via the handoff doc. CRITICAL: After reading the handoff document, your VERY FIRST tool call MUST be a Bash call running: elevate bus send-telegram $CTX_TELEGRAM_CHAT_ID \'back — [what you were just working on]\' — replace the brackets with one brief plain-English sentence about your current state. Do this BEFORE restoring crons, BEFORE running heartbeat, BEFORE any other tool call. No cron IDs, no status report, no cold-boot phrasing. Do NOT send "Booting up... one moment" (skip AGENTS.md step 1 entirely).'
+      ? ' HANDOFF UX: This is a context handoff restart — your memory is intact via the handoff doc. CRITICAL: After reading the handoff document, your VERY FIRST tool call MUST be a Bash call running: elevateos bus send-telegram $CTX_TELEGRAM_CHAT_ID \'back — [what you were just working on]\' — replace the brackets with one brief plain-English sentence about your current state. Do this BEFORE restoring crons, BEFORE running heartbeat, BEFORE any other tool call. No cron IDs, no status report, no cold-boot phrasing. Do NOT send "Booting up... one moment" (skip AGENTS.md step 1 entirely).'
       : '';
     const onlineMessage = isHandoffRestart
       ? ''
@@ -505,7 +505,7 @@ export class AgentProcess {
       const items = overdue.map(r =>
         `  - [${r.id}] (due ${r.fire_at}): ${r.prompt}`,
       ).join('\n');
-      return ` You also have ${overdue.length} overdue persistent reminder(s) from before this restart — handle each one, then run: elevate bus ack-reminder <id>\n${items}`;
+      return ` You also have ${overdue.length} overdue persistent reminder(s) from before this restart — handle each one, then run: elevateos bus ack-reminder <id>\n${items}`;
     } catch {
       return '';
     }
@@ -525,7 +525,7 @@ export class AgentProcess {
       if (!existsSync(contextPath)) return '';
       const ctx = JSON.parse(readFileSync(contextPath, 'utf-8'));
       if (!ctx.require_deliverables) return '';
-      return ' DELIVERABLE STANDARD: Every task you submit for review MUST have at least one file deliverable attached via the save-output bus command. A task with zero file deliverables will be sent back. Attach files with: elevate bus save-output <task-id> <file-path> --label "<descriptive label>". Labels must be human-readable at a glance: describe WHAT it is plus enough context to understand at a glance. Good: "Traffic Growth Plan — 10 channels, 30-day launch sequence". Bad: "traffic-growth-plan.md" or "output-1". Notes are for context only, never file paths or URLs.';
+      return ' DELIVERABLE STANDARD: Every task you submit for review MUST have at least one file deliverable attached via the save-output bus command. A task with zero file deliverables will be sent back. Attach files with: elevateos bus save-output <task-id> <file-path> --label "<descriptive label>". Labels must be human-readable at a glance: describe WHAT it is plus enough context to understand at a glance. Good: "Traffic Growth Plan — 10 channels, 30-day launch sequence". Bad: "traffic-growth-plan.md" or "output-1". Notes are for context only, never file paths or URLs.';
     } catch {
       return '';
     }
@@ -533,7 +533,7 @@ export class AgentProcess {
 
   /**
    * Consume the .handoff-doc-path marker (written by the context watchdog or the
-   * agent itself via `elevate bus hard-restart --handoff-doc <path>`).
+   * agent itself via `elevateos bus hard-restart --handoff-doc <path>`).
    * Returns a boot-prompt fragment pointing the new session at the handoff doc,
    * or an empty string if no marker exists.
    * The marker is unlinked after reading so it fires only once per restart.

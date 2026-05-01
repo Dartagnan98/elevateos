@@ -12,31 +12,32 @@ Every significant piece of work must have a corresponding task. Tasks enable coo
 
 - **Agent tasks** - Work executed autonomously by the assigned agent
 - **Human tasks** - Requires human decision, input, or approval (assigned_to=human)
+- **Timed tasks** - Agent tasks with `--run-at <ISO time>`; the daemon delivers them to the assignee when due. Use this for “tomorrow around this time, do X.” Use `--due-date <ISO time>` for deadlines and overdue tracking only.
 
 ## Lifecycle
 
 ### 1. Create (BEFORE starting work)
 ```bash
-elevate bus create-task "<title>" \
+elevateos bus create-task "<title>" \
   --desc "<description>" \
-  [--assignee <agent>] [--priority <p>] [--project <name>]
+  [--assignee <agent>] [--priority <p>] [--project <name>] [--run-at <ISO>] [--due-date <ISO>]
 ```
 
 ### 2. Mark in progress
 ```bash
-elevate bus update-task <task_id> in_progress
+elevateos bus update-task <task_id> in_progress
 ```
 
 ### 3. Execute the work
 
 ### 4. Complete
 ```bash
-elevate bus complete-task <task_id> "[output summary]"
+elevateos bus complete-task <task_id> "[output summary]"
 ```
 
 ### 5. Log KPI (if measurable)
 ```bash
-elevate bus log-event action task_completed info \
+elevateos bus log-event action task_completed info \
   '{"task_id":"ID","kpi_key":"metric_name","value":1}'
 ```
 
@@ -51,11 +52,11 @@ Tasks with `needs_approval: true` create an approval item that must be reviewed 
 
 | Action | Command |
 |--------|---------|
-| Create | `elevate bus create-task "<title>" --desc "<desc>" [--assignee A] [--priority P] [--project N]` |
-| List | `elevate bus list-tasks [--status S] [--agent A] [--priority P]` |
-| Update | `elevate bus update-task <id> <status> [note]` |
-| Complete | `elevate bus complete-task <id> "[summary]"` |
-| Log event | `elevate bus log-event <category> <event> <severity> '[json]'` |
+| Create | `elevateos bus create-task "<title>" --desc "<desc>" [--assignee A] [--priority P] [--project N] [--run-at ISO] [--due-date ISO]` |
+| List | `elevateos bus list-tasks [--status S] [--agent A] [--priority P]` |
+| Update | `elevateos bus update-task <id> <status> [note]` |
+| Complete | `elevateos bus complete-task <id> "[summary]"` |
+| Log event | `elevateos bus log-event <category> <event> <severity> '[json]'` |
 
 **Statuses:** pending, in_progress, blocked, completed
 

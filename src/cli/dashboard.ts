@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { existsSync, readFileSync, writeFileSync, chmodSync, mkdirSync, openSync } from 'fs';
 import { join } from 'path';
 import { platform } from 'os';
+import { createServer } from 'net';
 import { randomBytes } from 'crypto';
 import { CLI_NAME, PRODUCT_NAME, buildRuntimeEnv, getStateRoot } from '../utils/elevate.js';
 
@@ -26,13 +27,55 @@ function parseEnvFile(filePath: string): Record<string, string> {
   return result;
 }
 
+function parsePort(value: string): number {
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`Invalid port: ${value}`);
+  }
+  return port;
+}
+
+function isPortAvailable(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = createServer();
+    server.once('error', () => resolve(false));
+    server.once('listening', () => {
+      server.close(() => resolve(true));
+    });
+    server.listen(port, '127.0.0.1');
+  });
+}
+
+async function findOpenPort(startPort: number): Promise<number | null> {
+  for (let port = startPort; port < startPort + 25 && port <= 65535; port += 1) {
+    if (await isPortAvailable(port)) return port;
+  }
+  return null;
+}
+
+function openBrowser(url: string): void {
+  const { spawn } = require('child_process');
+  const command = process.platform === 'darwin'
+    ? { bin: 'open', args: [url] }
+    : process.platform === 'win32'
+      ? { bin: 'cmd', args: ['/c', 'start', '', url] }
+      : { bin: 'xdg-open', args: [url] };
+  try {
+    const child = spawn(command.bin, command.args, { detached: true, stdio: 'ignore' });
+    child.unref();
+  } catch {
+    // Browser launch is best-effort; the URL is printed either way.
+  }
+}
+
 export const dashboardCommand = new Command('dashboard')
   .option('--port <port>', 'Port to run dashboard on', '3000')
   .option('--instance <id>', 'Instance ID', 'default')
   .option('--build', 'Build for production first (recommended for Cloudflare Tunnel / remote access)')
   .option('--install', 'Install dashboard dependencies first')
+  .option('--open', 'Open the dashboard in your browser after launch')
   .description(`Start the ${PRODUCT_NAME} dashboard (Next.js)`)
-  .action(async (options: { port: string; instance: string; build?: boolean; install?: boolean }) => {
+  .action(async (options: { port: string; instance: string; build?: boolean; install?: boolean; open?: boolean }) => {
     const { execSync, spawn } = require('child_process');
 
     // Find dashboard directory
@@ -82,6 +125,24 @@ export const dashboardCommand = new Command('dashboard')
 
     const adminUsername = process.env.ADMIN_USERNAME || dashCreds['ADMIN_USERNAME'] || 'admin';
 
+    let selectedPort: number;
+    try {
+      selectedPort = parsePort(options.port);
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : String(err));
+      process.exit(1);
+    }
+    const openPort = await findOpenPort(selectedPort);
+    if (!openPort) {
+      console.error(`No open dashboard port found between ${selectedPort} and ${selectedPort + 24}.`);
+      process.exit(1);
+    }
+    if (openPort !== selectedPort) {
+      console.log(`\n  Port ${selectedPort} is busy — using ${openPort} instead.`);
+      selectedPort = openPort;
+    }
+    const port = String(selectedPort);
+
     // ─── Install dashboard deps ───────────────────────────────────────────────
 
     if (options.install || !existsSync(join(dashboardDir, 'node_modules'))) {
@@ -130,7 +191,7 @@ export const dashboardCommand = new Command('dashboard')
       `CTX_ROOT=${ctxRoot}`,
       `CTX_FRAMEWORK_ROOT=${process.cwd()}`,
       `CTX_INSTANCE_ID=${options.instance}`,
-      `PORT=${options.port}`,
+      `PORT=${port}`,
     ];
     writeFileSync(nextEnvPath, nextEnvLines.join('\n') + '\n', 'utf-8');
     try { chmodSync(nextEnvPath, 0o600); } catch { /* ignore on Windows */ }
@@ -143,7 +204,7 @@ export const dashboardCommand = new Command('dashboard')
         stateRoot: ctxRoot,
         frameworkRoot: process.cwd(),
       }),
-      PORT: options.port,
+      PORT: port,
       AUTH_SECRET: authSecret,
       ADMIN_USERNAME: adminUsername,
       ADMIN_PASSWORD: adminPassword,
@@ -152,10 +213,11 @@ export const dashboardCommand = new Command('dashboard')
 
     const startMode = options.build ? 'start' : 'dev';
     const startArgs = startMode === 'start'
-      ? ['next', 'start', '--port', options.port]
-      : ['next', 'dev', '--port', options.port];
+      ? ['next', 'start', '--port', port]
+      : ['next', 'dev', '--port', port];
 
-    console.log(`\nDashboard starting on http://localhost:${options.port}`);
+    const dashboardUrl = `http://localhost:${port}`;
+    console.log(`\nDashboard starting on ${dashboardUrl}`);
     console.log(`  Admin username: ${adminUsername}`);
     console.log(`  Admin credentials: ${dashEnvPath}`);
     console.log(`  (View password with: cat ${dashEnvPath})`);
@@ -188,6 +250,9 @@ export const dashboardCommand = new Command('dashboard')
 
     console.log(`  Log: ${logPath}`);
     console.log(`  PID: ${child.pid}`);
+    if (options.open) {
+      setTimeout(() => openBrowser(dashboardUrl), 1500);
+    }
 
     child.on('error', (err: Error) => {
       console.error('Failed to start dashboard:', err.message);

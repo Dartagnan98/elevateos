@@ -21,6 +21,7 @@ import { tunnelCommand } from './tunnel.js';
 import { getConfigCommand } from './get-config.js';
 import { goalsCommand } from './goals.js';
 import { setupCommand } from './setup.js';
+import { seedAgentsCommand } from './seed-agents.js';
 import { spawnWorkerCommand, terminateWorkerCommand, listWorkersCommand, injectWorkerCommand } from './workers.js';
 import { CLI_NAME } from '../utils/elevate.js';
 
@@ -51,6 +52,7 @@ program.addCommand(tunnelCommand);
 program.addCommand(getConfigCommand);
 program.addCommand(goalsCommand);
 program.addCommand(setupCommand);
+program.addCommand(seedAgentsCommand);
 program.addCommand(spawnWorkerCommand);
 program.addCommand(terminateWorkerCommand);
 program.addCommand(listWorkersCommand);

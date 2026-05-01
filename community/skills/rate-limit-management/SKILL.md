@@ -8,7 +8,7 @@ triggers: ["rate limit", "usage check", "usage high", "wind down", "resume after
 # Rate Limit Management Protocol
 
 > Framework-level protocol. Defines tiers and check mechanism only.
-> Agent-specific behavior at each tier belongs in your deployment's CLAUDE.md or config.json.
+> Agent-specific behavior at each tier belongs in your deployment's AGENTS.md or config.json.
 
 ---
 

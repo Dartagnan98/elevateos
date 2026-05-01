@@ -1,5 +1,5 @@
-import { existsSync, readdirSync, readFileSync, renameSync, writeFileSync, unlinkSync, appendFileSync } from 'fs';
-import { join } from 'path';
+import { appendFileSync, existsSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'fs';
+import { dirname, join } from 'path';
 import type { Task, Priority, TaskStatus, BusPaths, StaleTaskReport, ArchiveReport } from '../types/index.js';
 import { atomicWriteSync, ensureDir } from '../utils/atomic.js';
 import { randomDigits } from '../utils/random.js';
@@ -20,6 +20,7 @@ export function createTask(
     project?: string;
     needsApproval?: boolean;
     dueDate?: string;
+    scheduledFor?: string;
     blockedBy?: string[];
     blocks?: string[];
   } = {},
@@ -31,11 +32,14 @@ export function createTask(
     project = '',
     needsApproval = false,
     dueDate = '',
+    scheduledFor = '',
     blockedBy = [],
     blocks = [],
   } = options;
 
   validatePriority(priority);
+  const normalizedDueDate = normalizeOptionalIso(dueDate, 'dueDate');
+  const normalizedScheduledFor = normalizeOptionalIso(scheduledFor, 'scheduledFor');
 
   const epoch = Date.now();
   const rand = randomDigits(3);
@@ -71,7 +75,9 @@ export function createTask(
     created_at: now,
     updated_at: now,
     completed_at: null,
-    due_date: dueDate || null,
+    due_date: normalizedDueDate,
+    scheduled_for: normalizedScheduledFor,
+    scheduled_fired_at: null,
     archived: false,
     ...(blockedBy.length ? { blocked_by: [...blockedBy] } : {}),
     ...(blocks.length ? { blocks: [...blocks] } : {}),
@@ -88,6 +94,16 @@ export function createTask(
   appendTaskAudit(paths, taskId, { event: 'create', agent: agentName, to: 'pending', note: title });
 
   return taskId;
+}
+
+function normalizeOptionalIso(value: string | undefined, label: string): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  const epoch = Date.parse(trimmed);
+  if (Number.isNaN(epoch)) {
+    throw new Error(`${label} must be a valid ISO-8601 datetime`);
+  }
+  return new Date(epoch).toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
 /**
@@ -433,6 +449,183 @@ export function claimTask(
   }
   appendTaskAudit(paths, taskId, { event: 'claim', agent, from: prevStatus, to: 'in_progress' });
   return task;
+}
+
+/**
+ * Return pending tasks assigned to `agentName` whose scheduled delivery time is due.
+ * The task remains pending here; call `claimDueScheduledTask()` before injecting it.
+ */
+export function listDueScheduledTasks(
+  paths: BusPaths,
+  agentName: string,
+  nowMs: number = Date.now(),
+): Task[] {
+  return readAllTasks(paths.taskDir)
+    .filter((task) => {
+      if (task.status !== 'pending') return false;
+      if (task.archived) return false;
+      if (task.assigned_to !== agentName) return false;
+      if (!task.scheduled_for || task.scheduled_fired_at) return false;
+      const scheduledMs = Date.parse(task.scheduled_for);
+      return !Number.isNaN(scheduledMs) && scheduledMs <= nowMs;
+    })
+    .sort((a, b) => Date.parse(a.scheduled_for ?? '') - Date.parse(b.scheduled_for ?? ''));
+}
+
+/**
+ * Atomically reserves a due scheduled task for live delivery. A small lock file
+ * prevents duplicate injection when two daemon loops briefly overlap. The task
+ * is not marked in_progress until `markScheduledTaskDelivered()` is called.
+ */
+export function claimDueScheduledTask(
+  paths: BusPaths,
+  taskId: string,
+  agentName: string,
+  nowMs: number = Date.now(),
+): Task | null {
+  const filePath = findTaskFile(paths, taskId);
+  if (!filePath) return null;
+
+  let task: Task;
+  try {
+    task = JSON.parse(readFileSync(filePath, 'utf-8')) as Task;
+  } catch {
+    return null;
+  }
+
+  if (task.status !== 'pending') return null;
+  if (task.assigned_to !== agentName) return null;
+  if (!task.scheduled_for || task.scheduled_fired_at) return null;
+  const scheduledMs = Date.parse(task.scheduled_for);
+  if (Number.isNaN(scheduledMs) || scheduledMs > nowMs) return null;
+
+  const lockPath = scheduledDeliveryLockPath(filePath, taskId);
+  if (!tryCreateScheduledDeliveryLock(lockPath, agentName, nowMs)) return null;
+
+  return task;
+}
+
+/**
+ * Stamp a reserved scheduled task as delivered after the live PTY injection
+ * succeeds. This keeps crash-before-inject retryable while still preventing
+ * duplicate delivery under normal daemon overlap.
+ */
+export function markScheduledTaskDelivered(
+  paths: BusPaths,
+  taskId: string,
+  agentName: string,
+  nowMs: number = Date.now(),
+): Task | null {
+  const filePath = findTaskFile(paths, taskId);
+  if (!filePath) return null;
+
+  let task: Task;
+  try {
+    task = JSON.parse(readFileSync(filePath, 'utf-8')) as Task;
+  } catch {
+    return null;
+  }
+
+  if (task.status !== 'pending') return null;
+  if (task.assigned_to !== agentName) return null;
+  if (!task.scheduled_for || task.scheduled_fired_at) return null;
+
+  const now = new Date(nowMs).toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const prevStatus = task.status;
+  task.status = 'in_progress';
+  task.updated_at = now;
+  task.scheduled_fired_at = now;
+
+  try {
+    atomicWriteSync(filePath, JSON.stringify(task));
+  } catch {
+    return null;
+  }
+
+  appendTaskAudit(paths, taskId, {
+    event: 'claim',
+    agent: agentName,
+    from: prevStatus,
+    to: 'in_progress',
+    note: `scheduled task fired at ${now}`,
+  });
+  return task;
+}
+
+/**
+ * Undo a scheduled delivery claim if the daemon could not inject the task into
+ * the live PTY. This keeps timed tasks retryable instead of silently vanishing.
+ */
+export function releaseScheduledTaskDelivery(
+  paths: BusPaths,
+  taskId: string,
+  agentName: string,
+  reason = 'scheduled delivery injection failed',
+): void {
+  const filePath = findTaskFile(paths, taskId);
+  if (!filePath) return;
+  const lockPath = scheduledDeliveryLockPath(filePath, taskId);
+  try {
+    const task = JSON.parse(readFileSync(filePath, 'utf-8')) as Task;
+    if (
+      task.assigned_to === agentName &&
+      task.status === 'in_progress' &&
+      task.scheduled_for &&
+      task.scheduled_fired_at
+    ) {
+      const now = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+      task.status = 'pending';
+      task.updated_at = now;
+      task.scheduled_fired_at = null;
+      atomicWriteSync(filePath, JSON.stringify(task));
+      appendTaskAudit(paths, taskId, {
+        event: 'update',
+        agent: agentName,
+        from: 'in_progress',
+        to: 'pending',
+        note: reason,
+      });
+    }
+  } catch {
+    // best-effort
+  }
+  try { unlinkSync(lockPath); } catch { /* best-effort */ }
+}
+
+const SCHEDULED_DELIVERY_LOCK_TTL_MS = 10 * 60 * 1000;
+
+function scheduledDeliveryLockPath(taskFilePath: string, taskId: string): string {
+  const lockDir = join(dirname(taskFilePath), '.scheduled-delivery');
+  ensureDir(lockDir);
+  return join(lockDir, `${taskId}.claim`);
+}
+
+function tryCreateScheduledDeliveryLock(lockPath: string, agentName: string, nowMs: number): boolean {
+  const writeLock = () => {
+    writeFileSync(lockPath, `${agentName}\t${new Date(nowMs).toISOString()}\n`, {
+      flag: 'wx',
+      encoding: 'utf-8',
+      mode: 0o600,
+    });
+  };
+
+  try {
+    writeLock();
+    return true;
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code !== 'EEXIST') return false;
+  }
+
+  try {
+    const stat = statSync(lockPath);
+    if (nowMs - stat.mtimeMs <= SCHEDULED_DELIVERY_LOCK_TTL_MS) return false;
+    unlinkSync(lockPath);
+    writeLock();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**

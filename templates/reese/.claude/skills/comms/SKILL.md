@@ -13,11 +13,11 @@ Messages are delivered in real time by the fast-checker daemon running alongside
 ```
 === TELEGRAM from <name> (chat_id:<id>) ===
 <message text>
-Reply using: elevate bus send-telegram <chat_id> "<your reply>"
+Reply using: elevateos bus send-telegram <chat_id> "<your reply>"
 
 === AGENT MESSAGE from <agent> [msg_id: <id>] ===
 <message text>
-Reply using: elevate bus send-message <agent> normal '<your reply>' <msg_id>
+Reply using: elevateos bus send-message <agent> normal '<your reply>' <msg_id>
 ```
 
 ## What To Do

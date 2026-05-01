@@ -15,7 +15,7 @@ The system onboarding already collected the essential org configuration. Read it
 ### Step 1: Send boot message
 
 ```bash
-elevate bus send-telegram $CTX_TELEGRAM_CHAT_ID "Orchestrator online - running first-boot setup. I'll ask you a few quick questions, then I'm up and running."
+elevateos bus send-telegram $CTX_TELEGRAM_CHAT_ID "Orchestrator online - running first-boot setup. I'll ask you a few quick questions, then I'm up and running."
 ```
 
 ### Step 2: Read identity from org context
@@ -171,8 +171,8 @@ Write to SOUL.md Autonomy Rules using `default_approval_categories` as the "Alwa
 ### Step 13: Discover current agent roster
 
 ```bash
-elevate bus list-agents --format json
-elevate bus read-all-heartbeats
+elevateos bus list-agents --format json
+elevateos bus read-all-heartbeats
 # Fallback: ls "${CTX_ROOT}/state/" 2>/dev/null
 ```
 
@@ -201,8 +201,8 @@ cat > "${CTX_FRAMEWORK_ROOT}/orgs/${CTX_ORG}/agents/<agent>/goals.json" << 'EOF'
   "updated_by": "$CTX_AGENT_NAME"
 }
 EOF
-elevate goals generate-md --agent <agent> --org $CTX_ORG
-elevate bus send-message <agent> normal "Your goals are set for today. Check GOALS.md and create tasks."
+elevateos goals generate-md --agent <agent> --org $CTX_ORG
+elevateos bus send-message <agent> normal "Your goals are set for today. Check GOALS.md and create tasks."
 ```
 
 ---
@@ -272,11 +272,11 @@ Based on their answers, write rules to `.claude/skills/memory/SKILL.md` under a 
 Then do the initial ingestion:
 ```bash
 # Ingest org knowledge base
-elevate bus kb-ingest "${CTX_FRAMEWORK_ROOT}/orgs/${CTX_ORG}/knowledge.md" \
+elevateos bus kb-ingest "${CTX_FRAMEWORK_ROOT}/orgs/${CTX_ORG}/knowledge.md" \
  --org $CTX_ORG --scope shared
 
 # Ingest any specific docs the user listed
-# elevate bus kb-ingest <path> --org $CTX_ORG --scope <shared|private> --agent $CTX_AGENT_NAME
+# elevateos bus kb-ingest <path> --org $CTX_ORG --scope <shared|private> --agent $CTX_AGENT_NAME
 ```
 
 ---
@@ -377,7 +377,7 @@ cat > "${CTX_FRAMEWORK_ROOT}/orgs/${CTX_ORG}/agents/$CTX_AGENT_NAME/goals.json" 
   "updated_by": "$CTX_AGENT_NAME"
 }
 EOF
-elevate goals generate-md --agent $CTX_AGENT_NAME --org $CTX_ORG
+elevateos goals generate-md --agent $CTX_AGENT_NAME --org $CTX_ORG
 ```
 
 ### Step 21: Write USER.md
@@ -428,7 +428,7 @@ Make any changes they request.
 ENABLED=$(cat "${CTX_ROOT}/config/enabled-agents.json" 2>/dev/null || echo '[]')
 if ! echo "$ENABLED" | jq -e --arg name "$CTX_AGENT_NAME" '.[] | select(. == $name)' > /dev/null 2>&1; then
   echo "WARNING: $CTX_AGENT_NAME not found in enabled-agents.json"
-  elevate bus send-telegram "$CTX_TELEGRAM_CHAT_ID" "Warning: I completed onboarding but I'm not in enabled-agents.json. Run: elevate start $CTX_AGENT_NAME"
+  elevateos bus send-telegram "$CTX_TELEGRAM_CHAT_ID" "Warning: I completed onboarding but I'm not in enabled-agents.json. Run: elevateos start $CTX_AGENT_NAME"
 fi
 ```
 
@@ -437,7 +437,7 @@ fi
 ```bash
 mkdir -p "$CTX_ROOT/state/$CTX_AGENT_NAME"
 touch "$CTX_ROOT/state/$CTX_AGENT_NAME/.onboarded"
-elevate bus log-event action onboarding_complete info --meta '{"agent":"'$CTX_AGENT_NAME'","role":"orchestrator"}'
+elevateos bus log-event action onboarding_complete info --meta '{"agent":"'$CTX_AGENT_NAME'","role":"orchestrator"}'
 ```
 
 ### Step 23b: Verify bootstrap files
@@ -467,7 +467,7 @@ fi
 
 if [ -n "$MISSING" ]; then
   echo "BOOTSTRAP CHECK FAILED - missing or incomplete:${MISSING}"
-  elevate bus log-event error bootstrap_check_failed warning --meta '{"agent":"'$CTX_AGENT_NAME'","missing":"'"${MISSING}"'"}'
+  elevateos bus log-event error bootstrap_check_failed warning --meta '{"agent":"'$CTX_AGENT_NAME'","missing":"'"${MISSING}"'"}'
   # Attempt to fix TOOLS.md by copying from template
   if echo "$MISSING" | grep -q "TOOLS.md"; then
     ROLE="orchestrator"
@@ -518,7 +518,7 @@ done
 
 if [ -z "$CHAT_ID" ]; then
   # Ask user to try again
-  elevate bus send-telegram $CTX_TELEGRAM_CHAT_ID "Still not seeing a message to the bot. Can you send another message to it? Make sure you sent the command /start first."
+  elevateos bus send-telegram $CTX_TELEGRAM_CHAT_ID "Still not seeing a message to the bot. Can you send another message to it? Make sure you sent the command /start first."
   # END TURN and retry on next user message
 fi
 ```
@@ -528,7 +528,7 @@ If all retries fail, end your turn and wait for the user to confirm they've sent
 ### Step 26: Create and enable the analyst agent
 
 ```bash
-cd "$CTX_FRAMEWORK_ROOT" && elevate add-agent <analyst_name> --template analyst --org $CTX_ORG
+cd "$CTX_FRAMEWORK_ROOT" && elevateos add-agent <analyst_name> --template analyst --org $CTX_ORG
 
 # Write .env for the analyst
 # IMPORTANT: ALLOWED_USER must be the NUMERIC Telegram user ID (e.g. 1234567890), NOT a username.
@@ -540,7 +540,7 @@ ALLOWED_USER=<numeric user ID from getUpdates - same as your ORCH_USER_ID>
 EOF
 chmod 600 "${CTX_FRAMEWORK_ROOT}/orgs/${CTX_ORG}/agents/<analyst_name>/.env"
 
-elevate start <analyst_name>
+elevateos start <analyst_name>
 ```
 
 ### Step 26b: Verify analyst is registered
@@ -572,11 +572,11 @@ Tell the user via Telegram:
 
 Log the handoff:
 ```bash
-elevate bus log-event action analyst_onboarding_handoff info --meta '{"agent":"'$CTX_AGENT_NAME'","analyst":"<analyst_name>"}'
+elevateos bus log-event action analyst_onboarding_handoff info --meta '{"agent":"'$CTX_AGENT_NAME'","analyst":"<analyst_name>"}'
 ```
 
 > **Important: When creating specialist agents later, the same safeguards apply:**
-> - Always run from the framework root: `cd "$CTX_FRAMEWORK_ROOT" && elevate add-agent <name> --template agent --org $CTX_ORG`
+> - Always run from the framework root: `cd "$CTX_FRAMEWORK_ROOT" && elevateos add-agent <name> --template agent --org $CTX_ORG`
 > - Set `ALLOWED_USER` to the numeric Telegram user ID (same as orchestrator's), not a username
 > - After creation, verify the agent appears in `enabled-agents.json` and add it if missing (same as Step 26b)
 

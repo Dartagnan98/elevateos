@@ -13,7 +13,7 @@ The activity channel is a shared Telegram group where all agents and the user ca
 ## Posting to the Activity Channel
 
 ```bash
-elevate bus post-activity "<message>"
+elevateos bus post-activity "<message>"
 ```
 
 **When to use:**
@@ -44,16 +44,16 @@ When you send a message to another agent via `send-message`, it is automatically
 
 ```bash
 # Morning briefing summary
-elevate bus post-activity "Morning briefing complete. Today's focus: <goals>. Active agents: <list>."
+elevateos bus post-activity "Morning briefing complete. Today's focus: <goals>. Active agents: <list>."
 
 # Major completion
-elevate bus post-activity "researcher completed competitive analysis — 3 key findings in task task_abc123."
+elevateos bus post-activity "researcher completed competitive analysis — 3 key findings in task task_abc123."
 
 # Agent coming online
-elevate bus post-activity "analyst (sentinel) is online and running nightly metrics."
+elevateos bus post-activity "analyst (sentinel) is online and running nightly metrics."
 
 # System change
-elevate bus post-activity "New agent 'writer' is now online and onboarding."
+elevateos bus post-activity "New agent 'writer' is now online and onboarding."
 ```
 
 ---

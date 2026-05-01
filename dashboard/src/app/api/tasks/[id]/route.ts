@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 // Validation
 // ---------------------------------------------------------------------------
 
-const VALID_STATUSES = ['pending', 'in_progress', 'blocked', 'completed'];
+const VALID_STATUSES = ['pending', 'in_progress', 'blocked', 'completed', 'cancelled'];
 const VALID_PRIORITIES = ['urgent', 'high', 'normal', 'low'];
 
 // Reject IDs that look like path traversal attempts

@@ -8,7 +8,7 @@ triggers: ["build", "m2c1", "worker agent", "autonomous build", "spin up worker"
 
 > Any ElevateOS agent can autonomously build complete software by acting as the "human" in the M2C1 framework, managing a dedicated worker Claude Code session through the full 12-phase lifecycle.
 
-> Worker session spawn is fully implemented. Use `elevate spawn-worker` to launch an isolated Claude Code M2C1 build session.
+> Worker session spawn is fully implemented. Use `elevateos spawn-worker` to launch an isolated Claude Code M2C1 build session.
 
 ---
 
@@ -28,7 +28,7 @@ You provide the brain dump, answer discovery questions, help with tool setup, mo
 - M2C1 skill files available (bundled in elevate templates)
 - A clear project idea or brain dump
 - An isolated directory for the build
-- Worker session spawn mechanism available (`elevate spawn-worker`)
+- Worker session spawn mechanism available (`elevateos spawn-worker`)
 
 ---
 
@@ -121,11 +121,11 @@ You are the M2C1 orchestrator. Follow the 12-phase workflow in .claude/skills/m2
 ## Communication
 Send messages to <your-agent-name>:
 ```
-elevate bus send-message <your-agent-name> normal '<message>'
+elevateos bus send-message <your-agent-name> normal '<message>'
 ```
 Check inbox:
 ```
-elevate bus check-inbox
+elevateos bus check-inbox
 ```
 
 Set environment:
@@ -153,7 +153,7 @@ When you have questions during Phase 3 (Discovery), send them via send-message. 
 ```bash
 WORKER_NAME="m2c1-$(basename $PROJECT_DIR)"
 
-elevate spawn-worker "$WORKER_NAME" \
+elevateos spawn-worker "$WORKER_NAME" \
   --dir "$PROJECT_DIR" \
   --prompt "Read AGENTS.md for your instructions, then read BRAINDUMP.md for the project spec. Begin the M2C1 workflow starting with Phase 0." \
   --parent $CTX_AGENT_NAME
@@ -161,12 +161,12 @@ elevate spawn-worker "$WORKER_NAME" \
 
 The worker:
 - Runs in `$PROJECT_DIR` with `--dangerously-skip-permissions`
-- Gets `CTX_AGENT_NAME=$WORKER_NAME` so it can use `elevate bus send-message` to reach you
-- Is tracked by the daemon: `elevate list-workers` shows its status
+- Gets `CTX_AGENT_NAME=$WORKER_NAME` so it can use `elevateos bus send-message` to reach you
+- Is tracked by the daemon: `elevateos list-workers` shows its status
 
 Log the spawn:
 ```bash
-elevate bus log-event action worker_spawned info \
+elevateos bus log-event action worker_spawned info \
   --meta '{"worker":"'$WORKER_NAME'","parent":"'$CTX_AGENT_NAME'","project":"'$PROJECT_DIR'"}'
 ```
 
@@ -183,7 +183,7 @@ elevate bus log-event action worker_spawned info \
 
 ```bash
 # Via bus messages (worker sends updates)
-elevate bus check-inbox
+elevateos bus check-inbox
 
 # Via git (see what was built)
 cd $PROJECT_DIR && git log --oneline | head -10
@@ -197,7 +197,7 @@ ls $PROJECT_DIR/.claude/orchestration-*/
 The worker will send you questions via send-message. Answer them:
 
 ```bash
-elevate bus send-message <worker-name> normal '<your answers>'
+elevateos bus send-message <worker-name> normal '<your answers>'
 ```
 
 Base your answers on:
@@ -212,11 +212,11 @@ If you do not know the answer, make a reasonable decision and note it. Do not bl
 
 If the worker appears stuck (no bus messages, no new git commits > 15 minutes):
 
-1. Send a bus message: `elevate bus send-message <worker-name> normal 'Continue with the M2C1 workflow. What phase are you on?'`
+1. Send a bus message: `elevateos bus send-message <worker-name> normal 'Continue with the M2C1 workflow. What phase are you on?'`
 2. Check git: `cd $PROJECT_DIR && git log --oneline | head -5`
-3. Inject directly into the PTY if still unresponsive: `elevate inject-worker <worker-name> "Continue with the M2C1 workflow. What phase are you on?"`
-4. Check worker status: `elevate list-workers`
-5. If halted: `elevate terminate-worker <worker-name>` then re-spawn
+3. Inject directly into the PTY if still unresponsive: `elevateos inject-worker <worker-name> "Continue with the M2C1 workflow. What phase are you on?"`
+4. Check worker status: `elevateos list-workers`
+5. If halted: `elevateos terminate-worker <worker-name>` then re-spawn
 
 ---
 
@@ -251,7 +251,7 @@ cp "$CTX_FRAMEWORK_ROOT/templates/agent/.claude/skills/agent-browser/SKILL.md" \
    "$PROJECT_DIR/.claude/skills/agent-browser/SKILL.md"
 
 # 2. Worker can use agent-browser via Bash (no MCP restart required):
-elevate bus send-message <worker-name> normal \
+elevateos bus send-message <worker-name> normal \
   'agent-browser is available globally. Test by running: agent-browser open https://example.com && agent-browser get title && agent-browser close. Use snapshot-then-ref pattern for AI-driven flows. The .claude/skills/agent-browser/SKILL.md was added — invoke `agent-browser skills get <name>` for current per-version command syntax.'
 ```
 
@@ -278,7 +278,7 @@ EOF
 chmod 600 "$PROJECT_DIR/.env"
 
 # Tell the worker via bus to source it
-elevate bus send-message <worker-name> normal 'Source .env in your project dir before running any API calls.'
+elevateos bus send-message <worker-name> normal 'Source .env in your project dir before running any API calls.'
 ```
 
 ### Skills for the Worker
@@ -300,7 +300,7 @@ Once the worker is past discovery and tool setup, it should run autonomously:
 
 Tell the worker to create a /loop:
 ```bash
-elevate bus send-message <worker-name> normal \
+elevateos bus send-message <worker-name> normal \
   'Set up a /loop every 10 minutes to check START.md for pending tasks. If not working on a task, pick the next one.'
 ```
 
@@ -309,7 +309,7 @@ elevate bus send-message <worker-name> normal \
 Check in every 30-60 minutes:
 ```bash
 # Check bus for worker updates
-elevate bus check-inbox
+elevateos bus check-inbox
 
 # Check git progress
 cd $PROJECT_DIR && git log --oneline | head -5
@@ -362,7 +362,7 @@ The worker's last phase should be comprehensive testing. Verify:
 
 If tests fail, tell the worker:
 ```bash
-elevate bus send-message <worker-name> normal \
+elevateos bus send-message <worker-name> normal \
   'E2E test failed: <specific failure>. Fix it and re-test.'
 ```
 
@@ -373,29 +373,29 @@ elevate bus send-message <worker-name> normal \
 ### On Success
 ```bash
 # Log the milestone
-elevate bus log-event milestone m2c1_complete info \
+elevateos bus log-event milestone m2c1_complete info \
   --meta '{"project":"<name>","location":"<path>","tasks":<count>,"tests":<count>}'
 
 # Notify orchestrator
-elevate bus send-message $CTX_ORCHESTRATOR_AGENT normal \
+elevateos bus send-message $CTX_ORCHESTRATOR_AGENT normal \
   'M2C1 build complete: <project>. Location: <path>. <summary>'
 
 # Clean up worker inbox
 rm -rf "$CTX_ROOT/inbox/<worker-name>"
 rm -rf "$CTX_ROOT/state/<worker-name>"
 
-elevate terminate-worker "$WORKER_NAME"
+elevateos terminate-worker "$WORKER_NAME"
 ```
 
 ### On Failure
 ```bash
 # Log what happened
-elevate bus log-event action m2c1_failed info \
+elevateos bus log-event action m2c1_failed info \
   --meta '{"project":"<name>","phase":"<where it failed>","reason":"<why>"}'
 
 # Keep the directory for debugging
 # Report to orchestrator
-elevate bus send-message $CTX_ORCHESTRATOR_AGENT normal \
+elevateos bus send-message $CTX_ORCHESTRATOR_AGENT normal \
   'M2C1 build FAILED: <project>. Failed at phase <N>. Reason: <why>. Directory preserved at <path>.'
 ```
 

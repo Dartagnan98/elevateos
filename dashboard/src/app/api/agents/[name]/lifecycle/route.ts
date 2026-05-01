@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
+import { spawn } from 'child_process';
 import { getFrameworkRoot, getCTXRoot } from '@/lib/config';
 import { IPCClient } from '@/lib/ipc-client';
 
@@ -22,6 +24,74 @@ function validateIdentifier(value: string | null | undefined, field: string): st
     throw new Error(`Invalid ${field}: must match [a-z0-9_-]+`);
   }
   return value;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function waitForDaemon(instanceId: string, timeoutMs = 8000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  const ipc = new IPCClient(instanceId);
+
+  while (Date.now() < deadline) {
+    if (await ipc.isDaemonRunning()) return true;
+    await sleep(300);
+  }
+
+  return false;
+}
+
+async function startDetachedDaemon(instanceId: string, org?: string): Promise<{ ok: boolean; message: string }> {
+  const frameworkRoot = getFrameworkRoot();
+  const ctxRoot = getCTXRoot();
+  const daemonScript = path.join(frameworkRoot, 'dist', 'daemon.js');
+
+  if (!fsSync.existsSync(daemonScript)) {
+    return { ok: false, message: 'Daemon is not built. Run npm run build, then try Start again.' };
+  }
+
+  await fs.mkdir(path.join(ctxRoot, 'logs', 'daemon'), { recursive: true });
+  const outPath = path.join(ctxRoot, 'logs', 'daemon', 'dashboard-start.log');
+  const errPath = path.join(ctxRoot, 'logs', 'daemon', 'dashboard-start.err.log');
+  const outFd = fsSync.openSync(outPath, 'a');
+  const errFd = fsSync.openSync(errPath, 'a');
+
+  try {
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      ELEVATE_INSTANCE_ID: instanceId,
+      ELEVATE_ROOT: ctxRoot,
+      ELEVATE_FRAMEWORK_ROOT: frameworkRoot,
+      ELEVATE_PROJECT_ROOT: frameworkRoot,
+      ELEVATE_DAEMON_SKIP_AUTOSTART: '1',
+      CTX_INSTANCE_ID: instanceId,
+      CTX_ROOT: ctxRoot,
+      CTX_FRAMEWORK_ROOT: frameworkRoot,
+      CTX_PROJECT_ROOT: frameworkRoot,
+      CTX_DAEMON_SKIP_AUTOSTART: '1',
+    };
+    if (org) {
+      env.ELEVATE_ORG = org;
+      env.CTX_ORG = org;
+    }
+
+    const child = spawn(process.execPath, [daemonScript, '--instance', instanceId], {
+      cwd: frameworkRoot,
+      detached: true,
+      env,
+      stdio: ['ignore', outFd, errFd],
+    });
+    child.unref();
+  } finally {
+    fsSync.closeSync(outFd);
+    fsSync.closeSync(errFd);
+  }
+
+  const running = await waitForDaemon(instanceId);
+  return running
+    ? { ok: true, message: 'daemon started' }
+    : { ok: false, message: `Daemon launch timed out. Check ${errPath}` };
 }
 
 // ---------------------------------------------------------------------------
@@ -140,11 +210,28 @@ export async function POST(
     if (!ipcResult.success) {
       const isDaemonDown = ipcResult.error?.includes('Daemon is not running');
       if (isDaemonDown && action === 'enable') {
+        const daemonStart = await startDetachedDaemon(instanceId, safeOrg);
+        if (!daemonStart.ok) {
+          return Response.json(
+            { error: `${registryMessage}; ${daemonStart.message}` },
+            { status: 500 },
+          );
+        }
+
+        const retryIpc = new IPCClient(instanceId);
+        const retryResult = await retryIpc.send({ type: 'start-agent', agent: decoded });
+        if (!retryResult.success) {
+          return Response.json(
+            { error: `${registryMessage}; daemon started but failed to start agent: ${retryResult.error ?? 'unknown IPC error'}` },
+            { status: 500 },
+          );
+        }
+
         return Response.json({
           success: true,
           action,
           agent: decoded,
-          output: `${registryMessage}; daemon not running — agent will start when daemon starts`,
+          output: [registryMessage, daemonStart.message, String(retryResult.data ?? '')].filter(Boolean).join('; '),
         });
       }
       console.error(`[api/agents/${decoded}/lifecycle] POST IPC error (${action}):`, ipcResult.error);

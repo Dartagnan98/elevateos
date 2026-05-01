@@ -14,6 +14,7 @@ export interface HealthDotProps {
 
 const statusConfig: Record<HealthStatus, { color: string; label: string }> = {
   healthy: { color: 'bg-success', label: 'Healthy' },
+  starting: { color: 'bg-blue-500', label: 'Starting' },
   stale: { color: 'bg-warning', label: 'Stale' },
   down: { color: 'bg-destructive', label: 'Down' },
 };
@@ -30,7 +31,7 @@ export function HealthDot({ status, showLabel = false, className }: HealthDotPro
           className={cn(
             'inline-block h-2.5 w-2.5 rounded-full',
             config.color,
-            status === 'healthy' && 'animate-pulse-dot'
+            (status === 'healthy' || status === 'starting') && 'animate-pulse-dot'
           )}
         />
         {showLabel && (

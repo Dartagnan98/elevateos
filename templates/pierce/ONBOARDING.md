@@ -75,7 +75,7 @@ Then continue from Part 2.
 ### Step 6: Discover existing agents
 
 ```bash
-elevate bus read-all-heartbeats --format text
+elevateos bus read-all-heartbeats --format text
 # Fallback if no heartbeats yet:
 ls "${CTX_ROOT}/state/" 2>/dev/null
 ```
@@ -201,7 +201,7 @@ Based on their answers, write rules to `.claude/skills/memory/SKILL.md`:
 
 Initial ingestion:
 ```bash
-elevate bus kb-ingest "${CTX_FRAMEWORK_ROOT}/orgs/${CTX_ORG}/knowledge.md" \
+elevateos bus kb-ingest "${CTX_FRAMEWORK_ROOT}/orgs/${CTX_ORG}/knowledge.md" \
   --org $CTX_ORG --scope shared
 # Add any specific docs the user listed
 ```
@@ -229,7 +229,7 @@ echo "Day starts: ${DAY_HOUR}:00, Night starts: ${NIGHT_HOUR}:00"
 
 Run CronList, then verify `config.json` already has a `heartbeat` entry (it does by default - skip adding a duplicate).
 
-The default config also includes a `nightly-metrics` cron (24h) that runs `elevate bus collect-metrics`. Confirm it exists in config.json and leave it in place.
+The default config also includes a `nightly-metrics` cron (24h) that runs `elevateos bus collect-metrics`. Confirm it exists in config.json and leave it in place.
 
 **Ask about additional crons:**
 > "I have a heartbeat cycle every 6 hours and daily metrics collection. Want me to note any other recurring checks for Avery to schedule safely? For example: daily reports, integration health checks, custom monitoring."
@@ -340,12 +340,12 @@ Write to `${CTX_AGENT_DIR}/SYSTEM.md`:
 
 For live agent roster, run:
 ```bash
-elevate bus list-agents
+elevateos bus list-agents
 ```
 
 For agent health (last heartbeat per agent), run:
 ```bash
-elevate bus read-all-heartbeats
+elevateos bus read-all-heartbeats
 ```
 ```
 
@@ -455,31 +455,31 @@ For each enabled feature, only add a safe interval entry to config.json after us
 **local_version_control** - safe interval option:
 ```
 interval: "24h"
-prompt: "Run daily git snapshot. elevate bus auto-commit - review the staged diff for PII - commit with descriptive message. Never push."
+prompt: "Run daily git snapshot. elevateos bus auto-commit - review the staged diff for PII - commit with descriptive message. Never push."
 ```
 Add to config.json:
 ```json
-{"name": "auto-commit", "type": "recurring", "interval": "24h", "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {21,22,23}, exit silently. Otherwise: run daily git snapshot. elevate bus auto-commit - review the staged diff for PII - commit with descriptive message. Never push."}
+{"name": "auto-commit", "type": "recurring", "interval": "24h", "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {21,22,23}, exit silently. Otherwise: run daily git snapshot. elevateos bus auto-commit - review the staged diff for PII - commit with descriptive message. Never push."}
 ```
 
 **upstream_sync** - safe interval option:
 ```
 interval: "24h"
-prompt: "Check for framework updates: elevate bus check-upstream. If updates available, explain every change in plain English via Telegram and wait for explicit approval before applying. Never apply during night mode."
+prompt: "Check for framework updates: elevateos bus check-upstream. If updates available, explain every change in plain English via Telegram and wait for explicit approval before applying. Never apply during night mode."
 ```
 Add to config.json:
 ```json
-{"name": "check-upstream", "type": "recurring", "interval": "24h", "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {21,22,23}, exit silently. Otherwise: check for framework updates: elevate bus check-upstream. If updates available, explain every change in plain English via Telegram and wait for explicit approval before applying. Never apply during night mode."}
+{"name": "check-upstream", "type": "recurring", "interval": "24h", "prompt": "Run TZ=America/Vancouver date +%H. If hour not in {21,22,23}, exit silently. Otherwise: check for framework updates: elevateos bus check-upstream. If updates available, explain every change in plain English via Telegram and wait for explicit approval before applying. Never apply during night mode."}
 ```
 
 **catalog_browse** - safe interval option:
 ```
 interval: "24h"
-prompt: "Browse community catalog: elevate bus browse-catalog. Surface ONE relevant new item to user via Telegram. If they say install it: elevate bus install-community-item <name>. If they decline, skip that item for 30 days."
+prompt: "Browse community catalog: elevateos bus browse-catalog. Surface ONE relevant new item to user via Telegram. If they say install it: elevateos bus install-community-item <name>. If they decline, skip that item for 30 days."
 ```
 Add to config.json:
 ```json
-{"name": "catalog-browse", "type": "recurring", "interval": "24h", "prompt": "Run TZ=America/Vancouver date +%A. If output is not Sunday, exit silently. Otherwise: browse community catalog: elevate bus browse-catalog. Surface ONE relevant new item to user via Telegram. If they say install it: elevate bus install-community-item <name>. If they decline, skip that item for 30 days."}
+{"name": "catalog-browse", "type": "recurring", "interval": "24h", "prompt": "Run TZ=America/Vancouver date +%A. If output is not Sunday, exit silently. Otherwise: browse community catalog: elevateos bus browse-catalog. Surface ONE relevant new item to user via Telegram. If they say install it: elevateos bus install-community-item <name>. If they decline, skip that item for 30 days."}
 ```
 
 **community_publish** - no cron needed, triggered manually.
@@ -529,7 +529,7 @@ After writing theta wave config, notify the orchestrator:
 ```bash
 ORCH_NAME=$(jq -r '.orchestrator // empty' "${CTX_FRAMEWORK_ROOT}/orgs/${CTX_ORG}/context.json" 2>/dev/null)
 if [ -n "$ORCH_NAME" ]; then
-  elevate bus send-message "${ORCH_NAME}" normal "Theta wave configured: enabled=true, interval=<interval>, approval_required=<val>, auto_create=<val>, auto_modify=<val>"
+  elevateos bus send-message "${ORCH_NAME}" normal "Theta wave configured: enabled=true, interval=<interval>, approval_required=<val>, auto_create=<val>, auto_modify=<val>"
 fi
 ```
 
@@ -605,7 +605,7 @@ if [ -z "$ORCH_NAME" ]; then
   ORCH_NAME=$(ls "${CTX_ROOT}/state/" 2>/dev/null | head -1)
 fi
 if [ -n "$ORCH_NAME" ]; then
-  elevate bus send-message "${ORCH_NAME}" normal "Analyst onboarding complete. User wants to create specialist agents: [list]. Please run specialist creation flow now."
+  elevateos bus send-message "${ORCH_NAME}" normal "Analyst onboarding complete. User wants to create specialist agents: [list]. Please run specialist creation flow now."
 fi
 ```
 
@@ -619,7 +619,7 @@ If no specialists wanted: proceed to step 29.
 ENABLED=$(cat "${CTX_ROOT}/config/enabled-agents.json" 2>/dev/null || echo '[]')
 if ! echo "$ENABLED" | jq -e --arg name "$CTX_AGENT_NAME" '.[] | select(. == $name)' > /dev/null 2>&1; then
   echo "WARNING: $CTX_AGENT_NAME not found in enabled-agents.json"
-  elevate bus send-telegram "$CTX_TELEGRAM_CHAT_ID" "Warning: I completed onboarding but I'm not in enabled-agents.json. Run: elevate start $CTX_AGENT_NAME"
+  elevateos bus send-telegram "$CTX_TELEGRAM_CHAT_ID" "Warning: I completed onboarding but I'm not in enabled-agents.json. Run: elevateos start $CTX_AGENT_NAME"
 fi
 ```
 
@@ -627,7 +627,7 @@ fi
 
 ```bash
 touch "${CTX_ROOT}/state/${CTX_AGENT_NAME}/.onboarded"
-elevate bus log-event action onboarding_complete info --meta '{"agent":"'$CTX_AGENT_NAME'","role":"analyst"}'
+elevateos bus log-event action onboarding_complete info --meta '{"agent":"'$CTX_AGENT_NAME'","role":"analyst"}'
 ```
 
 ### Step 29b: Verify bootstrap files
@@ -657,7 +657,7 @@ fi
 
 if [ -n "$MISSING" ]; then
   echo "BOOTSTRAP CHECK FAILED - missing or incomplete:${MISSING}"
-  elevate bus log-event error bootstrap_check_failed warning --meta '{"agent":"'$CTX_AGENT_NAME'","missing":"'"${MISSING}"'"}'
+  elevateos bus log-event error bootstrap_check_failed warning --meta '{"agent":"'$CTX_AGENT_NAME'","missing":"'"${MISSING}"'"}'
   # Attempt to fix TOOLS.md by copying from template
   if echo "$MISSING" | grep -q "TOOLS.md"; then
     cp "${CTX_FRAMEWORK_ROOT}/templates/analyst/TOOLS.md" "${CTX_AGENT_DIR}/TOOLS.md" 2>/dev/null

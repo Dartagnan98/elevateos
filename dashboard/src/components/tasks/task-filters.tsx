@@ -71,6 +71,7 @@ export function TaskFilters({
         { value: 'in_progress', label: 'In Progress' },
         { value: 'blocked', label: 'Blocked' },
         { value: 'completed', label: 'Completed' },
+        { value: 'cancelled', label: 'Cancelled' },
       ],
     },
   ];

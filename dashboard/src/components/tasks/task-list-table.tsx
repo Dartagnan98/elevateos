@@ -13,11 +13,11 @@ import { PriorityBadge, StatusBadge, OrgBadge, TimeAgo } from '@/components/shar
 import { IconArrowsSort, IconSortAscending, IconSortDescending } from '@tabler/icons-react';
 import type { Task } from '@/lib/types';
 
-type SortField = 'title' | 'status' | 'priority' | 'assignee' | 'org' | 'created_at';
+type SortField = 'title' | 'status' | 'priority' | 'assignee' | 'org' | 'scheduled_for' | 'created_at';
 type SortDir = 'asc' | 'desc';
 
 const PRIORITY_ORDER: Record<string, number> = { critical: 0, urgent: 0, high: 1, normal: 2, low: 3 };
-const STATUS_ORDER = { blocked: 0, in_progress: 1, pending: 2, completed: 3 };
+const STATUS_ORDER = { blocked: 0, in_progress: 1, pending: 2, completed: 3, cancelled: 4 };
 
 interface TaskListTableProps {
   tasks: Task[];
@@ -47,6 +47,9 @@ export function TaskListTable({ tasks, onTaskClick }: TaskListTableProps) {
           break;
         case 'org':
           cmp = a.org.localeCompare(b.org);
+          break;
+        case 'scheduled_for':
+          cmp = (a.scheduled_for ?? '').localeCompare(b.scheduled_for ?? '');
           break;
         case 'created_at':
           cmp = a.created_at.localeCompare(b.created_at);
@@ -82,6 +85,7 @@ export function TaskListTable({ tasks, onTaskClick }: TaskListTableProps) {
     { field: 'priority', label: 'Priority' },
     { field: 'assignee', label: 'Assignee' },
     { field: 'org', label: 'Org' },
+    { field: 'scheduled_for', label: 'Run At' },
     { field: 'created_at', label: 'Created' },
   ];
 
@@ -106,7 +110,7 @@ export function TaskListTable({ tasks, onTaskClick }: TaskListTableProps) {
       <TableBody>
         {sorted.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+            <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
               No tasks found
             </TableCell>
           </TableRow>
@@ -131,6 +135,9 @@ export function TaskListTable({ tasks, onTaskClick }: TaskListTableProps) {
               </TableCell>
               <TableCell>
                 <OrgBadge org={task.org} />
+              </TableCell>
+              <TableCell>
+                {task.scheduled_for ? <TimeAgo date={task.scheduled_for} /> : <span className="text-muted-foreground">-</span>}
               </TableCell>
               <TableCell>
                 <TimeAgo date={task.created_at} />

@@ -13,7 +13,7 @@ Events are how the dashboard activity feed knows what you're doing. No events = 
 ## Command
 
 ```bash
-elevate bus log-event <category> <event_name> <severity> [--meta '<json>']
+elevateos bus log-event <category> <event_name> <severity> [--meta '<json>']
 ```
 
 | Parameter | Options |
@@ -27,25 +27,25 @@ elevate bus log-event <category> <event_name> <severity> [--meta '<json>']
 
 ### Session start
 ```bash
-elevate bus log-event action session_start info \
+elevateos bus log-event action session_start info \
   --meta "{\"agent\":\"$CTX_AGENT_NAME\"}"
 ```
 
 ### Session end
 ```bash
-elevate bus log-event action session_end info \
+elevateos bus log-event action session_end info \
   --meta "{\"agent\":\"$CTX_AGENT_NAME\"}"
 ```
 
 ### Task completed
 ```bash
-elevate bus log-event task task_completed info \
+elevateos bus log-event task task_completed info \
   --meta "{\"task_id\":\"$TASK_ID\",\"agent\":\"$CTX_AGENT_NAME\",\"summary\":\"<what was done>\"}"
 ```
 
 ### Heartbeat
 ```bash
-elevate bus log-event heartbeat agent_heartbeat info \
+elevateos bus log-event heartbeat agent_heartbeat info \
   --meta "{\"agent\":\"$CTX_AGENT_NAME\",\"status\":\"active\"}"
 ```
 
@@ -55,25 +55,25 @@ elevate bus log-event heartbeat agent_heartbeat info \
 
 ### Research completed
 ```bash
-elevate bus log-event work research_complete info \
+elevateos bus log-event work research_complete info \
   --meta "{\"topic\":\"<topic>\",\"findings\":3,\"agent\":\"$CTX_AGENT_NAME\"}"
 ```
 
 ### Message dispatched to agent
 ```bash
-elevate bus log-event comms message_sent info \
+elevateos bus log-event comms message_sent info \
   --meta "{\"to\":\"<agent>\",\"priority\":\"normal\",\"agent\":\"$CTX_AGENT_NAME\"}"
 ```
 
 ### Error encountered
 ```bash
-elevate bus log-event error <operation>_failed error \
+elevateos bus log-event error <operation>_failed error \
   --meta "{\"operation\":\"<what failed>\",\"error\":\"<message>\",\"agent\":\"$CTX_AGENT_NAME\"}"
 ```
 
 ### Approval created
 ```bash
-elevate bus log-event action approval_created info \
+elevateos bus log-event action approval_created info \
   --meta "{\"approval_id\":\"$APPR_ID\",\"category\":\"<cat>\",\"agent\":\"$CTX_AGENT_NAME\"}"
 ```
 
@@ -83,11 +83,11 @@ elevate bus log-event action approval_created info \
 
 ```bash
 # Task dispatched to specialist
-elevate bus log-event action task_dispatched info \
+elevateos bus log-event action task_dispatched info \
   --meta "{\"to\":\"<agent>\",\"task\":\"<title>\",\"agent\":\"$CTX_AGENT_NAME\"}"
 
 # Status briefing sent to user
-elevate bus log-event action briefing_sent info \
+elevateos bus log-event action briefing_sent info \
   --meta "{\"type\":\"status_update\",\"agent\":\"$CTX_AGENT_NAME\"}"
 ```
 

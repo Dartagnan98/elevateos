@@ -57,8 +57,10 @@ function tryInstallJq(): boolean {
 
 export const installCommand = new Command('install')
   .option('--instance <id>', 'Instance ID', 'default')
+  .option('--starter-org <org>', 'Starter organization name', 'skyleigh-elevate')
+  .option('--no-starter-agents', 'Skip creating the starter Executive Assistant / specialist roster')
   .description(`Install ${PRODUCT_NAME} — create state directories, check and install dependencies`)
-  .action(async (options: { instance: string }) => {
+  .action(async (options: { instance: string; starterOrg: string; starterAgents?: boolean }) => {
     const instanceId = options.instance;
     const ctxRoot = getStateRoot(instanceId);
 
@@ -372,6 +374,48 @@ export const installCommand = new Command('install')
       console.log('    Without this, agents cannot use bus commands in PTY sessions.');
     }
 
+    if (options.starterAgents !== false) {
+      console.log(`Seeding starter agents for org "${options.starterOrg}"...`);
+      const cliPath = join(process.cwd(), 'dist', 'cli.js');
+      if (existsSync(cliPath)) {
+        const seedResult = spawnSync(
+          process.execPath,
+          [
+            cliPath,
+            'seed-agents',
+            '--org',
+            options.starterOrg,
+            '--instance',
+            instanceId,
+          ],
+          {
+            stdio: 'inherit',
+            cwd: process.cwd(),
+            timeout: 30000,
+            env: {
+              ...process.env,
+              ELEVATE_INSTANCE_ID: instanceId,
+              ELEVATE_ROOT: ctxRoot,
+              ELEVATE_FRAMEWORK_ROOT: process.cwd(),
+              ELEVATE_PROJECT_ROOT: process.cwd(),
+              CTX_INSTANCE_ID: instanceId,
+              CTX_ROOT: ctxRoot,
+              CTX_FRAMEWORK_ROOT: process.cwd(),
+              CTX_PROJECT_ROOT: process.cwd(),
+            },
+          },
+        );
+
+        if (seedResult.status === 0) {
+          console.log('  ✓ Starter agents ready');
+        } else {
+          console.log(`  ! Starter agent seeding failed. Run manually: ${CLI_NAME} seed-agents --org ${options.starterOrg} --instance ${instanceId}`);
+        }
+      } else {
+        console.log(`  ! Could not find ${cliPath}. Run manually after build: ${CLI_NAME} seed-agents --org ${options.starterOrg} --instance ${instanceId}`);
+      }
+    }
+
     console.log('\n  Installation complete.');
     console.log(`  State directory: ${ctxRoot}`);
     console.log(`\n  Dashboard credentials saved to: ${dashEnvPath}`);
@@ -379,10 +423,9 @@ export const installCommand = new Command('install')
     console.log(`    Admin credentials saved to: ${dashEnvPath}`);
     console.log(`    (View password with: cat ${dashEnvPath})`);
     console.log('\n  Next steps:');
-    console.log(`    1. ${CLI_NAME} init <org-name>`);
-    console.log(`    2. ${CLI_NAME} add-agent <name> --template orchestrator`);
-    console.log(`    3. ${CLI_NAME} ecosystem && pm2 start ecosystem.config.js`);
-    console.log(`    4. ${CLI_NAME} dashboard\n`);
+    console.log(`    1. ${CLI_NAME} start executive-assistant --instance ${instanceId}`);
+    console.log(`    2. ${CLI_NAME} dashboard --instance ${instanceId} --install --build --open`);
+    console.log(`    3. Open Agents → Executive Assistant → Chat / Tools\n`);
   });
 
 /**

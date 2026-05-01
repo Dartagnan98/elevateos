@@ -1,15 +1,26 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
+  IconApi,
+  IconBrain,
+  IconCalendarClock,
   IconCheck,
   IconCopy,
+  IconDatabase,
+  IconDeviceFloppy,
   IconFolder,
+  IconKey,
+  IconMessageCircle,
   IconNetwork,
   IconPlugConnected,
+  IconPuzzle,
+  IconRoute,
   IconRobot,
   IconSparkles,
   IconTerminal2,
+  IconRefresh,
+  IconUsers,
 } from '@tabler/icons-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +30,7 @@ interface ElevateRuntime {
   product: string;
   agent: string;
   command: string;
+  agentCommand: string;
   instanceId: string;
   stateRoot: string;
   frameworkRoot: string;
@@ -30,6 +42,7 @@ interface ElevateRuntime {
     dashboardEnvExists: boolean;
     enabledAgentsExists: boolean;
     frameworkRootExists: boolean;
+    elevateOsCommandPath: string | null;
     elevateCommandPath: string | null;
     claudeCommandPath: string | null;
     pythonCommandPath: string | null;
@@ -78,6 +91,18 @@ interface ElevateRuntime {
       hasErrorMessage: boolean;
       updatedAt: string | null;
     }>;
+    http: {
+      baseUrl: string;
+      healthUrl: string;
+      detailedUrl: string;
+      reachable: boolean;
+      status: number | null;
+      statusText: string | null;
+      latencyMs: number | null;
+      error: string | null;
+      health: unknown | null;
+      detailed: unknown | null;
+    };
     source: {
       elevateCliMainPath: string | null;
       command: string | null;
@@ -115,6 +140,7 @@ interface ElevateRuntime {
   env: {
     preferred: string[];
   };
+  runtimeMirror: RuntimeMirror;
 }
 
 interface RuntimePathInfo {
@@ -123,6 +149,186 @@ interface RuntimePathInfo {
   kind: 'file' | 'directory' | 'other' | null;
   modifiedAt: string | null;
   sizeBytes: number | null;
+}
+
+interface RuntimeMirror {
+  model: {
+    provider: string;
+    model: string;
+    baseUrl: string | null;
+    maxTurns: number;
+    reasoningEffort: string | null;
+  };
+  orchestration: {
+    appCommand: string | null;
+    agentCommand: string | null;
+    enabledToolsets: string[];
+    platformToolsets: Record<string, unknown>;
+    agents: Array<{
+      name: string;
+      displayName: string;
+      role: string;
+      org: string;
+      enabled: boolean;
+      running: boolean;
+      status: string;
+      lastHeartbeat: string | null;
+      orchestration: string;
+      activeRouteLabel: string | null;
+      activeTask: string | null;
+      reportsTo: string | null;
+    }>;
+    delegation: {
+      enabled: boolean;
+      maxChildren: number | null;
+      maxSpawnDepth: number | null;
+      timeoutSeconds: number | null;
+    };
+  };
+  platforms: Array<{
+    name: string;
+    state: string;
+    enabled: boolean;
+    tokenKey: string;
+    tokenConfigured: boolean;
+    tokenMasked: string | null;
+    toolsets: string[];
+    channelCount: number;
+    channels: Array<{ name: string | null; type: string | null; id: string | null }>;
+    updatedAt: string | null;
+    errorCode: string | null;
+  }>;
+  secrets: Array<{ label: string; key: string; configured: boolean; masked: string | null }>;
+  api: {
+    endpoint: string;
+    v1Endpoint: string;
+    reachable: boolean;
+    apiServerEnabled: boolean;
+    apiServerHost: string;
+    apiServerPort: number;
+    apiServerAuthConfigured: boolean;
+  };
+  messages: {
+    channelDirectory: RuntimePathInfo;
+    platformsWithChannels: Array<{ name: string; count: number }>;
+    telegramApprovedUsers: number;
+  };
+  cron: {
+    jobsFile: RuntimePathInfo;
+    total: number;
+    enabled: number;
+    disabled: number;
+    outputDir: RuntimePathInfo;
+    lock: RuntimePathInfo;
+    jobs: Array<{
+      id: string | null;
+      name: string;
+      enabled: boolean;
+      schedule: string;
+      nextRun: string | null;
+      deliver: string | null;
+      skills: string[];
+      promptPreview: string | null;
+    }>;
+  };
+  skills: {
+    installedRoot: RuntimePathInfo;
+    builtinRoot: RuntimePathInfo | null;
+    appRoot: RuntimePathInfo;
+    installedCount: number;
+    builtinCount: number;
+    appCount: number;
+    samples: Array<{ name: string; source: string; path: string }>;
+  };
+  memory: {
+    provider: string;
+    enabled: boolean;
+    pluginEnabled: boolean;
+    embeddingEnabled: boolean;
+    embeddingProvider: string | null;
+    embeddingModel: string | null;
+    organizeEveryTurns: number | null;
+    dailyOrganizeEnabled: boolean;
+    dailyOrganizeTime: string;
+    db: RuntimePathInfo;
+    dailyState: {
+      path: RuntimePathInfo;
+      lastRunLocalDate: string | null;
+      lastRunAt: string | null;
+    };
+    counts: {
+      facts: number | null;
+      entities: number | null;
+      journalTurns: number | null;
+      embeddings: number | null;
+    };
+  };
+  sessions: {
+    sessionsMap: RuntimePathInfo;
+    activeCount: number;
+    active: Array<{
+      sessionId: string | null;
+      displayName: string | null;
+      platform: string | null;
+      chatType: string | null;
+      updatedAt: string | null;
+      suspended: boolean;
+      resumePending: boolean;
+      lastPromptTokens: number | null;
+    }>;
+    stateDb: RuntimePathInfo;
+    totalInDb: number | null;
+    recent: Array<{
+      id: string;
+      source: string;
+      title: string | null;
+      startedAt: string | null;
+      endedAt: string | null;
+      messageCount: number;
+      apiCallCount: number;
+    }>;
+  };
+  files: {
+    config: RuntimePathInfo;
+    secrets: RuntimePathInfo;
+    auth: RuntimePathInfo;
+    logs: RuntimePathInfo;
+    memories: RuntimePathInfo;
+  };
+}
+
+interface GatewayTelegramPairing {
+  code?: string;
+  userId?: string;
+  userName?: string;
+  userIdMasked?: string;
+  ageMinutes?: number | null;
+  approvedAt?: number | null;
+}
+
+interface GatewayTelegramSettings {
+  elevateHome: string;
+  envPath: string;
+  botTokenConfigured: boolean;
+  botTokenMasked: string;
+  homeChannel: string;
+  homeChannelConfigured: boolean;
+  approvedUserCount: number;
+  pendingPairings: GatewayTelegramPairing[];
+  approvedPairings: GatewayTelegramPairing[];
+  validation?: {
+    ok: boolean;
+    error?: string;
+    botUsername?: string;
+    chatType?: string;
+    selfChat?: boolean;
+  };
+  restart?: {
+    ok: boolean;
+    stdout: string;
+    stderr: string;
+    error: string | null;
+  };
 }
 
 type ConnectorMode = 'gateway' | 'claude';
@@ -156,6 +362,36 @@ function BoolBadge({ ok, label }: { ok: boolean; label: string }) {
     <Badge variant={ok ? 'default' : 'secondary'}>
       {label}
     </Badge>
+  );
+}
+
+function MetricTile({ label, value, detail }: { label: string; value: string; detail?: string | null }) {
+  return (
+    <div className="rounded-md border bg-background px-3 py-2">
+      <div className="text-[11px] font-medium uppercase text-muted-foreground">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-foreground">{value}</div>
+      {detail && <div className="mt-1 truncate text-xs text-muted-foreground">{detail}</div>}
+    </div>
+  );
+}
+
+function MirrorPanel({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid gap-3 rounded-md border bg-background p-3">
+      <div className="flex items-center gap-2 text-sm font-semibold">
+        {icon}
+        {title}
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -197,6 +433,239 @@ function PathField({ label, info }: { label: string; info: RuntimePathInfo }) {
       </code>
       <div className="text-xs text-muted-foreground">{suffix}</div>
     </div>
+  );
+}
+
+function GatewayTelegramSetupCard({ onRuntimeRefresh }: { onRuntimeRefresh: () => Promise<void> | void }) {
+  const [settings, setSettings] = useState<GatewayTelegramSettings | null>(null);
+  const [form, setForm] = useState({
+    botToken: '',
+    homeChannel: '',
+    pairingCode: '',
+    restartGateway: true,
+    validate: true,
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const loadTelegram = useCallback(async (resetForm = true) => {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res = await fetch('/api/elevate/telegram');
+      const body = await res.json();
+      if (!res.ok) {
+        setMessage({ type: 'error', text: body.error || 'Failed to load gateway Telegram settings' });
+        return;
+      }
+      setSettings(body);
+      if (resetForm) {
+        setForm((prev) => ({
+          ...prev,
+          botToken: '',
+          homeChannel: body.homeChannel || '',
+          pairingCode: '',
+        }));
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Network error loading gateway Telegram settings' });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTelegram();
+  }, [loadTelegram]);
+
+  async function saveTelegram() {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch('/api/elevate/telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setMessage({ type: 'error', text: body.error || 'Failed to save gateway Telegram settings' });
+        return;
+      }
+
+      setSettings(body);
+      setForm((prev) => ({
+        ...prev,
+        botToken: '',
+        homeChannel: body.homeChannel || '',
+        pairingCode: '',
+      }));
+
+      const validation = body.validation as GatewayTelegramSettings['validation'];
+      const restart = body.restart as GatewayTelegramSettings['restart'];
+      if (validation && !validation.ok) {
+        setMessage({ type: 'error', text: `Saved, but Telegram validation failed: ${validation.error || 'unknown error'}` });
+      } else if (restart && !restart.ok) {
+        setMessage({ type: 'error', text: `Saved, but gateway restart failed: ${restart.error || restart.stderr || 'unknown error'}` });
+      } else {
+        const target = [validation?.botUsername, validation?.chatType].filter(Boolean).join(' - ');
+        setMessage({ type: 'success', text: target ? `Saved, validated, and gateway restarted: ${target}` : 'Saved and gateway restarted' });
+      }
+      await onRuntimeRefresh();
+    } catch {
+      setMessage({ type: 'error', text: 'Network error saving gateway Telegram settings' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const ready = Boolean(settings?.botTokenConfigured && settings?.approvedUserCount);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <IconMessageCircle size={18} />
+            Telegram Bot Setup
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {settings && (
+              <Badge variant={ready ? 'default' : 'secondary'}>
+                {ready ? 'Ready' : 'Needs setup'}
+              </Badge>
+            )}
+            <Button variant="outline" size="xs" onClick={() => loadTelegram()} disabled={loading}>
+              <IconRefresh size={14} />
+              Refresh
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+        {loading && !settings ? (
+          <div className="h-44 rounded-md bg-muted/40 animate-pulse xl:col-span-2" />
+        ) : (
+          <>
+            <div className="grid gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Gateway Env" value={settings?.envPath || null} />
+                <Field label="Home Channel" value={settings?.homeChannel || null} />
+              </div>
+              <div className="grid gap-2">
+                <div className="text-[11px] font-medium uppercase text-muted-foreground">Current Status</div>
+                <div className="flex flex-wrap gap-2">
+                  <BoolBadge ok={Boolean(settings?.botTokenConfigured)} label={settings?.botTokenConfigured ? 'Bot token set' : 'No bot token'} />
+                  <BoolBadge ok={Boolean(settings?.homeChannelConfigured)} label={settings?.homeChannelConfigured ? 'Home channel set' : 'No home channel'} />
+                  <Badge variant="outline">{settings?.approvedUserCount ?? 0} approved users</Badge>
+                  {settings?.botTokenMasked && <Badge variant="outline">{settings.botTokenMasked}</Badge>}
+                </div>
+              </div>
+              {(settings?.pendingPairings.length || 0) > 0 && (
+                <div className="rounded-md border">
+                  <div className="border-b px-3 py-2 text-xs font-medium uppercase text-muted-foreground">Pending Pairing Codes</div>
+                  <div className="divide-y">
+                    {settings?.pendingPairings.map((pairing) => (
+                      <div key={pairing.code} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
+                        <div className="min-w-0">
+                          <code className="font-mono">{pairing.code}</code>
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {pairing.userName || pairing.userIdMasked || 'Telegram user'}
+                            {pairing.ageMinutes !== null && pairing.ageMinutes !== undefined ? ` - ${pairing.ageMinutes}m` : ''}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="outline"
+                          onClick={() => setForm((prev) => ({ ...prev, pairingCode: pairing.code || '' }))}
+                        >
+                          Use
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(settings?.approvedPairings.length || 0) > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {settings?.approvedPairings.slice(0, 6).map((pairing) => (
+                    <Badge key={pairing.userId} variant="secondary">
+                      {pairing.userName || pairing.userIdMasked || 'approved'}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-3 rounded-md border bg-muted/20 p-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="grid gap-1.5 text-sm">
+                  <span className="text-xs text-muted-foreground">Bot Token</span>
+                  <input
+                    type="password"
+                    value={form.botToken}
+                    onChange={(event) => setForm((prev) => ({ ...prev, botToken: event.target.value }))}
+                    placeholder={settings?.botTokenConfigured ? 'Leave blank to keep current token' : 'Paste Telegram bot token'}
+                    className="block w-full rounded-md border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+                  />
+                </label>
+                <label className="grid gap-1.5 text-sm">
+                  <span className="text-xs text-muted-foreground">Pairing Code</span>
+                  <input
+                    type="text"
+                    value={form.pairingCode}
+                    onChange={(event) => setForm((prev) => ({ ...prev, pairingCode: event.target.value.toUpperCase() }))}
+                    placeholder="PVZ2FKUM"
+                    className="block w-full rounded-md border bg-background px-3 py-1.5 text-sm uppercase focus:border-primary focus:outline-none"
+                  />
+                </label>
+              </div>
+              <label className="grid gap-1.5 text-sm">
+                <span className="text-xs text-muted-foreground">Home Channel</span>
+                <input
+                  type="text"
+                  value={form.homeChannel}
+                  onChange={(event) => setForm((prev) => ({ ...prev, homeChannel: event.target.value }))}
+                  placeholder="Optional; pairing can fill this from your Telegram user ID"
+                  className="block w-full rounded-md border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+                />
+              </label>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={form.validate}
+                    onChange={(event) => setForm((prev) => ({ ...prev, validate: event.target.checked }))}
+                    className="rounded"
+                  />
+                  Validate with Telegram
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={form.restartGateway}
+                    onChange={(event) => setForm((prev) => ({ ...prev, restartGateway: event.target.checked }))}
+                    className="rounded"
+                  />
+                  Restart gateway after save
+                </label>
+              </div>
+              {message && (
+                <div className={`rounded-md px-3 py-2 text-xs ${message.type === 'success' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-500'}`}>
+                  {message.text}
+                </div>
+              )}
+              <Button onClick={saveTelegram} disabled={saving} className="w-fit gap-2">
+                <IconDeviceFloppy size={16} />
+                {saving ? 'Saving...' : 'Save Bot Setup'}
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -251,9 +720,12 @@ export function ElevateAgentTab() {
     : Boolean(data.status.claudeCommandPath);
   const commands = connectorMode === 'gateway'
     ? [
-        `elevate status --instance ${data.instanceId}`,
-        `elevate dashboard --instance ${data.instanceId}`,
-        `elevate ecosystem --instance ${data.instanceId}`,
+        `${data.command} status --instance ${data.instanceId}`,
+        `${data.command} dashboard --instance ${data.instanceId}`,
+        `${data.command} ecosystem --instance ${data.instanceId}`,
+        `${data.agentCommand} gateway status`,
+        `${data.agentCommand} memory status`,
+        `curl -fsS ${data.gateway.http.healthUrl}`,
         data.gateway.source.command,
         `tail -80 ${data.gateway.logs.stdout.path}`,
         `tail -80 ${data.gateway.logs.stderr.path}`,
@@ -263,8 +735,19 @@ export function ElevateAgentTab() {
         `${data.claudeCode.commandPath || 'claude'} --version`,
         `ls -la ${data.claudeCode.home.path}`,
         `ls -la ${data.claudeCode.projectClaudeDir.path}`,
-        `find ${data.claudeCode.templatesDir.path} -maxdepth 2 -name CLAUDE.md`,
+        `find ${data.claudeCode.templatesDir.path} -maxdepth 2 -name AGENTS.md`,
       ];
+  const mirror = data.runtimeMirror;
+  const mirroredPlatforms = mirror.platforms
+    .filter((platform) => platform.enabled || platform.channelCount > 0 || platform.state === 'connected')
+    .slice(0, 8);
+  const configuredSecrets = mirror.secrets.filter((secret) => secret.configured).length;
+  const skillsTotal = mirror.skills.installedCount + mirror.skills.builtinCount + mirror.skills.appCount;
+  const factsCount = mirror.memory.counts.facts ?? 0;
+  const entitiesCount = mirror.memory.counts.entities ?? 0;
+  const embeddingsCount = mirror.memory.counts.embeddings ?? 0;
+  const journalCount = mirror.memory.counts.journalTurns ?? 0;
+  const primaryAgent = mirror.orchestration.agents.find((agent) => agent.orchestration === 'primary');
 
   return (
     <div className="grid gap-4">
@@ -286,17 +769,19 @@ export function ElevateAgentTab() {
               <StatusBadge ok={data.status.stateRootExists} label="State root" />
               <StatusBadge ok={data.status.dashboardEnvExists} label="Dashboard auth" />
               <StatusBadge ok={data.localWrapper.elevateHomeExists} label="Elevate home" />
+              <StatusBadge ok={data.gateway.http.reachable} label="HTTP gateway" />
               <StatusBadge ok={connectorHealthy} label={connectorMode === 'gateway' ? 'Gateway selected' : 'Claude selected'} />
             </div>
           </div>
           <div className="grid gap-3 p-5">
             <Field label="Instance" value={data.instanceId} />
             <Field
-              label="Command"
+              label="App Command"
               value={connectorMode === 'gateway'
-                ? data.status.elevateCommandPath || data.command
+                ? data.status.elevateOsCommandPath || data.command
                 : data.claudeCode.commandPath || 'claude'}
             />
+            <Field label="Agent Command" value={data.status.elevateCommandPath || data.agentCommand} />
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary">{data.activeAgents.length} active agents</Badge>
               <Badge variant="secondary">{data.localWrapper.daemonProcess}</Badge>
@@ -325,7 +810,7 @@ export function ElevateAgentTab() {
               <span className="grid gap-0.5 text-left">
                 <span>Elevate Gateway</span>
                 <span className={connectorMode === 'gateway' ? 'text-primary-foreground/70 text-xs' : 'text-muted-foreground text-xs'}>
-                  Local state, launch agent, logs
+                  HTTP connector, launch agent, logs
                 </span>
               </span>
             </Button>
@@ -375,6 +860,7 @@ export function ElevateAgentTab() {
               <>
                 <Field label="Elevate Home" value={data.localWrapper.elevateHome} />
                 <Field label="Connector Owner" value={data.localWrapper.controlSurface} />
+                <Field label="Network Endpoint" value={data.gateway.networkEndpoint} />
                 <Field label="Python Runtime" value={data.status.pythonCommandPath} />
                 <Field label="PM2 Logs" value={data.localWrapper.pm2LogDir} />
               </>
@@ -414,14 +900,14 @@ export function ElevateAgentTab() {
             <PathField label="Project Commands" info={data.claudeCode.projectCommands} />
             <PathField label="Dashboard Instructions" info={data.claudeCode.dashboardInstructions} />
             <div className="grid gap-2">
-              <div className="text-[11px] font-medium uppercase text-muted-foreground">Agent Template Claude Roots</div>
+              <div className="text-[11px] font-medium uppercase text-muted-foreground">Agent Template Instruction Roots</div>
               <div className="grid gap-2">
                 {data.claudeCode.templates.map((template) => (
                   <div key={template.name} className="grid gap-2 rounded-md border bg-background px-3 py-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="text-sm font-medium capitalize">{template.name}</div>
                       <div className="flex flex-wrap gap-1">
-                        <Badge variant={template.instructions.exists ? 'default' : 'secondary'}>CLAUDE.md</Badge>
+                        <Badge variant={template.instructions.exists ? 'default' : 'secondary'}>AGENTS.md</Badge>
                         <Badge variant={template.settings.exists ? 'default' : 'secondary'}>settings</Badge>
                         <Badge variant={template.skillsDir.exists ? 'default' : 'secondary'}>skills</Badge>
                       </div>
@@ -448,12 +934,14 @@ export function ElevateAgentTab() {
           <div className="grid gap-3">
             <div className="flex flex-wrap gap-2">
               <BoolBadge ok={data.gateway.connected} label={data.gateway.connected ? 'Connected' : 'Stopped'} />
+              <BoolBadge ok={data.gateway.http.reachable} label={data.gateway.http.reachable ? 'HTTP live' : 'HTTP down'} />
               <BoolBadge ok={data.gateway.pidAlive} label={data.gateway.pidAlive ? 'PID live' : 'PID stale'} />
               <BoolBadge ok={data.gateway.launchd.loaded} label={data.gateway.launchd.loaded ? 'Service loaded' : 'Service idle'} />
               <BoolBadge ok={data.gateway.files.state.exists} label={data.gateway.files.state.exists ? 'State file' : 'No state file'} />
             </div>
             <Field label="Provider" value={`${data.gateway.owner} - ${data.gateway.connectionMode}`} />
             <Field label="Transport" value={data.gateway.transport} />
+            <Field label="Endpoint" value={data.gateway.networkEndpoint} />
             <Field label="State" value={data.gateway.state} />
             <Field label="Process" value={gatewayProcess} />
             <div className="grid gap-2">
@@ -478,6 +966,12 @@ export function ElevateAgentTab() {
           </div>
           <div className="grid gap-3">
             <Field label="Active Agents" value={`${data.gateway.activeAgents}`} />
+            <Field
+              label="HTTP Health"
+              value={data.gateway.http.reachable
+                ? `HTTP ${data.gateway.http.status}${typeof data.gateway.http.latencyMs === 'number' ? ` in ${data.gateway.http.latencyMs}ms` : ''}`
+                : data.gateway.http.error}
+            />
             <Field label="Last Update" value={data.gateway.updatedAt} />
             <Field label="Launch Agent" value={`${data.gateway.launchd.label}${data.gateway.launchd.pid ? ` pid ${data.gateway.launchd.pid}` : ''}`} />
             <PathField label="Gateway State" info={data.gateway.files.state} />
@@ -487,6 +981,257 @@ export function ElevateAgentTab() {
         </CardContent>
       </Card>
       )}
+
+      {connectorMode === 'gateway' && (
+        <GatewayTelegramSetupCard onRuntimeRefresh={load} />
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <IconRoute size={18} />
+            Runtime Mirror
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricTile label="Model" value={mirror.model.model} detail={mirror.model.provider} />
+            <MetricTile
+              label="API"
+              value={mirror.api.reachable ? 'Live' : 'Offline'}
+              detail={`${mirror.api.apiServerHost}:${mirror.api.apiServerPort}`}
+            />
+            <MetricTile
+              label="Messages"
+              value={`${mirror.messages.platformsWithChannels.length} channel groups`}
+              detail={`${mirror.messages.telegramApprovedUsers} Telegram approved`}
+            />
+            <MetricTile
+              label="Sessions"
+              value={`${mirror.sessions.activeCount} active`}
+              detail={`${mirror.sessions.totalInDb ?? 0} stored`}
+            />
+            <MetricTile label="Memory" value={`${factsCount} facts`} detail={`${embeddingsCount} embeddings`} />
+            <MetricTile
+              label="Agents"
+              value={`${mirror.orchestration.agents.length} configured`}
+              detail={primaryAgent ? `${primaryAgent.displayName} leads` : 'no primary agent'}
+            />
+            <MetricTile label="Skills" value={`${skillsTotal} visible`} detail={`${mirror.skills.builtinCount} builtin`} />
+            <MetricTile label="Cron" value={`${mirror.cron.enabled}/${mirror.cron.total} enabled`} detail={mirror.cron.jobsFile.exists ? 'jobs file found' : 'no jobs file'} />
+            <MetricTile label="Secrets" value={`${configuredSecrets}/${mirror.secrets.length} configured`} detail="redacted locally" />
+          </div>
+
+          <div className="grid gap-3 xl:grid-cols-2">
+            <MirrorPanel title="Messages + APIs" icon={<IconApi size={17} />}>
+              <div className="grid gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <BoolBadge ok={mirror.api.apiServerEnabled} label={mirror.api.apiServerEnabled ? 'API server enabled' : 'API server disabled'} />
+                  <BoolBadge ok={mirror.api.reachable} label={mirror.api.reachable ? 'Gateway reachable' : 'Gateway unreachable'} />
+                  <BoolBadge ok={mirror.api.apiServerAuthConfigured} label={mirror.api.apiServerAuthConfigured ? 'API auth configured' : 'Loopback auth only'} />
+                </div>
+                <Field label="OpenAI-compatible endpoint" value={mirror.api.v1Endpoint} />
+                {mirroredPlatforms.length > 0 ? (
+                  <div className="grid gap-2">
+                    {mirroredPlatforms.map((platform) => (
+                      <div key={platform.name} className="grid gap-2 rounded-md border bg-muted/20 px-3 py-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-sm font-medium capitalize">{platform.name.replaceAll('_', ' ')}</div>
+                          <div className="flex flex-wrap gap-1">
+                            <Badge variant={platform.state === 'connected' ? 'default' : 'secondary'}>{platform.state}</Badge>
+                            <Badge variant={platform.tokenConfigured ? 'default' : 'secondary'}>{platform.tokenConfigured ? 'token set' : 'no token'}</Badge>
+                            <Badge variant="outline">{platform.channelCount} channels</Badge>
+                          </div>
+                        </div>
+                        {platform.channels.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {platform.channels.map((channel, index) => (
+                              <Badge key={`${platform.name}-${channel.id ?? index}`} variant="outline">
+                                {channel.name || channel.type || channel.id || 'channel'}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        {platform.toolsets.length > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            Toolsets: {platform.toolsets.join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+                    No message platforms have reported channels yet.
+                  </div>
+                )}
+              </div>
+            </MirrorPanel>
+
+            <MirrorPanel title="Agent Orchestration" icon={<IconUsers size={17} />}>
+              <div className="grid gap-2">
+                {mirror.orchestration.agents.length > 0 ? (
+                  mirror.orchestration.agents.map((agent) => (
+                    <div key={agent.name} className="grid gap-2 rounded-md border bg-muted/20 px-3 py-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium">{agent.displayName}</div>
+                          <div className="text-xs text-muted-foreground">{agent.name} - {agent.org || 'no org'}</div>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          <Badge variant={agent.orchestration === 'primary' ? 'default' : 'secondary'}>
+                            {agent.orchestration === 'primary' ? 'Primary' : 'Specialist'}
+                          </Badge>
+                          <Badge variant={agent.running ? 'default' : agent.enabled ? 'outline' : 'secondary'}>
+                            {agent.running ? 'Running' : agent.enabled ? agent.status : 'Disabled'}
+                          </Badge>
+                          {agent.activeRouteLabel && (
+                            <Badge variant="outline">{agent.activeRouteLabel}</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-xs text-muted-foreground">{agent.role}</div>
+                      {agent.activeTask && (
+                        <div className="text-xs text-muted-foreground">
+                          {agent.activeRouteLabel ? `${agent.activeRouteLabel}: ` : ''}{agent.activeTask}
+                        </div>
+                      )}
+                      {agent.reportsTo && (
+                        <div className="text-xs text-muted-foreground">Reports to {agent.reportsTo}</div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+                    No agents are configured yet. Run elevateos seed-agents to create the starter roster.
+                  </div>
+                )}
+              </div>
+            </MirrorPanel>
+
+            <MirrorPanel title="Bot Tokens + Keys" icon={<IconKey size={17} />}>
+              <div className="grid gap-2">
+                {mirror.secrets.map((secret) => (
+                  <div key={secret.key} className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/20 px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium">{secret.label}</div>
+                      <code className="text-xs text-muted-foreground">{secret.key}</code>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {secret.masked && <code className="text-xs text-muted-foreground">{secret.masked}</code>}
+                      <Badge variant={secret.configured ? 'default' : 'secondary'}>
+                        {secret.configured ? 'Configured' : 'Missing'}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </MirrorPanel>
+
+            <MirrorPanel title="Cron Jobs + Skills" icon={<IconCalendarClock size={17} />}>
+              <div className="grid gap-3">
+                <div className="grid gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">{mirror.cron.total} jobs</Badge>
+                    <Badge variant="outline">{mirror.cron.enabled} enabled</Badge>
+                    <Badge variant="outline">{mirror.cron.disabled} disabled</Badge>
+                  </div>
+                  {mirror.cron.jobs.length > 0 ? (
+                    mirror.cron.jobs.map((job) => (
+                      <div key={job.id ?? job.name} className="grid gap-1 rounded-md border bg-muted/20 px-3 py-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-sm font-medium">{job.name}</div>
+                          <Badge variant={job.enabled ? 'default' : 'secondary'}>{job.enabled ? 'Enabled' : 'Disabled'}</Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">{job.schedule}</div>
+                        {job.skills.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {job.skills.map((skill) => <Badge key={skill} variant="outline">{skill}</Badge>)}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+                      No scheduled jobs are registered right now.
+                    </div>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">{mirror.skills.installedCount} installed</Badge>
+                    <Badge variant="outline">{mirror.skills.builtinCount} builtin</Badge>
+                    <Badge variant="outline">{mirror.skills.appCount} app</Badge>
+                  </div>
+                  {mirror.skills.samples.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {mirror.skills.samples.map((skill) => (
+                        <Badge key={`${skill.source}-${skill.path}`} variant="secondary">
+                          {skill.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </MirrorPanel>
+
+            <MirrorPanel title="Memory + Sessions" icon={<IconBrain size={17} />}>
+              <div className="grid gap-3">
+                <div className="flex flex-wrap gap-2">
+                  <BoolBadge ok={mirror.memory.enabled} label={mirror.memory.enabled ? 'Memory enabled' : 'Memory off'} />
+                  <BoolBadge ok={mirror.memory.embeddingEnabled} label={mirror.memory.embeddingEnabled ? 'Embeddings on' : 'Embeddings off'} />
+                  <BoolBadge ok={mirror.memory.dailyOrganizeEnabled} label={mirror.memory.dailyOrganizeEnabled ? `Daily ${mirror.memory.dailyOrganizeTime}` : 'Daily off'} />
+                </div>
+                <div className="grid gap-2 sm:grid-cols-4">
+                  <MetricTile label="Facts" value={`${factsCount}`} />
+                  <MetricTile label="Entities" value={`${entitiesCount}`} />
+                  <MetricTile label="Journal" value={`${journalCount}`} />
+                  <MetricTile label="Embeddings" value={`${embeddingsCount}`} />
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {mirror.memory.provider} memory, {mirror.memory.embeddingProvider || 'no'} embeddings,
+                  organize every {mirror.memory.organizeEveryTurns ?? 0} turns.
+                </div>
+                {mirror.sessions.active.length > 0 ? (
+                  <div className="grid gap-2">
+                    {mirror.sessions.active.map((session, index) => (
+                      <div key={session.sessionId ?? index} className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/20 px-3 py-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium">
+                            {session.displayName || session.sessionId || 'Active session'}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {[session.platform, session.chatType, session.updatedAt ? formatTimestamp(session.updatedAt) : null].filter(Boolean).join(' - ')}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {session.suspended && <Badge variant="secondary">suspended</Badge>}
+                          {session.resumePending && <Badge variant="secondary">resume pending</Badge>}
+                          {typeof session.lastPromptTokens === 'number' && <Badge variant="outline">{session.lastPromptTokens} tokens</Badge>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+                    No active sessions are registered right now.
+                  </div>
+                )}
+              </div>
+            </MirrorPanel>
+
+            <MirrorPanel title="Local Files" icon={<IconDatabase size={17} />}>
+              <div className="grid gap-3">
+                <PathField label="Config" info={mirror.files.config} />
+                <PathField label="Secrets" info={mirror.files.secrets} />
+                <PathField label="Memory DB" info={mirror.memory.db} />
+                <PathField label="Sessions Map" info={mirror.sessions.sessionsMap} />
+              </div>
+            </MirrorPanel>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <Card>

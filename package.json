@@ -4,7 +4,7 @@
   "description": "Persistent Elevate agents with local orchestration, memory, and operator controls",
   "main": "dist/daemon.js",
   "bin": {
-    "elevate": "dist/cli.js"
+    "elevateos": "dist/cli.js"
   },
   "scripts": {
     "build": "tsup",

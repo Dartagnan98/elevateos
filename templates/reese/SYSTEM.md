@@ -10,10 +10,10 @@
 
 This file contains static org context only. For the live agent roster, run:
 ```bash
-elevate bus list-agents
+elevateos bus list-agents
 ```
 
 For agent health (last heartbeat per agent), run:
 ```bash
-elevate bus read-all-heartbeats
+elevateos bus read-all-heartbeats
 ```

@@ -272,6 +272,7 @@ function findTemplateDir(projectRoot: string, template: string): string | null {
 function copyTemplateFiles(templateDir: string, agentDir: string, name: string, org: string): void {
   const files = readdirSync(templateDir);
   for (const file of files) {
+    if (file === 'CLAUDE.md' || file === 'claude.md') continue;
     const srcPath = join(templateDir, file);
     const destPath = join(agentDir, file);
     try {
@@ -304,8 +305,6 @@ function createMinimalAgent(agentDir: string, name: string, org: string, templat
   writeFileSync(join(agentDir, 'USER.md'), `# User Profile\n\nNot configured yet.\n`);
   writeFileSync(join(agentDir, 'SYSTEM.md'), `# System Context\n\nOrganization: ${org}\n`);
   writeFileSync(join(agentDir, 'TOOLS.md'), `# Available Tools\n\nUse \`${CLI_NAME} bus <command>\` for bus operations.\n`);
-  // CLAUDE.md is a thin wrapper that imports AGENTS.md (works with Claude Code's @ import syntax)
-  writeFileSync(join(agentDir, 'CLAUDE.md'), '@AGENTS.md\n');
   writeFileSync(join(agentDir, 'AGENTS.md'), createAgentsMd(name, org, template));
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { IconDeviceFloppy, IconSettings } from '@tabler/icons-react';
+import { useCallback, useState, useEffect } from 'react';
+import { IconBrandTelegram, IconDeviceFloppy, IconRefresh, IconSettings } from '@tabler/icons-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 interface AgentConfig {
@@ -21,6 +21,7 @@ interface AgentConfig {
 
 interface SettingsTabProps {
   agentName: string;
+  org?: string;
 }
 
 const APPROVAL_CATEGORIES = ['external-comms', 'financial', 'deployment', 'data-deletion'] as const;
@@ -29,7 +30,349 @@ type MessageState = { type: 'success' | 'error'; text: string } | null;
 
 const TIME_REGEX = /^\d{2}:\d{2}$/;
 
-export function SettingsTab({ agentName }: SettingsTabProps) {
+interface TelegramPairing {
+  code: string;
+  userId: string;
+  userName: string;
+  userIdMasked: string;
+  ageMinutes: number | null;
+}
+
+interface TelegramApprovedPairing {
+  userId: string;
+  userName: string;
+  userIdMasked: string;
+  approvedAt: number | null;
+}
+
+interface TelegramValidation {
+  ok: boolean;
+  error?: string;
+  botUsername?: string;
+  chatType?: string;
+  selfChat?: boolean;
+}
+
+interface TelegramSettings {
+  agent: { name: string; org: string };
+  envPath: string;
+  botTokenConfigured: boolean;
+  botTokenMasked: string;
+  chatId: string;
+  allowedUser: string;
+  allowedUserConfigured: boolean;
+  configured: boolean;
+  gatewayBotTokenConfigured: boolean;
+  pendingPairings: TelegramPairing[];
+  approvedPairings: TelegramApprovedPairing[];
+  validation?: TelegramValidation;
+}
+
+interface TelegramForm {
+  botToken: string;
+  chatId: string;
+  allowedUser: string;
+  pairingCode: string;
+  useGatewayBotToken: boolean;
+}
+
+function telegramSettingsUrl(agentName: string, org?: string): string {
+  const query = org ? `?org=${encodeURIComponent(org)}` : '';
+  return `/api/agents/${encodeURIComponent(agentName)}/telegram${query}`;
+}
+
+function agentConfigUrl(agentName: string, org?: string): string {
+  const query = org ? `?org=${encodeURIComponent(org)}` : '';
+  return `/api/agents/${encodeURIComponent(agentName)}/config${query}`;
+}
+
+function TelegramConnectionCard({ agentName, org }: SettingsTabProps) {
+  const [data, setData] = useState<TelegramSettings | null>(null);
+  const [form, setForm] = useState<TelegramForm>({
+    botToken: '',
+    chatId: '',
+    allowedUser: '',
+    pairingCode: '',
+    useGatewayBotToken: false,
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<MessageState>(null);
+
+  const loadTelegram = useCallback(async (resetForm = true) => {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res = await fetch(telegramSettingsUrl(agentName, org));
+      const body = await res.json();
+      if (!res.ok) {
+        setMessage({ type: 'error', text: body.error || 'Failed to load Telegram settings' });
+        return;
+      }
+
+      setData(body);
+      if (resetForm) {
+        setForm({
+          botToken: '',
+          chatId: body.chatId || '',
+          allowedUser: body.allowedUser || '',
+          pairingCode: '',
+          useGatewayBotToken: false,
+        });
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Network error loading Telegram settings' });
+    } finally {
+      setLoading(false);
+    }
+  }, [agentName, org]);
+
+  useEffect(() => {
+    loadTelegram();
+  }, [loadTelegram]);
+
+  async function saveTelegram() {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch(telegramSettingsUrl(agentName, org), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          botToken: form.botToken.trim() || undefined,
+          chatId: form.chatId.trim() || undefined,
+          allowedUser: form.allowedUser.trim() || undefined,
+          pairingCode: form.pairingCode.trim() || undefined,
+          useGatewayBotToken: form.useGatewayBotToken,
+          validate: true,
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setMessage({ type: 'error', text: body.error || 'Failed to save Telegram settings' });
+        return;
+      }
+
+      setData(body);
+      setForm({
+        botToken: '',
+        chatId: body.chatId || '',
+        allowedUser: body.allowedUser || '',
+        pairingCode: '',
+        useGatewayBotToken: false,
+      });
+
+      const validation = body.validation as TelegramValidation | undefined;
+      if (validation?.ok && validation.selfChat) {
+        setMessage({ type: 'error', text: 'Saved, but CHAT_ID points at the bot account. Use your Telegram user chat instead.' });
+      } else if (validation?.ok) {
+        const target = [validation.botUsername, validation.chatType].filter(Boolean).join(' - ');
+        setMessage({ type: 'success', text: target ? `Saved and validated: ${target}` : 'Saved and validated' });
+      } else if (validation) {
+        setMessage({ type: 'error', text: `Saved, but validation failed: ${validation.error || 'unknown error'}` });
+      } else {
+        setMessage({ type: 'success', text: 'Saved Telegram settings' });
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Network error saving Telegram settings' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const statusLabel = data?.configured
+    ? 'Ready'
+    : data?.botTokenConfigured
+      ? 'Needs user gate'
+      : 'Needs token';
+  const statusClass = data?.configured
+    ? 'bg-green-500/10 text-green-600'
+    : data?.botTokenConfigured
+      ? 'bg-amber-500/10 text-amber-600'
+      : 'bg-muted text-muted-foreground';
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <IconBrandTelegram size={16} className="text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Telegram</CardTitle>
+            {data && (
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusClass}`}>
+                {statusLabel}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => loadTelegram()}
+            disabled={loading}
+            title="Refresh Telegram settings"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border bg-background text-muted-foreground hover:bg-muted disabled:opacity-50"
+          >
+            <IconRefresh size={14} />
+          </button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {loading && !data ? (
+          <div className="h-28 rounded-md bg-muted/40 animate-pulse" />
+        ) : (
+          <>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-md border bg-muted/20 p-3">
+                <div className="text-[11px] text-muted-foreground">Bot Token</div>
+                <code className="mt-1 block truncate text-xs">{data?.botTokenMasked || 'not set'}</code>
+              </div>
+              <div className="rounded-md border bg-muted/20 p-3">
+                <div className="text-[11px] text-muted-foreground">Chat ID</div>
+                <code className="mt-1 block truncate text-xs">{data?.chatId || 'not set'}</code>
+              </div>
+              <div className="rounded-md border bg-muted/20 p-3">
+                <div className="text-[11px] text-muted-foreground">Allowed User</div>
+                <code className="mt-1 block truncate text-xs">{data?.allowedUser || 'not set'}</code>
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <label className="text-xs text-muted-foreground">Bot Token</label>
+                <input
+                  type="password"
+                  value={form.botToken}
+                  onChange={e => setForm(p => ({ ...p, botToken: e.target.value, useGatewayBotToken: false }))}
+                  placeholder={data?.botTokenConfigured ? 'Leave blank to keep current token' : 'Paste bot token'}
+                  className="mt-1 block w-full rounded-md border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Pairing Code</label>
+                <input
+                  type="text"
+                  value={form.pairingCode}
+                  onChange={e => setForm(p => ({ ...p, pairingCode: e.target.value.toUpperCase() }))}
+                  placeholder="Pairing code"
+                  className="mt-1 block w-full rounded-md border bg-background px-3 py-1.5 text-sm uppercase focus:border-primary focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Chat ID</label>
+                <input
+                  type="text"
+                  value={form.chatId}
+                  onChange={e => setForm(p => ({ ...p, chatId: e.target.value }))}
+                  placeholder="Telegram chat ID"
+                  className="mt-1 block w-full rounded-md border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Allowed User ID</label>
+                <input
+                  type="text"
+                  value={form.allowedUser}
+                  onChange={e => setForm(p => ({ ...p, allowedUser: e.target.value }))}
+                  placeholder="Numeric Telegram user ID"
+                  className="mt-1 block w-full rounded-md border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.useGatewayBotToken}
+                disabled={!data?.gatewayBotTokenConfigured}
+                onChange={e => setForm(p => ({ ...p, useGatewayBotToken: e.target.checked, botToken: e.target.checked ? '' : p.botToken }))}
+                className="rounded"
+              />
+              Use gateway bot token
+              {!data?.gatewayBotTokenConfigured && (
+                <span className="text-xs text-muted-foreground">not configured</span>
+              )}
+            </label>
+
+            {(data?.pendingPairings.length || 0) > 0 && (
+              <div className="rounded-md border">
+                <div className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">Pending Pairings</div>
+                <div className="divide-y">
+                  {data?.pendingPairings.map(pairing => (
+                    <div key={pairing.code} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <code className="font-mono">{pairing.code}</code>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {pairing.userName || pairing.userIdMasked || 'Telegram user'}
+                          {pairing.ageMinutes !== null ? ` - ${pairing.ageMinutes}m` : ''}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setForm(p => ({
+                          ...p,
+                          pairingCode: pairing.code,
+                          useGatewayBotToken: data?.gatewayBotTokenConfigured || p.useGatewayBotToken,
+                        }))}
+                        className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+                      >
+                        Use
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(data?.approvedPairings.length || 0) > 0 && (
+              <div className="rounded-md border">
+                <div className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">Approved Pairings</div>
+                <div className="divide-y">
+                  {data?.approvedPairings.map(pairing => (
+                    <div key={pairing.userId} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <span className="truncate">{pairing.userName || 'Telegram user'}</span>
+                        <code className="ml-2 font-mono text-xs text-muted-foreground">{pairing.userIdMasked}</code>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setForm(p => ({
+                          ...p,
+                          chatId: pairing.userId,
+                          allowedUser: pairing.userId,
+                          useGatewayBotToken: data?.gatewayBotTokenConfigured || p.useGatewayBotToken,
+                        }))}
+                        className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+                      >
+                        Use
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {message && (
+              <div className={`rounded-md px-3 py-2 text-xs ${message.type === 'success' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-500'}`}>
+                {message.text}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={saveTelegram}
+              disabled={saving}
+              className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              <IconDeviceFloppy size={14} />
+              {saving ? 'Saving...' : 'Save Telegram'}
+            </button>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function SettingsTab({ agentName, org }: SettingsTabProps) {
   const [config, setConfig] = useState<AgentConfig>({});
   const [loading, setLoading] = useState(true);
 
@@ -47,7 +390,7 @@ export function SettingsTab({ agentName }: SettingsTabProps) {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/agents/${encodeURIComponent(agentName)}/config`, { signal: controller.signal })
+    fetch(agentConfigUrl(agentName, org), { signal: controller.signal })
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(d => {
         if (!controller.signal.aborted && d.config) setConfig(d.config);
@@ -55,7 +398,7 @@ export function SettingsTab({ agentName }: SettingsTabProps) {
       })
       .catch(err => { if (err.name !== 'AbortError') setLoading(false); });
     return () => controller.abort();
-  }, [agentName]);
+  }, [agentName, org]);
 
   const updateApprovalList = (list: 'always_ask' | 'never_ask', cat: string) => {
     const opposite = list === 'always_ask' ? 'never_ask' : 'always_ask';
@@ -104,7 +447,7 @@ export function SettingsTab({ agentName }: SettingsTabProps) {
     setSaving(true);
     setMessage(null);
     try {
-      const res = await fetch(`/api/agents/${encodeURIComponent(agentName)}/config`, {
+      const res = await fetch(agentConfigUrl(agentName, org), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(fields),
@@ -114,7 +457,13 @@ export function SettingsTab({ agentName }: SettingsTabProps) {
         setMessage({ type: 'error', text: d.error || 'Failed to save' });
       } else {
         if (d.config) setConfig(d.config);
-        setMessage({ type: 'success', text: 'Saved. Agent notified to reload config.' });
+        const gatewaySync = d.gateway_sync as { ok?: boolean; error?: string | null } | undefined;
+        setMessage({
+          type: 'success',
+          text: gatewaySync && gatewaySync.ok === false
+            ? `Saved locally. Gateway sync pending: ${gatewaySync.error || 'gateway unavailable'}`
+            : 'Saved. Synced to gateway and agent notified to reload config.',
+        });
       }
     } catch {
       setMessage({ type: 'error', text: 'Network error' });
@@ -159,6 +508,8 @@ export function SettingsTab({ agentName }: SettingsTabProps) {
 
   return (
     <div className="space-y-4 p-1">
+      <TelegramConnectionCard agentName={agentName} org={org} />
+
       {/* Section 1: Operational Config */}
       <Card>
         <CardHeader>

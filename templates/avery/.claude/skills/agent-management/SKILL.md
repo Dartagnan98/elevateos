@@ -14,7 +14,7 @@ triggers: ["new agent", "create agent", "spawn agent", "add agent", "restart", "
 
 1. **ALWAYS use the CLI.** Never manually edit state files or .env without using the proper command.
 2. **ALWAYS create .env before enabling.** An agent without .env will inherit parent credentials (the Becky bug).
-3. **ALWAYS write restart markers before /exit.** Use `elevate bus self-restart`, never raw /exit.
+3. **ALWAYS write restart markers before /exit.** Use `elevateos bus self-restart`, never raw /exit.
 4. **ALWAYS use `elevate enable` to start agents.** Never manually edit PM2 config.
 5. **NEVER share bot tokens between agents.** Each agent gets its own bot from @BotFather.
 6. **NEVER hardcode chat IDs.** Get them from the actual user via Telegram getUpdates.
@@ -38,7 +38,7 @@ After collecting the bot token and chat ID, always ask the user:
 
 ```bash
 # Option A: CLI (recommended)
-elevate add-agent <name> --template agent --org <org>
+elevateos add-agent <name> --template agent --org <org>
 
 # Option B: Manual
 TEMPLATE="agent"  # or "orchestrator" or "analyst"
@@ -88,7 +88,7 @@ fs.writeFileSync(path, JSON.stringify(c, null, 2));
 elevate enable "$AGENT_NAME" --org "$ORG"
 
 # Step 8: Verify
-elevate status
+elevateos status
 ```
 
 ### For Another Person (Cross-User Agent)
@@ -101,7 +101,7 @@ THEIR_CHAT_ID="<THEIR chat_id, NOT yours>"
 THEIR_USER_ID="<THEIR user_id>"
 
 # Step 1: Add agent via CLI
-elevate add-agent "$AGENT_NAME" --template agent --org "$ORG"
+elevateos add-agent "$AGENT_NAME" --template agent --org "$ORG"
 
 # Step 2: Write THEIR .env (CRITICAL - must be THEIR credentials)
 cat > "$CTX_FRAMEWORK_ROOT/orgs/$ORG/agents/$AGENT_NAME/.env" << EOF
@@ -128,10 +128,10 @@ elevate enable "$AGENT_NAME" --org "$ORG"
 
 ```bash
 # Via bus command (preferred — writes marker file automatically)
-elevate bus self-restart --reason "<reason>"
+elevateos bus self-restart --reason "<reason>"
 
 # Restart a DIFFERENT agent
-elevate bus send-message <agent_name> high "soft-restart" "<reason>"
+elevateos bus send-message <agent_name> high "soft-restart" "<reason>"
 ```
 
 **What it does:**
@@ -143,7 +143,7 @@ elevate bus send-message <agent_name> high "soft-restart" "<reason>"
 ### Hard Restart (Fresh Session, Loses History)
 
 ```bash
-elevate bus hard-restart --reason "context exhaustion"
+elevateos bus hard-restart --reason "context exhaustion"
 ```
 
 **When to use:** Context window full, conversation corrupted, need clean slate.
@@ -152,10 +152,10 @@ elevate bus hard-restart --reason "context exhaustion"
 
 ```bash
 # Soft restart another agent via message bus
-elevate bus send-message assistant high "soft-restart" "goal refresh"
+elevateos bus send-message assistant high "soft-restart" "goal refresh"
 
 # Check status after restart
-elevate status
+elevateos status
 ```
 
 ---
@@ -177,7 +177,7 @@ fs.writeFileSync(path, JSON.stringify(c, null, 2));
 "
 
 # Step 2: Soft restart to pick up new model
-elevate bus send-message "$AGENT" high "soft-restart" "model change to $NEW_MODEL"
+elevateos bus send-message "$AGENT" high "soft-restart" "model change to $NEW_MODEL"
 ```
 
 **Available models:**
@@ -224,7 +224,7 @@ sed -i '' "s/^BOT_TOKEN=.*/BOT_TOKEN=<new_token>/" \
   "$CTX_FRAMEWORK_ROOT/orgs/$ORG/agents/$AGENT/.env"
 
 # Restart to pick up new token
-elevate bus send-message "$AGENT" high "soft-restart" "bot token updated"
+elevateos bus send-message "$AGENT" high "soft-restart" "bot token updated"
 ```
 
 ---
@@ -276,7 +276,7 @@ fs.writeFileSync(path, JSON.stringify(c, null, 2));
 "
 
 # Notify agent to reload crons
-elevate bus send-message "$AGENT" normal \
+elevateos bus send-message "$AGENT" normal \
   'Crons updated in config.json. Re-read your config.json, run CronList, and create any missing safe-interval crons with CronCreate.'
 ```
 
@@ -289,7 +289,7 @@ const c = JSON.parse(fs.readFileSync(path));
 c.crons = (c.crons || []).filter(cr => cr.name !== 'cron-to-remove');
 fs.writeFileSync(path, JSON.stringify(c, null, 2));
 "
-elevate bus send-message "$AGENT" normal 'Cron removed from config.json. Recreate your crons on next restart.'
+elevateos bus send-message "$AGENT" normal 'Cron removed from config.json. Recreate your crons on next restart.'
 ```
 
 ---
@@ -314,8 +314,8 @@ This stops the agent's PM2 process and marks the agent as disabled. Config and .
 
 ### Check All Agents
 ```bash
-elevate status
-elevate bus read-all-heartbeats
+elevateos status
+elevateos bus read-all-heartbeats
 ```
 
 ### Check Specific Agent Heartbeat
@@ -325,7 +325,7 @@ cat "$HOME/.elevate/default/state/$AGENT/heartbeat.json"
 
 ### List All Agents
 ```bash
-elevate bus list-agents --format json
+elevateos bus list-agents --format json
 ```
 
 ### Check PM2 Process Status
@@ -360,7 +360,7 @@ elevate enable "$AGENT" --org "$ORG" --restart
 1. Check .env exists and has BOT_TOKEN + CHAT_ID + ALLOWED_USER
 2. Check fast-checker is running: `ps aux | grep fast-checker | grep $AGENT`
 3. Check fast-checker log: `tail -10 $HOME/.elevate/default/logs/$AGENT/fast-checker.log`
-4. Check agent status: `elevate status`
+4. Check agent status: `elevateos status`
 
 ### Messages Going to Wrong Person
 1. Check .env CHAT_ID - is it the right person's chat ID?
@@ -377,7 +377,7 @@ elevate enable "$AGENT" --org "$ORG" --restart
 ### PM2 Not Restarting Agent
 1. Check PM2 status: `pm2 list`
 2. Check PM2 logs: `pm2 logs <agent-process-name>`
-3. Regenerate ecosystem config: `elevate ecosystem` then `pm2 restart ecosystem.config.js`
+3. Regenerate ecosystem config: `elevateos ecosystem` then `pm2 restart ecosystem.config.js`
 4. If exit code shows throttling, wait 10s then `elevate enable <agent> --restart`
 
 ---
@@ -386,17 +386,17 @@ elevate enable "$AGENT" --org "$ORG" --restart
 
 | I need to... | Command |
 |---|---|
-| Create new agent | `elevate add-agent <name> --template <type> --org <org>` |
+| Create new agent | `elevateos add-agent <name> --template <type> --org <org>` |
 | Enable agent | `elevate enable <agent> --org <org>` |
 | Disable agent | `elevate disable <agent> --org <org>` |
-| Soft restart (self) | `elevate bus self-restart --reason "<reason>"` |
-| Hard restart (self) | `elevate bus hard-restart --reason "<reason>"` |
-| Restart another agent | `elevate bus send-message <agent> high "soft-restart" "<reason>"` |
+| Soft restart (self) | `elevateos bus self-restart --reason "<reason>"` |
+| Hard restart (self) | `elevateos bus hard-restart --reason "<reason>"` |
+| Restart another agent | `elevateos bus send-message <agent> high "soft-restart" "<reason>"` |
 | Change model | Edit config.json model field + soft restart |
 | Update bot token | Edit .env BOT_TOKEN + soft restart |
 | Add cron | Edit config.json crons + notify agent |
-| Check health | `elevate status` or `elevate bus read-all-heartbeats` |
-| List agents | `elevate bus list-agents --format json` |
+| Check health | `elevateos status` or `elevateos bus read-all-heartbeats` |
+| List agents | `elevateos bus list-agents --format json` |
 | Check PM2 | `pm2 list` |
 | Reset crash count | `rm ~/.elevate/default/state/<agent>/.crash_count_today` |
 | Force fresh start | Write .force-fresh + `elevate enable --restart` |

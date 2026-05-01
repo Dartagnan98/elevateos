@@ -66,7 +66,7 @@ Once you and the analyst agree on actions:
 3. If you have concerns about any approved change, raise them to the user before implementing
 4. Log the outcome:
    ```bash
-   elevate bus log-event action theta_wave_complete info --meta '{"proposed":X,"approved":Y,"deferred":Z}'
+   elevateos bus log-event action theta_wave_complete info --meta '{"proposed":X,"approved":Y,"deferred":Z}'
    ```
 
 ---
@@ -86,8 +86,8 @@ Once you and the analyst agree on actions:
 
 ```bash
 # When theta wave conversation starts
-elevate bus log-event action theta_wave_start info --meta '{"agent":"'$CTX_AGENT_NAME'","initiated_by":"<analyst_name>"}'
+elevateos bus log-event action theta_wave_start info --meta '{"agent":"'$CTX_AGENT_NAME'","initiated_by":"<analyst_name>"}'
 
 # When complete
-elevate bus log-event action theta_wave_complete info --meta '{"proposed":X,"approved":Y}'
+elevateos bus log-event action theta_wave_complete info --meta '{"proposed":X,"approved":Y}'
 ```

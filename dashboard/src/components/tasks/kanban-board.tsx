@@ -39,15 +39,23 @@ export function KanbanBoard({ tasks, completedTodayTasks, onTaskClick }: KanbanB
       label: 'Completed (today)',
       tasks: completedTodayTasks,
     },
+    {
+      status: 'cancelled',
+      label: 'Cancelled',
+      tasks: tasks.filter((t) => t.status === 'cancelled'),
+    },
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
       {columns.map((col) => (
         <div key={col.status} className="flex flex-col gap-2">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <StatusBadge status={col.status} />
+              {col.status === 'completed' && (
+                <span className="text-xs font-medium text-muted-foreground">today</span>
+              )}
               <span className="text-xs text-muted-foreground">
                 {col.tasks.length}
               </span>

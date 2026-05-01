@@ -392,7 +392,7 @@ export async function getRealtorCommandCenter(org?: string): Promise<RealtorComm
     Promise.resolve(getSkillOperations()),
   ]);
 
-  const openTasks = tasks.filter((task) => task.status !== 'completed');
+  const openTasks = tasks.filter((task) => task.status !== 'completed' && task.status !== 'cancelled');
   const humanTasks = openTasks.filter((task) => (
     task.assignee === 'human' ||
     task.assignee === 'user' ||

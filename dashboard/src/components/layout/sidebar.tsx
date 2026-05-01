@@ -22,6 +22,7 @@ import {
   IconUsers,
   IconSend,
   IconBriefcase,
+  IconAffiliate,
 } from '@tabler/icons-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -55,6 +56,7 @@ const navItems: NavItem[] = [
 
   // Intelligence
   { label: 'Knowledge Base', href: '/knowledge-base', icon: IconBook2, section: 'intel', tourId: 'nav-knowledge-base' },
+  { label: 'Memory Graph', href: '/memory-graph', icon: IconAffiliate, section: 'intel', tourId: 'nav-memory-graph' },
   { label: 'Experiments', href: '/experiments', icon: IconFlask, section: 'intel', tourId: 'nav-experiments' },
   { label: 'Skills', href: '/skills', icon: IconPuzzle, section: 'intel', tourId: 'nav-skills' },
 ];

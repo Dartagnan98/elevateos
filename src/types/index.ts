@@ -22,6 +22,7 @@ export interface InboxMessage {
   timestamp: string; // ISO 8601
   text: string;
   reply_to: string | null;
+  source?: string; // local clients such as dashboard/mobile can tag their origin
   sig?: string; // Security (H10): HMAC-SHA256 signature — optional for backwards compat
 }
 
@@ -55,9 +56,13 @@ export interface Task {
   updated_at: string; // ISO 8601
   completed_at: string | null;
   due_date: string | null;
+  /** When set, the live daemon delivers this task to the assignee at/after this ISO timestamp. */
+  scheduled_for?: string | null;
+  /** ISO timestamp when the daemon delivered the scheduled task to the assignee. */
+  scheduled_fired_at?: string | null;
   archived: boolean;
   result?: string;
-  /** Linked deliverables (files saved via `elevate bus save-output`). */
+  /** Linked deliverables (files saved via `elevateos bus save-output`). */
   outputs?: TaskOutput[];
   /**
    * Dependency DAG edges (beads-inspired). Optional so existing task
@@ -389,8 +394,8 @@ export interface IPCRequest {
   agent?: string;
   data?: Record<string, unknown>;
   /**
-   * BUG-015: human-readable identifier of the caller (e.g. 'elevate enable',
-   * 'elevate bus soft-restart-all'). Logged by the daemon on every incoming
+   * BUG-015: human-readable identifier of the caller (e.g. 'elevateos enable',
+   * 'elevateos bus soft-restart-all'). Logged by the daemon on every incoming
    * IPC request so we can trace which CLI command triggered which daemon action.
    * Optional for backwards compatibility — older clients fall back to 'unknown'.
    */

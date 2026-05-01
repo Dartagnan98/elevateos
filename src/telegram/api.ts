@@ -383,7 +383,7 @@ export class TelegramAPI {
 
   /**
    * Race a promise against a timeout. Used by validateCredentials() so a
-   * network partition cannot hang `elevate enable` or `elevate setup`
+   * network partition cannot hang `elevateos enable` or `elevateos setup`
    * indefinitely. The underlying fetch keeps running in the background
    * after the timeout, but that is acceptable for a one-off probe.
    */
@@ -427,7 +427,7 @@ export class TelegramAPI {
     }
 
     // Validation probes are bounded at 10s per call so a network partition
-    // cannot hang `elevate enable` or `elevate setup` indefinitely.
+    // cannot hang `elevateos enable` or `elevateos setup` indefinitely.
     const TIMEOUT_MS = 10_000;
 
     // Step 1: getMe — validates the token AND gives us the bot's user id

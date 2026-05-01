@@ -1,9 +1,10 @@
 import { Command } from 'commander';
 import { spawnSync, execFileSync } from 'child_process';
-import { existsSync, readFileSync } from 'fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { sendMessage, checkInbox, ackInbox } from '../bus/message.js';
 import { validateAgentName } from '../utils/validate.js';
+import { randomString } from '../utils/random.js';
 import { createTask, updateTask, completeTask, claimTask, readTaskAudit, checkTaskDependencies, compactTasks, listTasks, checkStaleTasks, archiveTasks, checkHumanTasks } from '../bus/task.js';
 import { saveOutput } from '../bus/save-output.js';
 import { logEvent } from '../bus/event.js';
@@ -54,10 +55,74 @@ function checkDeliverableRequirement(taskId: string, frameworkRoot: string, org:
   }
 
   if (!task.outputs || task.outputs.length === 0) {
-    return `Cannot submit task ${taskId}: require_deliverables is enabled but this task has no file deliverables attached. Use "elevate bus save-output ${taskId} <file>" to attach a deliverable first.`;
+    return `Cannot submit task ${taskId}: require_deliverables is enabled but this task has no file deliverables attached. Use "elevateos bus save-output ${taskId} <file>" to attach a deliverable first.`;
   }
 
   return null;
+}
+
+function validateTaskRef(id: string): void {
+  if (!/^[a-zA-Z0-9_-]+$/.test(id) || id.length > 128) {
+    throw new Error(`Invalid task reference '${id}'. Must contain only letters, numbers, underscores, and hyphens.`);
+  }
+}
+
+function isConfiguredDashboardUser(to: string): boolean {
+  const normalized = to.toLowerCase();
+  const configured = (process.env.ADMIN_USERNAME ?? '').toLowerCase();
+  return normalized === configured || normalized === 'admin' || normalized === 'user';
+}
+
+function replyTargetsLocalClient(paths: ReturnType<typeof resolvePaths>, to: string, replyTo?: string): boolean {
+  if (replyTo) {
+    const inboundPath = join(paths.logDir, 'inbound-messages.jsonl');
+    try {
+      if (existsSync(inboundPath)) {
+        const lines = readFileSync(inboundPath, 'utf-8').trim().split('\n').reverse();
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const entry = JSON.parse(line);
+            if (entry.id !== replyTo) continue;
+            const source = String(entry.source ?? '').toLowerCase();
+            return source === 'dashboard' || source === 'mobile';
+          } catch {
+            // Skip malformed history lines.
+          }
+        }
+      }
+    } catch {
+      // History lookup is best-effort; fall back to configured local users.
+    }
+  }
+
+  return isConfiguredDashboardUser(to);
+}
+
+function logLocalClientReply(
+  paths: ReturnType<typeof resolvePaths>,
+  agentName: string,
+  to: string,
+  text: string,
+  replyTo?: string,
+): string {
+  mkdirSync(paths.logDir, { recursive: true });
+  const timestamp = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const msgId = `local-reply-${Date.now()}-${randomString(5)}`;
+  const entry = JSON.stringify({
+    timestamp,
+    agent: agentName,
+    direction: 'outbound',
+    source: 'dashboard',
+    chat_id: `dashboard:${to}`,
+    to,
+    text,
+    message_id: msgId,
+    reply_to: replyTo ?? null,
+    type: 'text',
+  });
+  appendFileSync(join(paths.logDir, 'outbound-messages.jsonl'), entry + '\n', 'utf-8');
+  return msgId;
 }
 
 export const busCommand = new Command('bus')
@@ -106,6 +171,16 @@ busCommand
         }
       } catch { /* skip */ }
     }
+    const targetsLocalClient = replyTargetsLocalClient(paths, to, effectiveReplyTo);
+    if (targetsLocalClient && (Boolean(effectiveReplyTo) || !agentExists)) {
+      const msgId = logLocalClientReply(paths, env.agentName, to, text, effectiveReplyTo);
+      try {
+        logEvent(paths, env.agentName, env.org, 'message', 'local_client_message_sent', 'info', JSON.stringify({ to, priority, msg_id: msgId, reply_to: effectiveReplyTo ?? null }));
+      } catch { /* non-fatal */ }
+      console.log(msgId);
+      return;
+    }
+
     if (!agentExists) {
       console.error(`Warning: agent '${to}' not found in project. Message will be queued but may never be read.`);
     }
@@ -147,21 +222,40 @@ busCommand
   .option('--priority <p>', 'Priority (urgent, high, normal, low)', 'normal')
   .option('--project <name>', 'Project name')
   .option('--needs-approval', 'Require human approval before execution')
+  .option('--due-date <iso>', 'Optional ISO-8601 deadline for overdue tracking')
+  .option('--run-at <iso>', 'Optional ISO-8601 time when the assignee should execute this task')
   .option('--blocked-by <ids>', 'Comma-separated task IDs that must complete before this task can progress')
   .option('--blocks <ids>', 'Comma-separated task IDs that this new task will block (symmetric reverse edge)')
-  .action((title: string, opts: { desc?: string; assignee?: string; priority: string; project?: string; needsApproval?: boolean; blockedBy?: string; blocks?: string }) => {
+  .action((title: string, opts: { desc?: string; assignee?: string; priority: string; project?: string; needsApproval?: boolean; dueDate?: string; runAt?: string; blockedBy?: string; blocks?: string }) => {
     const env = resolveEnv();
     const paths = resolvePaths(env.agentName, env.instanceId, env.org);
     const parseList = (raw?: string) => (raw ? raw.split(',').map(s => s.trim()).filter(Boolean) : []);
-    const taskId = createTask(paths, env.agentName, env.org, title, {
-      description: opts.desc,
-      assignee: opts.assignee,
-      priority: opts.priority as Priority,
-      project: opts.project,
-      needsApproval: opts.needsApproval ?? false,
-      blockedBy: parseList(opts.blockedBy),
-      blocks: parseList(opts.blocks),
-    });
+    const blockedBy = parseList(opts.blockedBy);
+    const blocks = parseList(opts.blocks);
+    try {
+      if (opts.assignee) validateAgentName(opts.assignee);
+      for (const id of [...blockedBy, ...blocks]) validateTaskRef(id);
+    } catch (err) {
+      console.error(String(err instanceof Error ? err.message : err));
+      process.exit(1);
+    }
+    let taskId: string;
+    try {
+      taskId = createTask(paths, env.agentName, env.org, title, {
+        description: opts.desc,
+        assignee: opts.assignee,
+        priority: opts.priority as Priority,
+        project: opts.project,
+        needsApproval: opts.needsApproval ?? false,
+        dueDate: opts.dueDate,
+        scheduledFor: opts.runAt,
+        blockedBy,
+        blocks,
+      });
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : String(err));
+      process.exit(1);
+    }
     console.log(taskId);
     // Auto-notify assignee so the task is visible immediately (issue #78)
     if (opts.assignee && opts.assignee !== env.agentName) {
@@ -610,7 +704,7 @@ busCommand
     const ipc = new IPCClient(env.instanceId);
     const daemonRunning = await ipc.isDaemonRunning();
     if (daemonRunning) {
-      const resp = await ipc.send({ type: 'restart-agent', agent: env.agentName, source: 'elevate bus self-restart' });
+      const resp = await ipc.send({ type: 'restart-agent', agent: env.agentName, source: 'elevateos bus self-restart' });
       if (resp.success) {
         console.log(`Restarting ${env.agentName} via daemon IPC`);
       } else {
@@ -618,7 +712,7 @@ busCommand
         process.exit(1);
       }
     } else {
-      console.error('ERROR: Node daemon is not running. Start it with: elevate start');
+      console.error('ERROR: Node daemon is not running. Start it with: elevateos start');
       process.exit(1);
     }
   });
@@ -643,7 +737,7 @@ busCommand
     const ipc = new IPCClient(env.instanceId);
     const daemonRunning = await ipc.isDaemonRunning();
     if (daemonRunning) {
-      const resp = await ipc.send({ type: 'restart-agent', agent: env.agentName, source: 'elevate bus hard-restart' });
+      const resp = await ipc.send({ type: 'restart-agent', agent: env.agentName, source: 'elevateos bus hard-restart' });
       if (resp.success) {
         console.log(`Hard restart triggered for ${env.agentName} — fresh session incoming`);
       } else {
@@ -1350,7 +1444,7 @@ busCommand
     const runningAgents = new Set<string>();
     const ipc = new IPCClient(env.instanceId);
     try {
-      const resp = await ipc.send({ type: 'status', source: 'elevate bus' });
+      const resp = await ipc.send({ type: 'status', source: 'elevateos bus' });
       if (resp.success && Array.isArray(resp.data)) {
         for (const a of resp.data as Array<{ name: string; status: string }>) {
           if (a.status === 'running') runningAgents.add(a.name);
@@ -1544,7 +1638,7 @@ busCommand
     const daemonRunning = await ipc.isDaemonRunning();
 
     if (daemonRunning) {
-      const resp = await ipc.send({ type: 'restart-agent', agent: targetAgent, source: 'elevate bus soft-restart' });
+      const resp = await ipc.send({ type: 'restart-agent', agent: targetAgent, source: 'elevateos bus soft-restart' });
       if (resp.success) {
         console.log(`Restarted ${targetAgent} via daemon IPC`);
       } else {
@@ -1552,7 +1646,7 @@ busCommand
         process.exit(1);
       }
     } else {
-      console.error('ERROR: Node daemon is not running. Start it with: elevate start');
+      console.error('ERROR: Node daemon is not running. Start it with: elevateos start');
       process.exit(1);
     }
   });
@@ -1592,7 +1686,7 @@ busCommand
     const ipc = new IPCClient(env.instanceId);
     const daemonRunning = await ipc.isDaemonRunning();
     if (!daemonRunning) {
-      console.error('ERROR: Node daemon is not running. Start it with: elevate start');
+      console.error('ERROR: Node daemon is not running. Start it with: elevateos start');
       process.exit(1);
     }
 
@@ -1609,7 +1703,7 @@ busCommand
       writeFileSync(join(stateDir, '.user-restart'), opts.reason);
 
       // Send IPC restart signal
-      const resp = await ipc.send({ type: 'restart-agent', agent, source: 'elevate bus soft-restart-all' });
+      const resp = await ipc.send({ type: 'restart-agent', agent, source: 'elevateos bus soft-restart-all' });
       if (resp.success) {
         console.log(`[${i + 1}/${targets.length}] Restarted ${agent}`);
       } else {
@@ -2065,7 +2159,7 @@ busCommand
     ];
     const STATUS_LINE = {
       type: 'command',
-      command: 'elevate bus hook-context-status',
+      command: 'elevateos bus hook-context-status',
       refreshInterval: 5,
       timeout: 2,
     };

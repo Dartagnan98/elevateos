@@ -210,7 +210,7 @@ function handleFatal(
 
 /**
  * ElevateOS daemon - single process managing all agents.
- * Run via `pm2 start ecosystem.config.js` or `elevate ecosystem && pm2 start`.
+ * Run via `pm2 start ecosystem.config.js` or `elevateos ecosystem && pm2 start`.
  */
 class Daemon {
   private agentManager: AgentManager | null = null;
@@ -258,8 +258,15 @@ class Daemon {
     this.ipcServer = new IPCServer(this.agentManager, this.instanceId);
     await this.ipcServer.start();
 
-    // Discover and start agents
-    await this.agentManager.discoverAndStart();
+    // Discover and start agents unless a caller wants a control-plane-only
+    // daemon. The dashboard uses this when the user clicks Start on one agent:
+    // boot the daemon first, then start the selected agent via IPC without
+    // accidentally launching the whole configured fleet.
+    if (process.env.ELEVATE_DAEMON_SKIP_AUTOSTART === '1' || process.env.CTX_DAEMON_SKIP_AUTOSTART === '1') {
+      console.log('[daemon] Autostart skipped by environment; waiting for IPC start-agent requests');
+    } else {
+      await this.agentManager.discoverAndStart();
+    }
 
     console.log(`[daemon] Running (pid: ${process.pid})`);
 

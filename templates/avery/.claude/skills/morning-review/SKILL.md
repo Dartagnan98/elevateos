@@ -42,8 +42,8 @@ Execute each phase in order.
 ### 0A: Check all agent heartbeats
 
 ```bash
-elevate bus read-all-heartbeats
-elevate bus check-inbox
+elevateos bus read-all-heartbeats
+elevateos bus check-inbox
 ```
 
 For each agent, note:
@@ -54,8 +54,8 @@ For each agent, note:
 ### 0B: Check overnight task completions
 
 ```bash
-elevate bus list-tasks --status completed
-elevate bus list-tasks --status in_progress
+elevateos bus list-tasks --status completed
+elevateos bus list-tasks --status in_progress
 ```
 
 Note what was completed overnight, by which agents, and what key deliverables were produced.
@@ -75,7 +75,7 @@ Extract: tasks worked on, pending items, promises made, notes carried forward.
 Cross-reference memory COMPLETED entries against tasks still showing in_progress.
 
 ```bash
-elevate bus list-tasks --status in_progress
+elevateos bus list-tasks --status in_progress
 TODAY=$(date -u +%Y-%m-%d)
 grep "COMPLETED:" memory/${TODAY}.md 2>/dev/null
 grep "COMPLETED:" memory/${YESTERDAY}.md 2>/dev/null
@@ -83,7 +83,7 @@ grep "COMPLETED:" memory/${YESTERDAY}.md 2>/dev/null
 
 For each mismatch, mark completed:
 ```bash
-elevate bus complete-task "$TASK_ID" --result "<what was produced>"
+elevateos bus complete-task "$TASK_ID" --result "<what was produced>"
 ```
 
 ---
@@ -130,11 +130,11 @@ For each agent in the roster:
    ```
 3. Regenerate GOALS.md:
    ```bash
-   elevate goals generate-md --agent <agent> --org $CTX_ORG
+   elevateos goals generate-md --agent <agent> --org $CTX_ORG
    ```
 4. Notify agent:
    ```bash
-   elevate bus send-message <agent> normal "New goals for today. Check GOALS.md and create tasks."
+   elevateos bus send-message <agent> normal "New goals for today. Check GOALS.md and create tasks."
    ```
 
 If an agent's `goals.json` already has `daily_focus_set_at` matching today: skip — don't overwrite.
@@ -143,7 +143,7 @@ If an agent's `goals.json` already has `daily_focus_set_at` matching today: skip
 
 Write your orchestrator-level goals for today, then regenerate:
 ```bash
-elevate goals generate-md --agent $CTX_AGENT_NAME --org $CTX_ORG
+elevateos goals generate-md --agent $CTX_AGENT_NAME --org $CTX_ORG
 ```
 
 ---
@@ -166,10 +166,10 @@ From the overnight summary, identify:
 
 For each agent support or autonomous task, create and dispatch:
 ```bash
-TASK_ID=$(elevate bus create-task "<title>" --desc "<description>" --assignee $CTX_AGENT_NAME --priority high)
-elevate bus update-task "$TASK_ID" in_progress
-elevate bus send-message <agent> high '<task details with full context>'
-elevate bus log-event action task_dispatched info --meta '{"to":"<agent>","task":"<title>"}'
+TASK_ID=$(elevateos bus create-task "<title>" --desc "<description>" --assignee $CTX_AGENT_NAME --priority high)
+elevateos bus update-task "$TASK_ID" in_progress
+elevateos bus send-message <agent> high '<task details with full context>'
+elevateos bus log-event action task_dispatched info --meta '{"to":"<agent>","task":"<title>"}'
 ```
 
 ---
@@ -179,7 +179,7 @@ elevate bus log-event action task_dispatched info --meta '{"to":"<agent>","task"
 **Telegram has a 4096 character limit.** Send as separate messages with brief pauses between.
 
 ```bash
-elevate bus send-telegram $CTX_TELEGRAM_CHAT_ID "<message>"
+elevateos bus send-telegram $CTX_TELEGRAM_CHAT_ID "<message>"
 ```
 
 ### Briefing structure
@@ -229,10 +229,10 @@ When user replies with approval (e.g., `go all`, `go 1,2`):
 
 For each approved task:
 ```bash
-TASK_ID=$(elevate bus create-task "<title>" --desc "<description>" --assignee $CTX_AGENT_NAME --priority high)
-elevate bus update-task "$TASK_ID" in_progress
-elevate bus send-message <agent> high '<full task details>'
-elevate bus log-event action task_dispatched info --meta '{"to":"<agent>","task":"<title>"}'
+TASK_ID=$(elevateos bus create-task "<title>" --desc "<description>" --assignee $CTX_AGENT_NAME --priority high)
+elevateos bus update-task "$TASK_ID" in_progress
+elevateos bus send-message <agent> high '<full task details>'
+elevateos bus log-event action task_dispatched info --meta '{"to":"<agent>","task":"<title>"}'
 ```
 
 ---
@@ -241,10 +241,10 @@ elevate bus log-event action task_dispatched info --meta '{"to":"<agent>","task"
 
 ```bash
 # Log event
-elevate bus log-event action briefing_sent info --meta '{"type":"morning_review"}'
+elevateos bus log-event action briefing_sent info --meta '{"type":"morning_review"}'
 
 # Update heartbeat
-elevate bus update-heartbeat "morning review complete - dispatched N tasks"
+elevateos bus update-heartbeat "morning review complete - dispatched N tasks"
 
 # Write to memory
 TODAY=$(date -u +%Y-%m-%d)

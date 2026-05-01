@@ -43,7 +43,7 @@ chmod 600 "$ORG_ENV"
 
 # 3. Restart all running agents so they pick it up
 elevate list-agents --format json | jq -r '.[].name' | while read agent; do
-  elevate bus hard-restart --agent "$agent" --reason "new shared secret added: NEW_KEY"
+  elevateos bus hard-restart --agent "$agent" --reason "new shared secret added: NEW_KEY"
 done
 ```
 
@@ -60,7 +60,7 @@ echo 'MY_KEY=value' >> "$AGENT_ENV"
 chmod 600 "$AGENT_ENV"
 
 # 3. Restart THIS agent only
-elevate bus self-restart --reason "new agent secret added: MY_KEY"
+elevateos bus self-restart --reason "new agent secret added: MY_KEY"
 ```
 
 ---
@@ -107,12 +107,12 @@ ORG_ENV="$CTX_FRAMEWORK_ROOT/orgs/$CTX_ORG/.env"
 # Restart all agents in sequence (stagger to avoid gaps)
 elevate list-agents --format json | jq -r '.[].name' | while read agent; do
   echo "Restarting $agent..."
-  elevate bus send-message "$agent" high "hard-restart" "secret rotation: KEY_NAME"
+  elevateos bus send-message "$agent" high "hard-restart" "secret rotation: KEY_NAME"
   sleep 30
 done
 
 # Log the rotation
-elevate bus log-event action secret_rotated info \
+elevateos bus log-event action secret_rotated info \
   --meta "{\"key\":\"KEY_NAME\",\"scope\":\"org\",\"agent\":\"$CTX_AGENT_NAME\"}"
 ```
 
@@ -124,9 +124,9 @@ AGENT_ENV="$CTX_FRAMEWORK_ROOT/orgs/$CTX_ORG/agents/AGENT_NAME/.env"
 chmod 600 "$AGENT_ENV"
 
 # Hard-restart that agent (not soft — PTY must rebuild env)
-elevate bus send-message AGENT_NAME high "hard-restart" "secret rotation: KEY_NAME"
+elevateos bus send-message AGENT_NAME high "hard-restart" "secret rotation: KEY_NAME"
 
-elevate bus log-event action secret_rotated info \
+elevateos bus log-event action secret_rotated info \
   --meta "{\"key\":\"KEY_NAME\",\"scope\":\"agent\",\"agent\":\"AGENT_NAME\"}"
 ```
 

@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import DOMPurify from 'isomorphic-dompurify';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { IconX, IconFolderOpen, IconZoomIn, IconZoomOut, IconCode, IconBrowser } from '@tabler/icons-react';
 import type { TaskOutput } from '@/lib/types';
@@ -25,6 +24,20 @@ const FILE_REF_RE = new RegExp(`^[\\w\\-./]+\\.(${FILE_REF_EXTS})$`, 'i');
 const ABSOLUTE_DRIVE_RE = /^[a-z]:[\\/]/i;
 const ABSOLUTE_UNIX_RE = /^\//;
 const EXTERNAL_SCHEME_RE = /^(https?|mailto|tel|ftp|ws|wss|data|blob):/i;
+const FORBIDDEN_HTML_TAGS = ['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'link', 'meta', 'base'];
+const FORBIDDEN_HTML_ATTRS = new Set([
+  'style',
+  'onerror',
+  'onload',
+  'onclick',
+  'onmouseover',
+  'onfocus',
+  'onblur',
+  'onchange',
+  'onsubmit',
+  'formaction',
+]);
+const URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'formaction']);
 
 /**
  * Classify a candidate file reference string as 'skip', 'relative', or
@@ -45,6 +58,44 @@ function getMediaUrl(value: string, render?: boolean): string {
   const segments = value.split('/').map(s => encodeURIComponent(s)).join('/');
   const base = `/api/media/${segments}`;
   return render ? `${base}?render=true` : base;
+}
+
+function sanitizeClientHtml(raw: string): string {
+  if (typeof document === 'undefined') return '';
+
+  const template = document.createElement('template');
+  template.innerHTML = raw;
+
+  template.content
+    .querySelectorAll(FORBIDDEN_HTML_TAGS.join(','))
+    .forEach((el) => el.remove());
+
+  const walker = document.createTreeWalker(
+    template.content,
+    window.NodeFilter.SHOW_ELEMENT,
+  );
+  const elements: Element[] = [];
+
+  while (walker.nextNode()) {
+    elements.push(walker.currentNode as Element);
+  }
+
+  for (const el of elements) {
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      const compactValue = attr.value.replace(/[\u0000-\u001F\u007F\s]+/g, '').toLowerCase();
+
+      if (
+        name.startsWith('on') ||
+        FORBIDDEN_HTML_ATTRS.has(name) ||
+        (URL_ATTRS.has(name) && /^(javascript|data|vbscript):/.test(compactValue))
+      ) {
+        el.removeAttribute(attr.name);
+      }
+    }
+  }
+
+  return template.innerHTML;
 }
 
 function PreviewLoading() {
@@ -100,18 +151,41 @@ function RenderedMdPreview({
   onFileRefClick: (resolvedPath: string, displayLabel: string) => void;
 }) {
   const [html, setHtml] = useState<string | null>(null);
+  const [safeHtml, setSafeHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
+    setHtml(null);
+    setSafeHtml(null);
+    setError(null);
+
     fetch(src)
       .then(res => {
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
         return res.text();
       })
-      .then(setHtml)
-      .catch(e => setError(e.message));
+      .then((text) => {
+        if (!cancelled) setHtml(text);
+      })
+      .catch(e => {
+        if (!cancelled) setError(e.message);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [src]);
+
+  useEffect(() => {
+    if (html === null) {
+      setSafeHtml(null);
+      return;
+    }
+    setSafeHtml(sanitizeClientHtml(html));
+  }, [html]);
 
   // Walk the rendered HTML for <code> spans and <a> tags that look like
   // file references. Patch each with a click handler that opens the file
@@ -223,20 +297,6 @@ function RenderedMdPreview({
       listeners.forEach(unsub => unsub());
     };
   }, [html, parentPath, onFileRefClick]);
-
-  // Defense in depth: the server already sanitizes markdown-derived HTML
-  // with DOMPurify before returning it. We sanitize again on the client so
-  // that any intermediary (proxy, future change) cannot inject script or
-  // event-handler vectors into the DOM. Agent-authored markdown is NOT
-  // trusted — treat it the same as third-party user content.
-  const safeHtml = useMemo(() => {
-    if (html === null) return null;
-    return DOMPurify.sanitize(html, {
-      USE_PROFILES: { html: true },
-      FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'link', 'meta', 'base'],
-      FORBID_ATTR: ['style', 'onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'onchange', 'onsubmit', 'formaction'],
-    });
-  }, [html]);
 
   if (error) return <PreviewError message={error} />;
   if (safeHtml === null) return <PreviewLoading />;

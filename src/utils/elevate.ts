@@ -3,7 +3,7 @@ import { join } from 'path';
 
 export const PRODUCT_NAME = 'ElevateOS';
 export const AGENT_NAME = 'Elevate Agent';
-export const CLI_NAME = 'elevate';
+export const CLI_NAME = 'elevateos';
 export const STATE_DIR_NAME = '.elevate';
 export const DEFAULT_INSTANCE_ID = 'default';
 export const PM2_DAEMON_NAME = 'elevate-daemon';

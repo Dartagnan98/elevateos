@@ -3,8 +3,9 @@ import { execFile } from 'child_process';
 import { join } from 'path';
 import { createHash } from 'crypto';
 import { hardRestart } from '../bus/system.js';
-import type { InboxMessage, BusPaths, TelegramMessage, TelegramCallbackQuery } from '../types/index.js';
+import type { InboxMessage, BusPaths, TelegramMessage, TelegramCallbackQuery, Task } from '../types/index.js';
 import { checkInbox, ackInbox } from '../bus/message.js';
+import { claimDueScheduledTask, listDueScheduledTasks, markScheduledTaskDelivered, releaseScheduledTaskDelivery } from '../bus/task.js';
 import { updateApproval } from '../bus/approval.js';
 import { AgentProcess } from './agent-process.js';
 import type { TelegramAPI } from '../telegram/api.js';
@@ -111,7 +112,7 @@ export class FastChecker {
     const agentName = this.agent.name;
     this.heartbeatTimer = setInterval(() => {
       const ts = new Date().toISOString();
-      execFile('elevate', ['bus', 'update-heartbeat', `[watchdog] ${agentName} alive — idle session ${ts}`], (err) => {
+      execFile('elevateos', ['bus', 'update-heartbeat', `[watchdog] ${agentName} alive — idle session ${ts}`], (err) => {
         if (err) this.log(`Heartbeat watchdog error: ${err.message}`);
       });
     }, HEARTBEAT_INTERVAL_MS);
@@ -168,6 +169,7 @@ export class FastChecker {
   private async pollCycle(): Promise<void> {
     let messageBlock = '';
     const ackIds: string[] = [];
+    const claimedScheduledTaskIds: string[] = [];
 
     // Process queued Telegram messages
     let hasTelegramMessage = false;
@@ -184,6 +186,17 @@ export class FastChecker {
       ackIds.push(msg.id);
     }
 
+    // Deliver timed tasks that are due while the agent is already running.
+    // Startup reminders handle cold starts; this path handles "tomorrow at 2"
+    // without waiting for a restart or a heartbeat cron.
+    const dueScheduledTasks = listDueScheduledTasks(this.paths, this.agent.name).slice(0, 5);
+    for (const pendingTask of dueScheduledTasks) {
+      const task = claimDueScheduledTask(this.paths, pendingTask.id, this.agent.name);
+      if (!task) continue;
+      messageBlock += this.formatScheduledTask(task);
+      claimedScheduledTaskIds.push(task.id);
+    }
+
     // Inject if there's anything
     if (messageBlock) {
       const injected = this.agent.injectMessage(messageBlock);
@@ -192,7 +205,17 @@ export class FastChecker {
         for (const id of ackIds) {
           ackInbox(this.paths, id);
         }
+        for (const id of claimedScheduledTaskIds) {
+          const delivered = markScheduledTaskDelivered(this.paths, id, this.agent.name);
+          if (!delivered) {
+            releaseScheduledTaskDelivery(this.paths, id, this.agent.name, 'scheduled delivery could not be stamped after injection');
+            this.log(`Timed task ${id} was injected but could not be stamped delivered`);
+          }
+        }
         this.log(`Injected ${messageBlock.length} bytes`);
+        if (claimedScheduledTaskIds.length > 0) {
+          this.log(`Delivered ${claimedScheduledTaskIds.length} timed task(s): ${claimedScheduledTaskIds.join(', ')}`);
+        }
         // Only update typing timestamp for Telegram messages, not inbox/cron.
         // Inbox messages (agent-to-agent, session continuations) must not
         // restart the typing indicator after Stop has cleared it.
@@ -201,6 +224,10 @@ export class FastChecker {
         }
         // Cooldown after injection
         await sleep(5000);
+      } else if (claimedScheduledTaskIds.length > 0) {
+        for (const id of claimedScheduledTaskIds) {
+          releaseScheduledTaskDelivery(this.paths, id, this.agent.name);
+        }
       }
     }
 
@@ -219,13 +246,41 @@ export class FastChecker {
    */
   private formatInboxMessage(msg: InboxMessage): string {
     const replyNote = msg.reply_to ? ` [reply_to: ${msg.reply_to}]` : '';
-    return `=== AGENT MESSAGE from ${msg.from}${replyNote} [msg_id: ${msg.id}] ===
+    const source = String(msg.source ?? '').toLowerCase();
+    const heading = source === 'dashboard' || source === 'mobile'
+      ? `=== LOCAL CHAT MESSAGE from ${msg.from}${replyNote} [msg_id: ${msg.id}] ===`
+      : `=== AGENT MESSAGE from ${msg.from}${replyNote} [msg_id: ${msg.id}] ===`;
+    const replyLabel = source === 'dashboard' || source === 'mobile'
+      ? 'Reply to the local chat using'
+      : 'Reply using';
+    return `${heading}
 \`\`\`
 ${msg.text}
 \`\`\`
-Reply using: elevate bus send-message ${msg.from} normal '<your reply>' ${msg.id}
+${replyLabel}: elevateos bus send-message ${msg.from} normal '<your reply>' ${msg.id}
 
 `;
+  }
+
+  /**
+   * Format a due scheduled task for live injection.
+   */
+  private formatScheduledTask(task: Task): string {
+    const title = stripControlChars(task.title).slice(0, 500);
+    const description = stripControlChars(task.description || '').slice(0, 4000);
+    const project = task.project ? `\nProject: ${stripControlChars(task.project).slice(0, 200)}` : '';
+    const approval = task.needs_approval
+      ? '\nApproval: This task is marked needs_approval. Draft/research freely, but create or request approval before external actions.'
+      : '';
+    const body = description ? `\nDescription:\n${description}` : '';
+    return `\n\n=== TIMED TASK DUE ===\n` +
+      `Task ID: ${task.id}\n` +
+      `Scheduled for: ${task.scheduled_for}\n` +
+      `Priority: ${task.priority}\n` +
+      `Title: ${title}${project}${approval}${body}\n\n` +
+      `Run this task now. When done, call: elevateos bus complete-task ${task.id} --result "<summary>". ` +
+      `If blocked, call: elevateos bus update-task ${task.id} blocked.\n` +
+      `=== END TIMED TASK ===\n`;
   }
 
   /**
@@ -265,7 +320,7 @@ Reply using: elevate bus send-message ${msg.from} normal '<your reply>' ${msg.id
       : `\`\`\`\n${text}\n\`\`\``;
     return `=== TELEGRAM from [USER: ${from}] (chat_id:${chatId}) ===
 ${replyCx}${historyCx}${body}
-${lastSentCtx}Reply using: elevate bus send-telegram ${chatId} '<your reply>'
+${lastSentCtx}Reply using: elevateos bus send-telegram ${chatId} '<your reply>'
 
 `;
   }
@@ -317,7 +372,7 @@ caption:
 ${caption}
 \`\`\`
 local_file: ${imagePath}
-Reply using: elevate bus send-telegram ${chatId} '<your reply>'
+Reply using: elevateos bus send-telegram ${chatId} '<your reply>'
 
 `;
   }
@@ -340,7 +395,7 @@ ${caption}
 \`\`\`
 local_file: ${filePath}
 file_name: ${fileName}
-Reply using: elevate bus send-telegram ${chatId} '<your reply>'
+Reply using: elevateos bus send-telegram ${chatId} '<your reply>'
 
 `;
   }
@@ -359,7 +414,7 @@ Reply using: elevate bus send-telegram ${chatId} '<your reply>'
     return `=== TELEGRAM VOICE from ${from} (chat_id:${chatId}) ===
 duration: ${dur}s
 local_file: ${filePath}
-Reply using: elevate bus send-telegram ${chatId} '<your reply>'
+Reply using: elevateos bus send-telegram ${chatId} '<your reply>'
 
 `;
   }
@@ -385,7 +440,7 @@ ${caption}
 duration: ${dur}s
 local_file: ${filePath}
 file_name: ${fileName}
-Reply using: elevate bus send-telegram ${chatId} '<your reply>'
+Reply using: elevateos bus send-telegram ${chatId} '<your reply>'
 
 `;
   }
@@ -976,7 +1031,7 @@ Reply using: elevate bus send-telegram ${chatId} '<your reply>'
         writeFileSync(statusPath, JSON.stringify({ used_percentage: 0, exceeds_200k_tokens: false, written_at: new Date().toISOString() }));
       } catch { /* non-fatal */ }
       const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + 'Z';
-      const handoffPrompt = `[CONTEXT HANDOFF REQUIRED] Context is at ${Math.round(effectivePct)}%. Write a handoff document to memory/handoffs/handoff-${ts}.md with these sections: ## Current Tasks, ## Next Actions, ## Active Crons, ## Key Context, ## Files Modified This Session. Then run: elevate bus hard-restart --reason "context handoff at ${Math.round(effectivePct)}%" --handoff-doc <absolute path to the handoff doc you just wrote>. Do this NOW before the context window is exhausted.`;
+      const handoffPrompt = `[CONTEXT HANDOFF REQUIRED] Context is at ${Math.round(effectivePct)}%. Write a handoff document to memory/handoffs/handoff-${ts}.md with these sections: ## Current Tasks, ## Next Actions, ## Active Crons, ## Key Context, ## Files Modified This Session. Then run: elevateos bus hard-restart --reason "context handoff at ${Math.round(effectivePct)}%" --handoff-doc <absolute path to the handoff doc you just wrote>. Do this NOW before the context window is exhausted.`;
       this.agent.injectMessage(handoffPrompt);
       this.log(`Handoff prompt injected at ${Math.round(effectivePct)}%`);
       // Pre-arm .force-fresh so the next restart is always a clean fresh session.

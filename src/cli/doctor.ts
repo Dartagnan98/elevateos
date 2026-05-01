@@ -12,6 +12,14 @@ interface Check {
   fix?: string;
 }
 
+function supportedNode(version: string): boolean {
+  const [major = 0, minor = 0] = version
+    .replace(/^v/, '')
+    .split('.')
+    .map((part) => parseInt(part, 10));
+  return major > 20 || (major === 20 && minor >= 19);
+}
+
 export const doctorCommand = new Command('doctor')
   .option('--instance <id>', 'Instance ID', 'default')
   .description('Diagnose common issues')
@@ -22,12 +30,12 @@ export const doctorCommand = new Command('doctor')
 
     // Check Node.js version
     const nodeVersion = process.version;
-    const major = parseInt(nodeVersion.slice(1).split('.')[0], 10);
+    const nodeOk = supportedNode(nodeVersion);
     checks.push({
       name: 'Node.js version',
-      status: major >= 20 ? 'pass' : 'fail',
-      message: `${nodeVersion} ${major >= 20 ? '(OK)' : '(requires 20+)'}`,
-      fix: major < 20 ? 'Install Node.js 20+ from https://nodejs.org' : undefined,
+      status: nodeOk ? 'pass' : 'fail',
+      message: `${nodeVersion} ${nodeOk ? '(OK)' : '(requires 20.19+)'}`,
+      fix: !nodeOk ? 'Install Node.js 20.19+ from https://nodejs.org, then reinstall dependencies' : undefined,
     });
 
     // Check PM2

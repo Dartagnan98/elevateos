@@ -66,7 +66,7 @@ export default async function OverviewPage({
   const staleAgentCount = healthSummary.stale + healthSummary.down;
   const inProgressTasks = allTasks.filter(t => t.status === 'in_progress').length;
   const pendingTasks = allTasks.filter(t => t.status === 'pending').length;
-  const humanTasks = allTasks.filter(t => t.assignee === 'human' && t.status !== 'completed').length;
+  const humanTasks = allTasks.filter(t => t.assignee === 'human' && t.status !== 'completed' && t.status !== 'cancelled').length;
   const totalActions = pendingCount + blockedTasks.length + staleAgentCount + humanTasks;
 
   return (

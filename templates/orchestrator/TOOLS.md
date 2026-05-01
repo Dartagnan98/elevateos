@@ -1,6 +1,6 @@
 # Tools Quick Reference
 
-All ElevateOS commands: `elevate bus <command>`. Full docs in skill files — load the relevant skill when you need details on a workflow.
+All ElevateOS commands: `elevateos bus <command>`. Full docs in skill files — load the relevant skill when you need details on a workflow.
 
 ---
 
@@ -26,7 +26,7 @@ Agent secrets: `orgs/{org}/agents/{agent}/.env`
 ### Tasks — full docs: `.claude/skills/tasks/SKILL.md`
 | Command | What it does |
 |---|---|
-| `create-task "<title>" --desc "<desc>"` | Create a task (visible on dashboard) |
+| `create-task "<title>" --desc "<desc>" [--run-at ISO]` | Create a task or timed task (visible on dashboard) |
 | `update-task <id> <status>` | Update status: pending / in_progress / blocked / completed |
 | `complete-task <id> --result "<what>"` | Mark done with result |
 | `list-tasks [--status S] [--agent A] [--all-orgs]` | List / filter tasks |
@@ -93,7 +93,7 @@ Agent secrets: `orgs/{org}/agents/{agent}/.env`
 ### Goals
 | Command | What it does |
 |---|---|
-| `elevate goals generate-md --agent <name> --org <org>` | Rebuild GOALS.md from goals.json |
+| `elevateos goals generate-md --agent <name> --org <org>` | Rebuild GOALS.md from goals.json |
 
 ### Experiments (Theta Wave) — full docs: `.claude/skills/autoresearch/SKILL.md`
 | Command | What it does |
@@ -123,10 +123,10 @@ Agent secrets: `orgs/{org}/agents/{agent}/.env`
 ### Worker Sessions — full docs: `.claude/skills/worker-agents/SKILL.md`
 | Command | What it does |
 |---|---|
-| `elevate spawn-worker <name> --dir <path> --prompt "<text>"` | Spawn ephemeral Claude Code session |
-| `elevate list-workers` | Show active/recent worker sessions |
-| `elevate inject-worker <name> "<text>"` | Inject text into running worker (nudge) |
-| `elevate terminate-worker <name>` | Stop a worker session |
+| `elevateos spawn-worker <name> --dir <path> --prompt "<text>"` | Spawn ephemeral Claude Code session |
+| `elevateos list-workers` | Show active/recent worker sessions |
+| `elevateos inject-worker <name> "<text>"` | Inject text into running worker (nudge) |
+| `elevateos terminate-worker <name>` | Stop a worker session |
 
 ### Community Ecosystem
 | Command | What it does |

@@ -81,7 +81,7 @@ const adapter = process.env.CTX_SUPABASE_URL
   : new FileBusAdapter(ctxRoot);
 ```
 
-No agent code or template changes are required — everything routes through the same `elevate bus` CLI commands.
+No agent code or template changes are required — everything routes through the same `elevateos bus` CLI commands.
 
 ---
 
@@ -263,7 +263,7 @@ No dashboard page logic changes — only the data layer changes. Each page that 
 ### Phase 4: Secrets + Org Config
 
 - `secrets` table replaces per-machine `.env` for shared org secrets
-- `elevate init` provisions Supabase tables on first run
+- `elevateos init` provisions Supabase tables on first run
 - `elevate secrets set/get` CLI commands
 - **Deliverable:** No per-machine secret management for shared agents
 

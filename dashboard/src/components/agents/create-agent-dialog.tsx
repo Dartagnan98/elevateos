@@ -12,13 +12,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { IconLoader2 } from '@tabler/icons-react';
 
 interface CreateAgentDialogProps {
@@ -29,34 +22,35 @@ interface CreateAgentDialogProps {
 
 const NAME_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
 
-const TEMPLATES = [
-  { value: 'agent', label: 'Agent' },
-  { value: 'orchestrator', label: 'Orchestrator' },
-  { value: 'analyst', label: 'Analyst' },
+const TIERS = [
+  { value: 'specialist', label: 'Specialist' },
+  { value: 'primary', label: 'Primary' },
 ] as const;
 
-type Template = (typeof TEMPLATES)[number]['value'];
+type Tier = (typeof TIERS)[number]['value'];
 
 export function CreateAgentDialog({
   open,
   onOpenChange,
   onCreated,
 }: CreateAgentDialogProps) {
-  const [name, setName] = useState('');
-  const [org, setOrg] = useState('agentnet');
-  const [template, setTemplate] = useState<Template>('agent');
-  const [botToken, setBotToken] = useState('');
-  const [chatId, setChatId] = useState('');
+  const [agentId, setAgentId] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [org, setOrg] = useState('standalone');
+  const [tier, setTier] = useState<Tier>('specialist');
+  const [reportsTo, setReportsTo] = useState('executive-assistant');
+  const [role, setRole] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   function resetForm() {
-    setName('');
-    setOrg('agentnet');
-    setTemplate('agent');
-    setBotToken('');
-    setChatId('');
+    setAgentId('');
+    setDisplayName('');
+    setOrg('standalone');
+    setTier('specialist');
+    setReportsTo('executive-assistant');
+    setRole('');
     setError(null);
     setSuccess(false);
   }
@@ -67,13 +61,10 @@ export function CreateAgentDialog({
   }
 
   function validate(): string | null {
-    if (!name.trim()) return 'Agent name is required.';
-    if (!NAME_PATTERN.test(name))
-      return 'Name must be lowercase alphanumeric, hyphens, or underscores (cannot start with - or _).';
+    if (!displayName.trim()) return 'Display name is required.';
+    if (agentId.trim() && !NAME_PATTERN.test(agentId))
+      return 'Agent ID must be lowercase alphanumeric, hyphens, or underscores (cannot start with - or _).';
     if (!org.trim()) return 'Organization is required.';
-    if (!template) return 'Template is required.';
-    if (!botToken.trim()) return 'Bot token is required.';
-    if (!chatId.trim()) return 'Chat ID is required.';
     return null;
   }
 
@@ -90,15 +81,19 @@ export function CreateAgentDialog({
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/agents', {
+      const res = await fetch('/api/elevate/agents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: name.trim(),
+          agent_id: agentId.trim() || undefined,
+          display_name: displayName.trim(),
           org: org.trim(),
-          template,
-          botToken: botToken.trim(),
-          chatId: chatId.trim(),
+          tier,
+          reports_to: tier === 'primary' ? null : reportsTo.trim() || 'executive-assistant',
+          role: role.trim(),
+          lane: displayName.trim(),
+          enabled: true,
+          status: 'ready',
         }),
       });
 
@@ -125,73 +120,87 @@ export function CreateAgentDialog({
         <DialogHeader>
           <DialogTitle>Create Agent</DialogTitle>
           <DialogDescription>
-            Configure a new agent and add it to the fleet.
+            Add a visible Elevate orchestration agent to the local gateway roster.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Agent Name */}
           <div className="grid gap-1.5">
-            <Label htmlFor="agent-name">Agent Name</Label>
+            <Label htmlFor="agent-display-name">Display Name</Label>
             <Input
-              id="agent-name"
-              placeholder="my-agent"
-              value={name}
-              onChange={(e) => setName(e.target.value.toLowerCase())}
+              id="agent-display-name"
+              placeholder="Transaction Coordinator"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
               disabled={submitting}
               autoFocus
             />
           </div>
 
-          {/* Organization */}
           <div className="grid gap-1.5">
-            <Label htmlFor="agent-org">Organization</Label>
+            <Label htmlFor="agent-id">Agent ID</Label>
             <Input
-              id="agent-org"
-              placeholder="agentnet"
-              value={org}
-              onChange={(e) => setOrg(e.target.value)}
+              id="agent-id"
+              placeholder="transaction-coordinator"
+              value={agentId}
+              onChange={(e) => setAgentId(e.target.value.toLowerCase())}
               disabled={submitting}
             />
+            <p className="text-xs text-muted-foreground">
+              Leave blank to generate it from the display name. Keep this stable once the agent has runs or memory.
+            </p>
           </div>
 
-          {/* Template */}
-          <div className="grid gap-1.5">
-            <Label>Template</Label>
-            <Select value={template} onValueChange={(v) => setTemplate(v as Template)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a template" />
-              </SelectTrigger>
-              <SelectContent>
-                {TEMPLATES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label htmlFor="agent-org">Organization</Label>
+              <Input
+                id="agent-org"
+                placeholder="standalone"
+                value={org}
+                onChange={(e) => setOrg(e.target.value)}
+                disabled={submitting}
+              />
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="agent-tier">Tier</Label>
+              <select
+                id="agent-tier"
+                value={tier}
+                onChange={(e) => setTier(e.target.value as Tier)}
+                disabled={submitting}
+                className="h-10 rounded-md border bg-background px-3 text-sm"
+              >
+                {TIERS.map((t) => (
+                  <option key={t.value} value={t.value}>
                     {t.label}
-                  </SelectItem>
+                  </option>
                 ))}
-              </SelectContent>
-            </Select>
+              </select>
+            </div>
           </div>
 
-          {/* Bot Token */}
-          <div className="grid gap-1.5">
-            <Label htmlFor="agent-bot-token">Bot Token</Label>
-            <Input
-              id="agent-bot-token"
-              placeholder="123456:ABC-DEF..."
-              value={botToken}
-              onChange={(e) => setBotToken(e.target.value)}
-              disabled={submitting}
-            />
-          </div>
+          {tier !== 'primary' && (
+            <div className="grid gap-1.5">
+              <Label htmlFor="agent-reports-to">Reports To</Label>
+              <Input
+                id="agent-reports-to"
+                placeholder="executive-assistant"
+                value={reportsTo}
+                onChange={(e) => setReportsTo(e.target.value.toLowerCase())}
+                disabled={submitting}
+              />
+            </div>
+          )}
 
-          {/* Chat ID */}
           <div className="grid gap-1.5">
-            <Label htmlFor="agent-chat-id">Chat ID</Label>
+            <Label htmlFor="agent-role">Role</Label>
             <Input
-              id="agent-chat-id"
-              placeholder="-1001234567890"
-              value={chatId}
-              onChange={(e) => setChatId(e.target.value)}
+              id="agent-role"
+              placeholder="Handles listings, follow-up, or marketing workflows"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
               disabled={submitting}
             />
           </div>

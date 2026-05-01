@@ -28,10 +28,11 @@ import type { TaskPriority } from '@/lib/types';
 interface CreateTaskDialogProps {
   agents: string[];
   projects: string[];
+  org?: string;
   onCreated: () => void;
 }
 
-export function CreateTaskDialog({ agents, projects, onCreated }: CreateTaskDialogProps) {
+export function CreateTaskDialog({ agents, projects, org, onCreated }: CreateTaskDialogProps) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +42,8 @@ export function CreateTaskDialog({ agents, projects, onCreated }: CreateTaskDial
   const [assignee, setAssignee] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('normal');
   const [project, setProject] = useState('');
+  const [scheduledFor, setScheduledFor] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [needsApproval, setNeedsApproval] = useState(false);
 
   function reset() {
@@ -49,12 +52,31 @@ export function CreateTaskDialog({ agents, projects, onCreated }: CreateTaskDial
     setAssignee('');
     setPriority('normal');
     setProject('');
+    setScheduledFor('');
+    setDueDate('');
     setNeedsApproval(false);
+  }
+
+  function localDateTimeToIso(value: string): string | undefined {
+    if (!value) return undefined;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString();
   }
 
   async function handleSubmit() {
     if (!title.trim()) {
       setError('Title is required');
+      return;
+    }
+    if (scheduledFor && !assignee) {
+      setError('Timed tasks need an assignee.');
+      return;
+    }
+    const scheduledIso = localDateTimeToIso(scheduledFor);
+    const dueIso = localDateTimeToIso(dueDate);
+    if (scheduledIso === '' || dueIso === '') {
+      setError('Use a valid date and time.');
       return;
     }
     setSubmitting(true);
@@ -70,7 +92,10 @@ export function CreateTaskDialog({ agents, projects, onCreated }: CreateTaskDial
           assignee: assignee || undefined,
           priority,
           project: project || undefined,
+          scheduledFor: scheduledIso,
+          dueDate: dueIso,
           needsApproval,
+          org,
         }),
       });
 
@@ -100,7 +125,7 @@ export function CreateTaskDialog({ agents, projects, onCreated }: CreateTaskDial
         <DialogHeader>
           <DialogTitle>Create Task</DialogTitle>
           <DialogDescription>
-            Create a new task and assign it to an agent.
+            Create a bus-backed task and assign it to an agent.
           </DialogDescription>
         </DialogHeader>
 
@@ -184,6 +209,27 @@ export function CreateTaskDialog({ agents, projects, onCreated }: CreateTaskDial
               </Select>
             </div>
           )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="task-run-at">Run at</Label>
+              <Input
+                id="task-run-at"
+                type="datetime-local"
+                value={scheduledFor}
+                onChange={(e) => setScheduledFor(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="task-due-by">Due by</Label>
+              <Input
+                id="task-due-by"
+                type="datetime-local"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
+          </div>
 
           <div className="flex items-center gap-3">
             <Switch

@@ -1,5 +1,5 @@
 /**
- * elevate setup — interactive first-run wizard.
+ * elevateos setup — interactive first-run wizard.
  *
  * Guides a new user through:
  *   1. Dependency check + state directory creation (install)
@@ -141,7 +141,7 @@ async function validateTelegramCredsInteractive(
 
     if (result.reason === 'network_error' || result.reason === 'rate_limited') {
       console.log(`  Warning: ${formatValidateError(result)}`);
-      console.log('  Writing .env with unvalidated values. Re-run elevate enable later to confirm.');
+      console.log('  Writing .env with unvalidated values. Re-run elevateos enable later to confirm.');
       return chatId;
     }
 
@@ -150,7 +150,7 @@ async function validateTelegramCredsInteractive(
     if (result.reason === 'bad_token') {
       // Can't recover from a bad token inside the wizard loop — the user
       // needs to fix the token at @BotFather and re-run setup. Bail.
-      console.log('  Re-run elevate setup after fixing the bot token.');
+      console.log('  Re-run elevateos setup after fixing the bot token.');
       return null;
     }
 
@@ -221,9 +221,9 @@ export const setupCommand = new Command('setup')
     // ─── Step 1: Install ─────────────────────────────────────────────────────
 
     console.log('  Step 1: Checking dependencies and creating state directories...\n');
-    const installOk = runCli(projectRoot, ['install', '--instance', instanceId], 'elevate install');
+    const installOk = runCli(projectRoot, ['install', '--instance', instanceId], 'elevateos install');
     if (!installOk) {
-      console.error('\n  Install step failed. Fix the errors above and re-run elevate setup.');
+      console.error('\n  Install step failed. Fix the errors above and re-run elevateos setup.');
       iface.close();
       process.exit(1);
     }
@@ -245,9 +245,9 @@ export const setupCommand = new Command('setup')
       break;
     }
 
-    const initOk = runCli(projectRoot, ['init', orgName, '--instance', instanceId], 'elevate init');
+    const initOk = runCli(projectRoot, ['init', orgName, '--instance', instanceId], 'elevateos init');
     if (!initOk) {
-      console.error('\n  Org creation failed. Fix the errors above and re-run elevate setup.');
+      console.error('\n  Org creation failed. Fix the errors above and re-run elevateos setup.');
       iface.close();
       process.exit(1);
     }
@@ -311,7 +311,7 @@ export const setupCommand = new Command('setup')
     const addOrchOk = runCli(
       projectRoot,
       ['add-agent', orchName, '--template', 'orchestrator', '--org', orgName, '--instance', instanceId],
-      'elevate add-agent orchestrator'
+      'elevateos add-agent orchestrator'
     );
     if (!addOrchOk) {
       console.error('\n  Failed to create orchestrator agent.');
@@ -328,10 +328,10 @@ export const setupCommand = new Command('setup')
     const enableOrchOk = runCli(
       projectRoot,
       ['enable', orchName, '--org', orgName, '--instance', instanceId],
-      'elevate enable orchestrator'
+      'elevateos enable orchestrator'
     );
     if (!enableOrchOk) {
-      console.error(`\n  Failed to enable ${orchName}. Check .env and try: elevate enable ${orchName}`);
+      console.error(`\n  Failed to enable ${orchName}. Check .env and try: elevateos enable ${orchName}`);
     }
 
     // ─── Step 4: Additional agents ───────────────────────────────────────────
@@ -387,7 +387,7 @@ export const setupCommand = new Command('setup')
         `agent ${agentName}`,
       );
       if (!validatedAgentChatId) {
-        console.log(`  Skipping ${agentName} — fix the credentials and re-run elevate setup or elevate enable ${agentName}.`);
+        console.log(`  Skipping ${agentName} — fix the credentials and re-run elevateos setup or elevateos enable ${agentName}.`);
         continue;
       }
       agentChatId = validatedAgentChatId;
@@ -395,7 +395,7 @@ export const setupCommand = new Command('setup')
       const addOk = runCli(
         projectRoot,
         ['add-agent', agentName, '--template', template, '--org', orgName, '--instance', instanceId],
-        `elevate add-agent ${agentName}`
+        `elevateos add-agent ${agentName}`
       );
 
       if (addOk) {
@@ -426,7 +426,7 @@ export const setupCommand = new Command('setup')
     });
 
     if (ecoResult.status !== 0) {
-      console.error('  Failed to generate ecosystem config. Run manually: elevate ecosystem');
+      console.error('  Failed to generate ecosystem config. Run manually: elevateos ecosystem');
     } else {
       // Try PM2 start
       const pm2Result = spawnSync('pm2', ['start', 'ecosystem.config.js'], {
@@ -437,8 +437,8 @@ export const setupCommand = new Command('setup')
         spawnSync('pm2', ['save'], { cwd: projectRoot, stdio: 'inherit' });
         console.log('\n  Daemon started via PM2.');
       } else {
-        // Fallback: elevate start
-        runCli(projectRoot, ['start', '--instance', instanceId], 'elevate start');
+        // Fallback: elevateos start
+        runCli(projectRoot, ['start', '--instance', instanceId], 'elevateos start');
       }
     }
 
@@ -452,8 +452,8 @@ export const setupCommand = new Command('setup')
     console.log(`  Agents: ${addedAgents.join(', ')}`);
     console.log(`  State: ${ctxRoot}\n`);
     console.log('  Next steps:');
-    console.log('    - Check agent status: elevate status');
-    console.log('    - Start dashboard:    elevate dashboard');
+    console.log('    - Check agent status: elevateos status');
+    console.log('    - Start dashboard:    elevateos dashboard');
     console.log('    - View PM2 logs:      pm2 logs');
     console.log('    - Talk to your agent via Telegram!\n');
   });

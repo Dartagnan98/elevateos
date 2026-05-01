@@ -8,6 +8,7 @@
 - Node 20.19+ or 22.12+ (`node -v`)
 - npm 10+ (`npm -v`)
 - Git
+- Python Elevate Agent CLI (`elevate`) installed and configured if you want the dashboard chat/memory connector live on first boot
 - PM2 (`npm i -g pm2`)
 - cloudflared (`brew install cloudflared`)
 - jq (`brew install jq`)
@@ -15,10 +16,23 @@
 ## Steps
 
 ```bash
+# One-line bootstrap. Installs/updates ~/elevateos, links `elevateos`,
+# seeds the starter agent roster, configures the local gateway when `elevate`
+# exists, and launches the dashboard.
+curl -fsSL https://raw.githubusercontent.com/Dartagnan98/elevateos/main/install.mjs | node
+```
+
+Set `ELEVATEOS_LAUNCH=0` if you only want to install/update without launching the app.
+By default, `elevateos install` creates the starter `skyleigh-elevate` org with Executive Assistant, Outreach, Marketing, and Social Media agents. Use `--starter-org <org>` to change the org name, or `--no-starter-agents` for a blank/custom install.
+
+Manual install:
+
+```bash
 # 0. Preflight — fail fast if anything is missing.
 for bin in node npm git pm2 cloudflared jq; do
   command -v "$bin" >/dev/null || { echo "Missing $bin; install it before continuing"; exit 1; }
 done
+command -v elevate >/dev/null || echo "Elevate Agent CLI not found yet; dashboard install can continue, gateway connector waits for it"
 
 # 1. Clone.
 cd ~
@@ -29,8 +43,22 @@ cd elevateos
 npm install
 npm run build
 
-# 3. Initialize the elevate instance. Writes ~/.elevate/elevation/ + dashboard.env.
-node dist/cli.js install --instance elevation
+# 3. Initialize the ElevateOS instance. Writes ~/.elevate/elevation/ + dashboard.env.
+#    This custom Elevation template flow adds its own agents below, so it skips
+#    the default starter roster.
+node dist/cli.js install --instance elevation --no-starter-agents
+
+# 3b. Enable the local Elevate Agent HTTP gateway for the app connector.
+#     This keeps the runtime local while giving ElevateOS a stable app API.
+elevate config set platforms.api_server.enabled true
+elevate config set platforms.api_server.extra.host 127.0.0.1
+elevate config set platforms.api_server.extra.port 8642
+elevate gateway restart
+curl -fsS http://127.0.0.1:8642/health
+
+# Optional production hardening for the local gateway API:
+#   elevate config set platforms.api_server.extra.key "$(openssl rand -hex 32)"
+#   echo "ELEVATE_GATEWAY_API_KEY=<same key>" >> dashboard/.env.local
 
 # 4. Seed dashboard/.env.local directly from ~/.elevate/elevation/dashboard.env.
 #
@@ -61,7 +89,7 @@ cp customer-templates/elevation/context.json orgs/elevation/context.json
 # 7. Add agents from the real-estate templates directly.
 #    add-agent accepts any directory under templates/. It still regenerates
 #    SYSTEM.md from orgs/elevation/context.json, so the org context remains
-#    authoritative while AGENTS.md, CLAUDE.md, skills, and config.json come
+#    authoritative while AGENTS.md, skills, and config.json come
 #    from the ElevateOS templates.
 node dist/cli.js add-agent avery   --template avery   --org elevation --instance elevation
 node dist/cli.js add-agent marlowe --template marlowe --org elevation --instance elevation
@@ -72,7 +100,7 @@ node dist/cli.js add-agent reese   --template reese   --org elevation --instance
 node <<'NODE'
 const fs = require('fs');
 const agents = ['avery', 'marlowe', 'pierce', 'reese'];
-const required = ['AGENTS.md', 'CLAUDE.md', 'IDENTITY.md', 'GOALS.md', 'config.json'];
+const required = ['AGENTS.md', 'IDENTITY.md', 'GOALS.md', 'config.json'];
 const allowed = new Set(['10m', '30m', '1h', '6h', '24h']);
 let failed = false;
 for (const agent of agents) {
@@ -146,7 +174,7 @@ node dist/cli.js tunnel start --instance elevation --port 3000
 
 ## Verify
 
-After step 15, `elevate status --instance elevation` should show 4 PTY agents healthy plus the dashboard process. Visit `http://localhost:3000` and log in with the admin password from `~/.elevate/elevation/dashboard.env`. The Leads page should render from either `data_roots.messages_db` or normalized records under `tools/data/sources/<source-id>`. Settings > Integrations should show whether the CRM endpoint and API-key secret are configured.
+After step 15, `elevateos status --instance elevation` should show the ElevateOS daemon/dashboard health. `elevate gateway status` should show the Python Elevate Agent gateway health. Visit `http://localhost:3000` and log in with the admin password from `~/.elevate/elevation/dashboard.env`. The Leads page should render from either `data_roots.messages_db` or normalized records under `tools/data/sources/<source-id>`. Settings > Elevate Agent should show whether the local gateway endpoint is reachable. Memory Graph should show local memory facts/entities/sessions when `~/.elevate/memory_store.db` exists, and still render with setup warnings before memory has been written.
 
 Each Telegram bot should send a "Booting up..." message to the chat ID you set in step 13. If a bot is silent, check `~/.elevate/elevation/logs/<agent>/stderr.log`.
 

@@ -61,6 +61,8 @@ interface Cycle {
 interface AgentExperiments {
   agent: string;
   org: string;
+  approval_required: boolean;
+  config_path: string;
   cycles: Cycle[];
   experiments: Experiment[];
   learnings: string;
@@ -73,6 +75,11 @@ interface AgentExperiments {
     discarded: number;
     keepRate: number;
   };
+}
+
+interface AgentOption {
+  name: string;
+  org: string;
 }
 
 interface ApiResponse {
@@ -159,15 +166,51 @@ export default function ExperimentsPage() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
+  const [agentOptions, setAgentOptions] = useState<AgentOption[]>([]);
+  const [setupStatus, setSetupStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [savingSetup, setSavingSetup] = useState(false);
+  const [setup, setSetup] = useState({
+    org: '',
+    agent: '',
+    approvalRequired: true,
+    cycleName: 'daily-quality-loop',
+    metric: '',
+    metricType: 'qualitative',
+    direction: 'higher',
+    window: '24h',
+    loopInterval: '24h',
+    surface: '',
+    measurement: '',
+  });
 
   const fetchData = () => {
     setLoading(true);
     const org = typeof window !== 'undefined' ? localStorage.getItem('selectedOrg') || '' : '';
     const params = org ? `?org=${org}` : '';
-    fetch(`/api/experiments${params}`)
-      .then((r) => r.json())
-      .then((d) => {
+    Promise.all([
+      fetch(`/api/experiments${params}`).then((r) => r.json()),
+      fetch('/api/agents').then((r) => (r.ok ? r.json() : [])),
+    ])
+      .then(([d, agentRows]) => {
         setData(d);
+        const options: AgentOption[] = Array.isArray(agentRows)
+          ? agentRows
+            .map((agent: { name?: string; org?: string }) => ({ name: agent.name || '', org: agent.org || '' }))
+            .filter((agent) => agent.name && (!org || agent.org === org))
+          : [];
+        setAgentOptions(options);
+
+        const first = options[0] || d.agents?.[0];
+        if (first) {
+          const config = d.agents?.find((agentData: AgentExperiments) => agentData.agent === first.name && agentData.org === first.org);
+          setSetup((prev) => ({
+            ...prev,
+            agent: prev.agent || first.name,
+            org: prev.org || first.org,
+            approvalRequired: config?.approval_required ?? prev.approvalRequired,
+          }));
+        }
+
         // Auto-expand first agent
         if (d.agents?.length > 0 && !expandedAgent) {
           setExpandedAgent(d.agents[0].agent);
@@ -186,6 +229,100 @@ export default function ExperimentsPage() {
   const agents = data?.agents ?? [];
   const allExperiments = agents.flatMap((a) => a.experiments);
   const hasData = allExperiments.length > 0 || agents.some((a) => a.cycles.length > 0);
+  const selectedConfig = agents.find((agent) => agent.agent === setup.agent && agent.org === setup.org);
+
+  function updateSelectedAgent(value: string) {
+    const [org, agent] = value.split('::');
+    const config = agents.find((agentData) => agentData.agent === agent && agentData.org === org);
+    setSetup((prev) => ({
+      ...prev,
+      org,
+      agent,
+      approvalRequired: config?.approval_required ?? true,
+    }));
+    setSetupStatus(null);
+  }
+
+  async function postExperimentSetup(payload: Record<string, unknown>, successText: string) {
+    setSavingSetup(true);
+    setSetupStatus(null);
+    try {
+      const res = await fetch('/api/experiments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSetupStatus({ type: 'error', text: body.error || 'Experiment setup failed' });
+        return;
+      }
+      setSetupStatus({ type: 'success', text: successText });
+      fetchData();
+    } catch {
+      setSetupStatus({ type: 'error', text: 'Network error updating experiment setup' });
+    } finally {
+      setSavingSetup(false);
+    }
+  }
+
+  function saveExperimentSettings() {
+    if (!setup.org || !setup.agent) {
+      setSetupStatus({ type: 'error', text: 'Pick an agent first' });
+      return;
+    }
+    postExperimentSetup({
+      action: 'update-settings',
+      org: setup.org,
+      agent: setup.agent,
+      approval_required: setup.approvalRequired,
+    }, 'Experiment settings saved.');
+  }
+
+  function createCycle() {
+    if (!setup.org || !setup.agent) {
+      setSetupStatus({ type: 'error', text: 'Pick an agent first' });
+      return;
+    }
+    if (!setup.metric.trim()) {
+      setSetupStatus({ type: 'error', text: 'Metric is required' });
+      return;
+    }
+    postExperimentSetup({
+      action: 'create-cycle',
+      org: setup.org,
+      agent: setup.agent,
+      name: setup.cycleName.trim(),
+      metric: setup.metric.trim(),
+      metric_type: setup.metricType,
+      direction: setup.direction,
+      window: setup.window.trim(),
+      loop_interval: setup.loopInterval.trim(),
+      surface: setup.surface.trim(),
+      measurement: setup.measurement.trim(),
+      enabled: true,
+    }, 'Experiment cycle created.');
+  }
+
+  function toggleCycle(cycle: Cycle, owner: AgentExperiments) {
+    postExperimentSetup({
+      action: 'update-cycle',
+      ...cycle,
+      org: owner.org,
+      agent: owner.agent,
+      cycle: cycle.name,
+      enabled: !cycle.enabled,
+    }, cycle.enabled ? 'Experiment cycle paused.' : 'Experiment cycle enabled.');
+  }
+
+  function removeCycle(cycle: Cycle, owner: AgentExperiments) {
+    postExperimentSetup({
+      action: 'remove-cycle',
+      org: owner.org,
+      agent: owner.agent,
+      cycle: cycle.name,
+    }, 'Experiment cycle removed.');
+  }
 
   return (
     <div className="space-y-6">
@@ -204,6 +341,147 @@ export default function ExperimentsPage() {
           <IconRefresh size={18} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="text-base">Experiment Setup</CardTitle>
+            {selectedConfig && (
+              <Badge variant={selectedConfig.approval_required ? 'default' : 'secondary'}>
+                {selectedConfig.approval_required ? 'approval required' : 'auto-run allowed'}
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="grid gap-3">
+            <label className="grid gap-1.5 text-sm">
+              <span className="text-xs text-muted-foreground">Agent</span>
+              <select
+                value={setup.org && setup.agent ? `${setup.org}::${setup.agent}` : ''}
+                onChange={(event) => updateSelectedAgent(event.target.value)}
+                className="rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Select agent</option>
+                {agentOptions.map((agent) => (
+                  <option key={`${agent.org}:${agent.name}`} value={`${agent.org}::${agent.name}`}>
+                    {agent.name} ({agent.org})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={setup.approvalRequired}
+                onChange={(event) => setSetup((prev) => ({ ...prev, approvalRequired: event.target.checked }))}
+              />
+              Require approval before running proposed experiments
+            </label>
+            <button
+              type="button"
+              onClick={saveExperimentSettings}
+              disabled={savingSetup || !setup.agent}
+              className="w-fit rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            >
+              Save Experiment Settings
+            </button>
+          </div>
+
+          <div className="grid gap-3 rounded-md border bg-muted/20 p-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1.5 text-sm">
+                <span className="text-xs text-muted-foreground">Cycle Name</span>
+                <input
+                  value={setup.cycleName}
+                  onChange={(event) => setSetup((prev) => ({ ...prev, cycleName: event.target.value }))}
+                  className="rounded-md border bg-background px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="grid gap-1.5 text-sm">
+                <span className="text-xs text-muted-foreground">Metric</span>
+                <input
+                  value={setup.metric}
+                  onChange={(event) => setSetup((prev) => ({ ...prev, metric: event.target.value }))}
+                  placeholder="lead-response-quality"
+                  className="rounded-md border bg-background px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-4">
+              <label className="grid gap-1.5 text-sm">
+                <span className="text-xs text-muted-foreground">Type</span>
+                <select
+                  value={setup.metricType}
+                  onChange={(event) => setSetup((prev) => ({ ...prev, metricType: event.target.value }))}
+                  className="rounded-md border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="qualitative">Qualitative</option>
+                  <option value="quantitative">Quantitative</option>
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-sm">
+                <span className="text-xs text-muted-foreground">Direction</span>
+                <select
+                  value={setup.direction}
+                  onChange={(event) => setSetup((prev) => ({ ...prev, direction: event.target.value }))}
+                  className="rounded-md border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="higher">Higher is better</option>
+                  <option value="lower">Lower is better</option>
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-sm">
+                <span className="text-xs text-muted-foreground">Window</span>
+                <input
+                  value={setup.window}
+                  onChange={(event) => setSetup((prev) => ({ ...prev, window: event.target.value }))}
+                  className="rounded-md border bg-background px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="grid gap-1.5 text-sm">
+                <span className="text-xs text-muted-foreground">Loop</span>
+                <input
+                  value={setup.loopInterval}
+                  onChange={(event) => setSetup((prev) => ({ ...prev, loopInterval: event.target.value }))}
+                  className="rounded-md border bg-background px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+            <label className="grid gap-1.5 text-sm">
+              <span className="text-xs text-muted-foreground">Surface</span>
+              <input
+                value={setup.surface}
+                onChange={(event) => setSetup((prev) => ({ ...prev, surface: event.target.value }))}
+                placeholder="Optional file, prompt, skill, or workflow surface"
+                className="rounded-md border bg-background px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="text-xs text-muted-foreground">Measurement</span>
+              <textarea
+                value={setup.measurement}
+                onChange={(event) => setSetup((prev) => ({ ...prev, measurement: event.target.value }))}
+                placeholder="How the agent should judge whether this got better"
+                className="min-h-20 rounded-md border bg-background px-3 py-2 text-sm"
+              />
+            </label>
+            {setupStatus && (
+              <div className={`rounded-md px-3 py-2 text-xs ${setupStatus.type === 'success' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-500'}`}>
+                {setupStatus.text}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={createCycle}
+              disabled={savingSetup || !setup.agent}
+              className="w-fit rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            >
+              {savingSetup ? 'Saving...' : 'Create Cycle'}
+            </button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Summary cards */}
       {summary && hasData && (
@@ -262,15 +540,14 @@ export default function ExperimentsPage() {
             <h3 className="text-lg font-medium mb-1">No experiments yet</h3>
             <p className="text-sm text-muted-foreground max-w-md">
               Experiments are autonomous research cycles where agents test hypotheses
-              and measure results. The analyst sets up cycles via theta wave, and
-              agents run them automatically.
+              and measure results. Use Experiment Setup above to attach a cycle to
+              an agent and keep approval required while the workflow is being tuned.
             </p>
             <div className="mt-6 rounded-lg bg-muted/50 p-4 text-left max-w-sm w-full">
               <p className="text-xs font-medium text-muted-foreground mb-2">Get started:</p>
               <p className="text-xs text-muted-foreground">
-                Use <code className="bg-muted px-1 rounded">manage-cycle.sh create</code> to
-                assign a research cycle to an agent, or enable theta wave on the analyst
-                to have cycles created automatically.
+                Pick an agent, name the cycle, choose the metric, and save it.
+                The cycle is written to that agent&apos;s local experiment config.
               </p>
             </div>
           </CardContent>
@@ -375,6 +652,26 @@ export default function ExperimentsPage() {
                                   <Badge variant={cycle.enabled ? 'default' : 'secondary'} className="text-[10px]">
                                     {cycle.enabled ? 'active' : 'paused'}
                                   </Badge>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      toggleCycle(cycle, agentData);
+                                    }}
+                                    className="rounded border px-2 py-1 text-[10px] text-muted-foreground hover:bg-muted"
+                                  >
+                                    {cycle.enabled ? 'Pause' : 'Enable'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      removeCycle(cycle, agentData);
+                                    }}
+                                    className="rounded border px-2 py-1 text-[10px] text-red-500 hover:bg-red-500/10"
+                                  >
+                                    Remove
+                                  </button>
                                 </div>
                               </div>
                             ))}

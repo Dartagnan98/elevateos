@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
       priority: 'normal',
       timestamp: new Date().toISOString(),
       text: text,
+      source: 'dashboard',
       reply_to: null,
     };
 

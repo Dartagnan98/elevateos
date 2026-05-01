@@ -31,6 +31,7 @@ export function AgentCard({ agent }: AgentCardProps) {
 
   const healthLabel =
     agent.health === 'healthy' ? 'Online' :
+    agent.health === 'starting' ? 'Starting' :
     agent.health === 'stale' ? 'Stale' : 'Offline';
 
   return (

@@ -51,7 +51,7 @@ Tell the user what you found in each category and ask for confirmation before pr
 
 ```bash
 cd "$CTX_FRAMEWORK_ROOT"
-elevate add-agent <new_name> --template agent --org $CTX_ORG
+elevateos add-agent <new_name> --template agent --org $CTX_ORG
 ```
 
 Get a Telegram bot token from the user (they must create via @BotFather). Get chat ID via getUpdates after user sends /start + any message.
@@ -186,7 +186,7 @@ cat > "$CTX_FRAMEWORK_ROOT/orgs/$CTX_ORG/agents/<new_name>/goals.json" << EOF
   "updated_by": "$CTX_AGENT_NAME"
 }
 EOF
-elevate goals generate-md --agent <new_name> --org $CTX_ORG
+elevateos goals generate-md --agent <new_name> --org $CTX_ORG
 ```
 
 ### SOUL.md
@@ -211,11 +211,11 @@ After all files are copied:
 cd "$CTX_FRAMEWORK_ROOT/orgs/$CTX_ORG/agents/<new_name>"
 
 # Shared org knowledge (meetings, research, docs)
-elevate bus kb-ingest ./meetings --org $CTX_ORG --scope shared
-elevate bus kb-ingest ./docs --org $CTX_ORG --scope shared
+elevateos bus kb-ingest ./meetings --org $CTX_ORG --scope shared
+elevateos bus kb-ingest ./docs --org $CTX_ORG --scope shared
 
 # Private agent knowledge (CRM, personal memory)
-elevate bus kb-ingest ./MEMORY.md ./crm/contacts.json \
+elevateos bus kb-ingest ./MEMORY.md ./crm/contacts.json \
   --org $CTX_ORG --agent <new_name> --scope private
 ```
 
@@ -224,13 +224,13 @@ elevate bus kb-ingest ./MEMORY.md ./crm/contacts.json \
 ## Phase 7: Boot + Onboarding
 
 ```bash
-cd "$CTX_FRAMEWORK_ROOT" && elevate start <new_name>
+cd "$CTX_FRAMEWORK_ROOT" && elevateos start <new_name>
 ```
 
 Send a workspace orientation message via the bus. This is the first message the agent will receive. It must instruct the agent to read the entire migrated workspace before doing anything else — including before contacting the user — and then run a migration-aware onboarding:
 
 ```bash
-elevate bus send-message <new_name> normal \
+elevateos bus send-message <new_name> normal \
   'You have been migrated from a legacy agent workspace into ElevateOS v2. Before doing anything else — before messaging the user, before setting up crons, before running onboarding — read your entire workspace:
 
 1. Bootstrap files: IDENTITY.md, SOUL.md, MEMORY.md, USER.md, GUARDRAILS.md, GOALS.md, HEARTBEAT.md
@@ -246,7 +246,7 @@ Then proceed with ElevateOS onboarding (/onboarding), but treat it as a migratio
 Log the dispatch:
 
 ```bash
-elevate bus log-event action task_dispatched info \
+elevateos bus log-event action task_dispatched info \
   --meta '{"to":"<new_name>","task":"workspace orientation + migration-aware onboarding"}'
 ```
 
@@ -276,13 +276,13 @@ Update SYSTEM.md team roster:
 | config.json crons | Selectively | Port user-defined schedules, update paths |
 | .env (tokens/secrets) | Never | Source fresh from user |
 | Daily memory files | No | These are session logs — discard |
-| Old bus script references | Never | Update all paths to v2 elevate bus commands |
+| Old bus script references | Never | Update all paths to v2 elevateos bus commands |
 
 ---
 
 ## Notes
 
 - Always present the audit to the user before executing — confirm what to include/exclude
-- If the source uses old bash bus scripts (`bus/send-message.sh`, etc.), translate all commands to `elevate bus <command>` equivalents
+- If the source uses old bash bus scripts (`bus/send-message.sh`, etc.), translate all commands to `elevateos bus <command>` equivalents
 - If the source workspace has custom tools or MCP configs, check with user whether to port them
 - The permission-prompt issue (agent getting stuck at file edit approval dialog) is fixed in v2 via pre-approved .claude settings — verify the new agent's .claude/settings.json allows edits

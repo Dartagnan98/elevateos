@@ -6,7 +6,7 @@ Skipping steps = broken system. The dashboard monitors your compliance.
 ## Step 1: Update heartbeat (DO THIS FIRST)
 
 ```bash
-elevate bus update-heartbeat "<1-sentence summary of current work>"
+elevateos bus update-heartbeat "<1-sentence summary of current work>"
 ```
 
 If this fails, your agent shows as DEAD on the dashboard. Fix it before anything else.
@@ -14,13 +14,13 @@ If this fails, your agent shows as DEAD on the dashboard. Fix it before anything
 ## Step 2: Check inbox
 
 ```bash
-elevate bus check-inbox
+elevateos bus check-inbox
 ```
 
 Process ALL messages. ACK every single one:
 
 ```bash
-elevate bus ack-inbox "<message_id>"
+elevateos bus ack-inbox "<message_id>"
 ```
 
 Un-ACK'd messages are re-delivered in 5 minutes. Do not ignore them.
@@ -32,28 +32,28 @@ Full reference: `.claude/skills/agent-management/SKILL.md`
 
 ```bash
 # Check all agent heartbeats — flag any silent for >5 hours
-elevate bus read-all-heartbeats
+elevateos bus read-all-heartbeats
 
 # Check for agents with no recent activity
-elevate bus list-tasks --status in_progress 2>/dev/null | head -20
+elevateos bus list-tasks --status in_progress 2>/dev/null | head -20
 ```
 
 For each agent: if heartbeat is older than 5 hours, send a message to that agent:
 ```bash
-elevate bus send-message <agent_name> normal "Heartbeat check: are you running? Last heartbeat was more than 5 hours ago."
+elevateos bus send-message <agent_name> normal "Heartbeat check: are you running? Last heartbeat was more than 5 hours ago."
 ```
 
 If an agent is unresponsive for >8 hours, notify the orchestrator and log the issue:
 ```bash
-elevate bus send-message $CTX_ORCHESTRATOR_AGENT normal "Agent <name> appears unresponsive — last heartbeat >8h ago. May need restart."
-elevate bus log-event action agent_unresponsive warning --meta '{"agent":"<name>","hours_silent":8}'
+elevateos bus send-message $CTX_ORCHESTRATOR_AGENT normal "Agent <name> appears unresponsive — last heartbeat >8h ago. May need restart."
+elevateos bus log-event action agent_unresponsive warning --meta '{"agent":"<name>","hours_silent":8}'
 ```
 
 ## Step 3b: Check own task queue + stale task detection
 
 ```bash
-elevate bus list-tasks --agent $CTX_AGENT_NAME --status pending
-elevate bus list-tasks --agent $CTX_AGENT_NAME --status in_progress
+elevateos bus list-tasks --agent $CTX_AGENT_NAME --status pending
+elevateos bus list-tasks --agent $CTX_AGENT_NAME --status in_progress
 ```
 
 - If you have pending tasks: pick the highest priority one
@@ -65,7 +65,7 @@ Stale tasks are visible on the dashboard. They make you look broken.
 ## Step 4: Log heartbeat event
 
 ```bash
-elevate bus log-event heartbeat agent_heartbeat info --meta '{"agent":"'$CTX_AGENT_NAME'"}'
+elevateos bus log-event heartbeat agent_heartbeat info --meta '{"agent":"'$CTX_AGENT_NAME'"}'
 ```
 
 ## Step 5: Write daily memory
@@ -91,7 +91,7 @@ Read GOALS.md for any new objectives from the user.
 If goals changed since last check, create tasks to address them:
 
 ```bash
-elevate bus create-task "<title>" --desc "<description>" --assignee $CTX_AGENT_NAME --priority normal
+elevateos bus create-task "<title>" --desc "<description>" --assignee $CTX_AGENT_NAME --priority normal
 ```
 
 ## Step 7: Resume work
@@ -100,12 +100,12 @@ Pick your highest priority task and work on it.
 
 When starting:
 ```bash
-elevate bus update-task "<task_id>" in_progress
+elevateos bus update-task "<task_id>" in_progress
 ```
 
 When done:
 ```bash
-elevate bus complete-task "<task_id>" "<summary of what was produced>"
+elevateos bus complete-task "<task_id>" "<summary of what was produced>"
 ```
 
 ## Step 8: Update long-term memory (if applicable)
