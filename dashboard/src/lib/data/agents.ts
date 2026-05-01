@@ -2,18 +2,24 @@
 // Discovers agents, reads identity/config files, returns typed agent data
 
 import fs from 'fs/promises';
-import fsSync from 'fs';
 import path from 'path';
 import {
   CTX_ROOT,
   getAgentDir,
   getHeartbeatPath,
-  getAgentStateDir,
   getAllAgents,
 } from '@/lib/config';
+import { IPCClient } from '@/lib/ipc-client';
 import { getHeartbeat, getHealthStatus } from '@/lib/data/heartbeats';
 import { getTasksByAgent } from '@/lib/data/tasks';
 import { parseIdentityMd } from '@/lib/markdown-parser';
+import {
+  getElevateOrchestration,
+  getElevateRuntimeTools,
+  type ElevateOrchestrationAgent,
+  type ElevateOrchestrationRun,
+  type ElevateOrchestrationSnapshot,
+} from '@/lib/elevate-gateway-client';
 import type {
   AgentSummary,
   AgentDetail,
@@ -23,6 +29,8 @@ import type {
   Heartbeat,
   MemoryFile,
   LogFile,
+  AgentToolHook,
+  AgentToolSettings,
 } from '@/lib/types';
 
 // ---------------------------------------------------------------------------
@@ -41,10 +49,12 @@ export function getAgentPaths(name: string, org?: string): AgentPaths {
     identityMd: path.join(agentDir, 'IDENTITY.md'),
     soulMd: path.join(agentDir, 'SOUL.md'),
     goalsMd: path.join(agentDir, 'GOALS.md'),
+    toolsMd: path.join(agentDir, 'TOOLS.md'),
     memoryMd: path.join(agentDir, 'MEMORY.md'),
     memoryDir: path.join(agentDir, 'memory'),
     heartbeat: getHeartbeatPath(name),
     logsDir: path.join(CTX_ROOT, 'logs', name),
+    claudeSettingsJson: path.join(claudeDir, 'settings.json'),
   };
 }
 
@@ -58,6 +68,69 @@ async function readFileOrEmpty(filePath: string): Promise<string> {
   } catch {
     return '';
   }
+}
+
+async function readJsonOrNull(filePath: string): Promise<unknown | null> {
+  try {
+    return JSON.parse(await fs.readFile(filePath, 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+function normalizeStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string');
+}
+
+function parseToolSettings(raw: unknown): AgentToolSettings {
+  if (!raw || typeof raw !== 'object') {
+    return { allow: [], hooks: [] };
+  }
+
+  const settings = raw as Record<string, unknown>;
+  const permissions = settings.permissions && typeof settings.permissions === 'object'
+    ? settings.permissions as Record<string, unknown>
+    : {};
+  const statusLine = settings.statusLine && typeof settings.statusLine === 'object'
+    ? settings.statusLine as Record<string, unknown>
+    : undefined;
+
+  const hooks: AgentToolHook[] = [];
+  const hooksConfig = settings.hooks && typeof settings.hooks === 'object'
+    ? settings.hooks as Record<string, unknown>
+    : {};
+
+  for (const [event, entries] of Object.entries(hooksConfig)) {
+    if (!Array.isArray(entries)) continue;
+    for (const entry of entries) {
+      if (!entry || typeof entry !== 'object') continue;
+      const hookEntry = entry as Record<string, unknown>;
+      const matcher = typeof hookEntry.matcher === 'string' ? hookEntry.matcher : undefined;
+      const nestedHooks = Array.isArray(hookEntry.hooks) ? hookEntry.hooks : [];
+      for (const nested of nestedHooks) {
+        if (!nested || typeof nested !== 'object') continue;
+        const hook = nested as Record<string, unknown>;
+        if (typeof hook.command !== 'string') continue;
+        hooks.push({
+          event,
+          matcher,
+          command: hook.command,
+          timeout: typeof hook.timeout === 'number' ? hook.timeout : undefined,
+        });
+      }
+    }
+  }
+
+  return {
+    allow: normalizeStringList(permissions.allow),
+    statusLine: statusLine ? {
+      command: typeof statusLine.command === 'string' ? statusLine.command : undefined,
+      refreshInterval: typeof statusLine.refreshInterval === 'number' ? statusLine.refreshInterval : undefined,
+      timeout: typeof statusLine.timeout === 'number' ? statusLine.timeout : undefined,
+    } : undefined,
+    hooks,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -100,23 +173,116 @@ export async function getAgentIdentity(
 // Agent discovery
 // ---------------------------------------------------------------------------
 
+type RuntimeStatus = 'running' | 'stopped' | 'crashed' | 'starting' | 'halted';
+
+interface RuntimeAgentStatus {
+  name: string;
+  status: RuntimeStatus;
+}
+
+async function getGatewayOrchestrationOrNull(): Promise<ElevateOrchestrationSnapshot | null> {
+  try {
+    return await getElevateOrchestration(800);
+  } catch {
+    return null;
+  }
+}
+
+async function getRuntimeToolsOrNull() {
+  try {
+    return await getElevateRuntimeTools(800);
+  } catch {
+    return null;
+  }
+}
+
+function gatewayAgentMap(snapshot: ElevateOrchestrationSnapshot | null): Map<string, ElevateOrchestrationAgent> {
+  return new Map((snapshot?.agents ?? []).map((agent) => [agent.agent_id, agent]));
+}
+
+function activeGatewayRun(
+  snapshot: ElevateOrchestrationSnapshot | null,
+  agentId: string,
+): ElevateOrchestrationRun | undefined {
+  return (snapshot?.runs ?? []).find((run) => (
+    run.agent_id === agentId &&
+    (run.status === 'queued' || run.status === 'running')
+  ));
+}
+
+function healthFromGatewayAgent(agent?: ElevateOrchestrationAgent): HealthStatus | undefined {
+  if (!agent) return undefined;
+  if (!agent.enabled || agent.status === 'disabled' || agent.status === 'offline' || agent.status === 'error') {
+    return 'down';
+  }
+  if (agent.status === 'running' || (agent.run_counts?.active_runs ?? 0) > 0) return 'starting';
+  return 'healthy';
+}
+
+async function getRuntimeStatusMap(): Promise<Map<string, RuntimeStatus>> {
+  const instanceId = process.env.ELEVATE_INSTANCE_ID ?? process.env.CTX_INSTANCE_ID ?? 'default';
+  const ipc = new IPCClient(instanceId);
+
+  try {
+    const response = await ipc.send({ type: 'status' });
+    if (!response.success || !Array.isArray(response.data)) return new Map();
+
+    return new Map(
+      response.data
+        .filter((item): item is RuntimeAgentStatus => (
+          Boolean(item) &&
+          typeof item === 'object' &&
+          typeof (item as RuntimeAgentStatus).name === 'string' &&
+          typeof (item as RuntimeAgentStatus).status === 'string'
+        ))
+        .map((item) => [item.name, item.status]),
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+function healthFromHeartbeatAndRuntime(
+  heartbeat: Heartbeat | null,
+  runtimeStatus?: RuntimeStatus,
+): HealthStatus {
+  const heartbeatHealth = heartbeat ? getHealthStatus(heartbeat) : 'down';
+
+  if (heartbeatHealth === 'healthy') return 'healthy';
+  if (runtimeStatus === 'running' || runtimeStatus === 'starting') return 'starting';
+  if (runtimeStatus === 'crashed' || runtimeStatus === 'halted') return 'down';
+  return heartbeatHealth;
+}
+
 /**
  * Discover all agents, enriched with heartbeat data.
  * If org is provided, filters to that org only.
  */
 export async function discoverAgents(org?: string): Promise<AgentSummary[]> {
   const allAgents = getAllAgents();
-  const agents = org ? allAgents.filter((a) => a.org === org) : allAgents;
+  const gatewaySnapshot = await getGatewayOrchestrationOrNull();
+  const gatewayAgents = gatewayAgentMap(gatewaySnapshot);
+  const agents = org ? allAgents.filter((a) => a.org === org) : [...allAgents];
+  const seen = new Set(agents.map((agent) => agent.name));
+
+  for (const gatewayAgent of gatewaySnapshot?.agents ?? []) {
+    if (org && gatewayAgent.org !== org) continue;
+    if (seen.has(gatewayAgent.agent_id)) continue;
+    agents.push({ name: gatewayAgent.agent_id, org: gatewayAgent.org ?? '' });
+    seen.add(gatewayAgent.agent_id);
+  }
+
+  const runtimeStatuses = await getRuntimeStatusMap();
 
   const summaries = await Promise.all(
     agents.map(async (agent) => {
       const identity = await getAgentIdentity(agent.name, agent.org);
       const hb = await getHeartbeat(agent.name);
-
-      let health: HealthStatus = 'down';
-      if (hb) {
-        health = getHealthStatus(hb);
-      }
+      const gatewayAgent = gatewayAgents.get(agent.name);
+      const gatewayRun = activeGatewayRun(gatewaySnapshot, agent.name);
+      const localHealth = healthFromHeartbeatAndRuntime(hb, runtimeStatuses.get(agent.name));
+      const gatewayHealth = healthFromGatewayAgent(gatewayAgent);
+      const health = localHealth === 'healthy' ? localHealth : gatewayHealth ?? localHealth;
 
       // Get tasks for today count and current task
       let currentTask: string | undefined;
@@ -137,6 +303,11 @@ export async function discoverAgents(org?: string): Promise<AgentSummary[]> {
         currentTask = hb?.current_task ?? undefined;
       }
 
+      const gatewayRouteLabel = gatewayRun?.route_label ?? gatewayRun?.routing_label ?? null;
+      currentTask = gatewayRun?.task
+        ? `${gatewayRouteLabel ? `${gatewayRouteLabel}: ` : ''}${gatewayRun.task}`
+        : gatewayAgent?.current_task ?? currentTask;
+
       const summary: AgentSummary & {
         systemName: string;
         emoji: string;
@@ -144,13 +315,13 @@ export async function discoverAgents(org?: string): Promise<AgentSummary[]> {
         tasksToday: number;
       } = {
         systemName: agent.name,
-        name: identity.name,
-        org: agent.org,
+        name: gatewayAgent?.display_name || identity.name,
+        org: agent.org || gatewayAgent?.org || '',
         health,
-        lastHeartbeat: hb?.last_heartbeat,
+        lastHeartbeat: hb?.last_heartbeat ?? gatewayAgent?.last_seen_at ?? gatewayAgent?.updated_at ?? undefined,
         currentTask,
         emoji: identity.emoji,
-        role: identity.role,
+        role: gatewayAgent?.role || identity.role,
         tasksToday,
       };
 
@@ -174,34 +345,59 @@ export async function getAgentDetail(
 ): Promise<AgentDetail> {
   const paths = getAgentPaths(name, org);
 
-  const [identity, soulRaw, goalsRaw, memoryRaw, hb, memoryFiles, logFiles] =
+  const [
+    identity,
+    soulRaw,
+    goalsRaw,
+    toolsRaw,
+    toolSettingsRaw,
+    memoryRaw,
+    hb,
+    memoryFiles,
+    logFiles,
+  ] =
     await Promise.all([
       getAgentIdentity(name, org),
       readFileOrEmpty(paths.soulMd),
       readFileOrEmpty(paths.goalsMd),
+      readFileOrEmpty(paths.toolsMd),
+      readJsonOrNull(paths.claudeSettingsJson),
       readFileOrEmpty(paths.memoryMd),
       getHeartbeat(name),
       getAgentMemoryFiles(name, org),
       getAgentLogFiles(name, org),
     ]);
 
-  let health: HealthStatus = 'down';
-  if (hb) {
-    health = getHealthStatus(hb);
-  }
+  const runtimeStatuses = await getRuntimeStatusMap();
+  const [gatewaySnapshot, runtimeTools] = await Promise.all([
+    getGatewayOrchestrationOrNull(),
+    getRuntimeToolsOrNull(),
+  ]);
+  const gatewayAgent = gatewayAgentMap(gatewaySnapshot).get(name);
+  const localHealth = healthFromHeartbeatAndRuntime(hb, runtimeStatuses.get(name));
+  const gatewayHealth = healthFromGatewayAgent(gatewayAgent);
+  const health = localHealth === 'healthy' ? localHealth : gatewayHealth ?? localHealth;
+  const mergedIdentity = {
+    ...identity,
+    name: gatewayAgent?.display_name || identity.name,
+    role: gatewayAgent?.role || identity.role,
+  };
 
   return {
-    name: identity.name,
-    org: org ?? '',
-    identity,
+    name: mergedIdentity.name,
+    org: org ?? gatewayAgent?.org ?? '',
+    identity: mergedIdentity,
     soulRaw,
     goalsRaw,
+    toolsRaw,
+    toolSettings: parseToolSettings(toolSettingsRaw),
     memoryRaw,
     memoryFiles,
     heartbeat: hb,
     health,
     logFiles,
     agentDir: paths.agentDir,
+    runtimeTools,
   };
 }
 

@@ -8,6 +8,8 @@ import { LogsTab } from './logs-tab';
 import { CronsTab } from './crons-tab';
 import { SettingsTab } from './settings-tab';
 import { GoalsTab } from './goals-tab';
+import { AgentChatTab } from './agent-chat-tab';
+import { ToolsTab } from './tools-tab';
 import type {
   AgentDetail,
   IdentityFields,
@@ -35,16 +37,26 @@ export function AgentDetailTabs({
   };
 
   return (
-    <Tabs defaultValue="profile">
-      <TabsList variant="line">
+    <Tabs defaultValue="chat">
+      <TabsList variant="line" className="max-w-full justify-start overflow-x-auto">
+        <TabsTrigger value="chat">Chat</TabsTrigger>
         <TabsTrigger value="profile">Profile</TabsTrigger>
         <TabsTrigger value="tasks">Tasks</TabsTrigger>
         <TabsTrigger value="crons">Crons</TabsTrigger>
+        <TabsTrigger value="tools">Tools</TabsTrigger>
         <TabsTrigger value="memory">Memory</TabsTrigger>
         <TabsTrigger value="logs">Logs</TabsTrigger>
         <TabsTrigger value="goals">Goals</TabsTrigger>
         <TabsTrigger value="settings">Settings</TabsTrigger>
       </TabsList>
+
+      <TabsContent value="chat">
+        <AgentChatTab
+          agentName={detail.systemName ?? detail.name}
+          displayName={detail.identity.name}
+          health={detail.health}
+        />
+      </TabsContent>
 
       <TabsContent value="profile">
         <ProfileForm
@@ -61,6 +73,14 @@ export function AgentDetailTabs({
 
       <TabsContent value="crons">
         <CronsTab agentName={detail.systemName ?? detail.name} />
+      </TabsContent>
+
+      <TabsContent value="tools">
+        <ToolsTab
+          toolsRaw={detail.toolsRaw}
+          toolSettings={detail.toolSettings}
+          runtimeTools={detail.runtimeTools}
+        />
       </TabsContent>
 
       <TabsContent value="memory">
@@ -85,7 +105,7 @@ export function AgentDetailTabs({
       </TabsContent>
 
       <TabsContent value="settings">
-        <SettingsTab agentName={detail.systemName ?? detail.name} />
+        <SettingsTab agentName={detail.systemName ?? detail.name} org={detail.org} />
       </TabsContent>
     </Tabs>
   );

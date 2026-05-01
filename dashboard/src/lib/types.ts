@@ -3,7 +3,7 @@
 
 // -- Health & Action Types --
 
-export type HealthStatus = 'healthy' | 'stale' | 'down';
+export type HealthStatus = 'healthy' | 'starting' | 'stale' | 'down';
 
 export interface ActionResult {
   success: boolean;
@@ -44,7 +44,7 @@ export interface Heartbeat {
 
 // -- Task Types --
 
-export type TaskStatus = 'pending' | 'in_progress' | 'blocked' | 'completed';
+export type TaskStatus = 'pending' | 'in_progress' | 'blocked' | 'completed' | 'cancelled';
 export type TaskPriority = 'critical' | 'urgent' | 'high' | 'normal' | 'low';
 
 export interface TaskOutput {
@@ -66,6 +66,9 @@ export interface Task {
   created_at: string;
   updated_at?: string;
   completed_at?: string;
+  due_date?: string | null;
+  scheduled_for?: string | null;
+  scheduled_fired_at?: string | null;
   notes?: string;
   source_file?: string;
   outputs?: TaskOutput[];
@@ -270,10 +273,12 @@ export interface AgentPaths {
   identityMd: string;
   soulMd: string;
   goalsMd: string;
+  toolsMd: string;
   memoryMd: string;
   memoryDir: string;
   heartbeat: string;
   logsDir: string;
+  claudeSettingsJson: string;
 }
 
 export interface AgentIdentity {
@@ -292,12 +297,89 @@ export interface AgentDetail {
   identity: AgentIdentity;
   soulRaw: string;
   goalsRaw: string;
+  toolsRaw: string;
+  toolSettings: AgentToolSettings;
   memoryRaw: string;
   memoryFiles: MemoryFile[];
   heartbeat: Heartbeat | null;
   health: HealthStatus;
   logFiles: LogFile[];
   agentDir: string;
+  runtimeTools?: RuntimeToolsSnapshot | null;
+}
+
+export interface AgentToolHook {
+  event: string;
+  matcher?: string;
+  command: string;
+  timeout?: number;
+}
+
+export interface AgentToolSettings {
+  allow: string[];
+  statusLine?: {
+    command?: string;
+    refreshInterval?: number;
+    timeout?: number;
+  };
+  hooks: AgentToolHook[];
+}
+
+export interface RuntimeToolInfo {
+  name: string;
+  label: string;
+  summary: string;
+}
+
+export interface RuntimePlatformTools {
+  configured_toolsets: string[];
+  resolved_toolsets: string[];
+  resolved: RuntimeToolInfo[];
+  error?: string;
+}
+
+export interface RuntimeFocusedProfile {
+  requested_toolsets: string[];
+  effective_toolsets: string[];
+  effective: RuntimeToolInfo[];
+}
+
+export interface RuntimeToolProfileDecision {
+  mode: string;
+  platform: string;
+  requested_profile: string;
+  selected_profile: string;
+  reason: string;
+  matched_keywords: string[];
+  explicit_platform_config: boolean;
+  configured_toolsets: string[];
+  requested_toolsets: string[];
+  selected_toolsets: string[];
+  available_profiles: Record<
+    string,
+    {
+      requested_toolsets: string[];
+      effective_toolsets: string[];
+      lazy_toolsets: string[];
+    }
+  >;
+}
+
+export interface RuntimeToolsSnapshot {
+  platforms: Record<string, RuntimePlatformTools>;
+  focused_auto: {
+    default_platforms: string[];
+    profile_platform: string;
+    profiles: Record<string, RuntimeFocusedProfile>;
+    selected_profile: string | null;
+    selected_toolsets: string[];
+    decision?: RuntimeToolProfileDecision | null;
+    latest_decision?: (RuntimeToolProfileDecision & {
+      session_id?: string;
+      updated_at?: string;
+    }) | null;
+    router_probes?: Record<string, RuntimeToolProfileDecision>;
+  };
 }
 
 export interface MemoryFile {

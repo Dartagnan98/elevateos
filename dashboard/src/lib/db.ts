@@ -66,6 +66,9 @@ function initializeSchema(db: Database.Database): void {
       created_at TEXT NOT NULL,
       updated_at TEXT,
       completed_at TEXT,
+      due_date TEXT,
+      scheduled_for TEXT,
+      scheduled_fired_at TEXT,
       notes TEXT,
       source_file TEXT
     );
@@ -179,14 +182,37 @@ function initializeSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_messages_org ON messages(org);
     CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
   `);
+
+  ensureColumn(db, 'tasks', 'due_date', 'TEXT');
+  ensureColumn(db, 'tasks', 'scheduled_for', 'TEXT');
+  ensureColumn(db, 'tasks', 'scheduled_fired_at', 'TEXT');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_scheduled_for ON tasks(scheduled_for)');
 }
 
-// globalThis singleton survives Next.js hot reload
+function ensureColumn(
+  db: Database.Database,
+  table: string,
+  column: string,
+  definition: string,
+): void {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  if (columns.some((col) => col.name === column)) return;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+// globalThis singleton survives Next.js hot reload. Always re-run schema
+// migrations against the reused connection so dev servers self-heal after new
+// columns are added without needing a manual process restart.
 const globalForDb = globalThis as unknown as {
   __elevate_db: Database.Database | undefined;
 };
 
 export const db = globalForDb.__elevate_db ?? createDatabase();
+
+if (globalForDb.__elevate_db) {
+  initializeSchema(db);
+}
 
 if (process.env.NODE_ENV !== 'production') {
   globalForDb.__elevate_db = db;
