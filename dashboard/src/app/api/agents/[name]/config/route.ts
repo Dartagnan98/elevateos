@@ -18,6 +18,7 @@ const SYNCED_CONFIG_KEYS = [
   'max_crashes_per_day',
   'startup_delay',
   'model',
+  'dangerously_skip_permissions',
   'ctx_warning_threshold',
   'ctx_handoff_threshold',
 ] as const;
@@ -110,7 +111,7 @@ export async function PATCH(
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const allowed = ['timezone', 'day_mode_start', 'day_mode_end', 'communication_style', 'approval_rules', 'max_session_seconds', 'max_crashes_per_day', 'startup_delay', 'model', 'ctx_warning_threshold', 'ctx_handoff_threshold'];
+  const allowed = ['timezone', 'day_mode_start', 'day_mode_end', 'communication_style', 'approval_rules', 'max_session_seconds', 'max_crashes_per_day', 'startup_delay', 'model', 'dangerously_skip_permissions', 'ctx_warning_threshold', 'ctx_handoff_threshold'];
   const timeRegex = /^\d{2}:\d{2}$/;
   if (body.day_mode_start && !timeRegex.test(body.day_mode_start as string)) {
     return Response.json({ error: 'day_mode_start must be HH:MM' }, { status: 400 });
@@ -142,6 +143,13 @@ export async function PATCH(
         return Response.json({ error: `${pctField} must be a number between 50 and 95` }, { status: 400 });
       }
     }
+  }
+
+  if (
+    body.dangerously_skip_permissions !== undefined &&
+    typeof body.dangerously_skip_permissions !== 'boolean'
+  ) {
+    return Response.json({ error: 'dangerously_skip_permissions must be a boolean' }, { status: 400 });
   }
   if (body.ctx_warning_threshold !== undefined && body.ctx_handoff_threshold !== undefined) {
     if ((body.ctx_warning_threshold as number) >= (body.ctx_handoff_threshold as number)) {

@@ -11,7 +11,7 @@ import {
 } from '../utils/elevate.js';
 
 export const ecosystemCommand = new Command('ecosystem')
-  .option('--instance <id>', 'Instance ID', 'default')
+  .option('--instance <id>', 'Instance ID', process.env.ELEVATE_INSTANCE_ID || process.env.CTX_INSTANCE_ID || 'default')
   .option('--org <name>', 'Organization name (auto-detected if not specified)')
   .option('--output <path>', 'Output file', 'ecosystem.config.js')
   .description('Generate PM2 ecosystem.config.js from agent configs')
@@ -92,14 +92,15 @@ export const ecosystemCommand = new Command('ecosystem')
       ? `,
     {
       name: ${JSON.stringify(PM2_DASHBOARD_NAME)},
-      script: 'npm',
-      args: 'run dev',
+      script: 'npx',
+      args: 'next start',
       cwd: ${JSON.stringify(dashboardDir)},
       env: {
         PORT: process.env.PORT || '3000',
       },
       // Dashboard reads its real config from dashboard/.env.local — populated
-      // by /onboarding Phase 7. PM2 just supervises the npm process.
+      // by the dashboard command/install flow. Build before starting PM2:
+      // npm --prefix dashboard run build
       max_restarts: 50,
       restart_delay: 5000,
       autorestart: true,

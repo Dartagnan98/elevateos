@@ -52,6 +52,7 @@ docs/*
 !docs/UPSTREAM_BUGS.md
 !docs/OPERATOR_NOTES.md
 !docs/SKILLS_AUDIT.md
+!docs/CLAUDE_USAGE_GUIDE.md
 !docs/architecture/
 
 # Internal developer/planning notes (not for public repo)

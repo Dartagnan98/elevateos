@@ -22,12 +22,12 @@
 
 ---
 
-## 3. Ecosystem dashboard runs in dev mode
+## 3. Ecosystem dashboard production mode
 
-**Where:** `src/cli/ecosystem.ts:87-102`
-**What:** PM2's dashboard app runs `npm run dev` instead of `next start`. Slower, larger memory footprint, and recompiles every request. Also assumes `dashboard/.env.local` already exists — if missing, login fails because `ADMIN_PASSWORD` isn't seeded.
-**ElevateOS workaround:** INSTALL step 4 explicitly seeds `dashboard/.env.local` from `~/.elevate/<instance>/dashboard.env` via heredoc, then step 5 runs `npm --prefix dashboard run build`. Once a Tier 2 PR lands, switch ecosystem.ts to `next start` against the prebuilt output.
-**Proposed fix:** Generate ecosystem with `next start` against `dashboard/.next`, plus an explicit dependency on `npm run build` having run.
+**Where:** `src/cli/ecosystem.ts:87-110`
+**What:** PM2's dashboard app used to run `npm run dev` instead of `next start`. That was slower, used more memory, and behaved differently from production.
+**ElevateOS status:** Fixed. The generated dashboard PM2 app now runs `npx next start` and the generated config documents that `npm --prefix dashboard run build` must run first. INSTALL still seeds `dashboard/.env.local` from `~/.elevate/<instance>/dashboard.env`.
+**Next fix:** Add an ecosystem preflight that warns or skips the dashboard app when `dashboard/.next` is missing.
 
 ---
 
@@ -35,8 +35,8 @@
 
 **Where:** `src/cli/ecosystem.ts:7-13`, `src/cli/start.ts:91-99`
 **What:** If `--instance` is omitted, both commands silently default to instance `default`. Daemon then reads `CTX_INSTANCE_ID || 'default'` (`src/daemon/index.ts:221-224`), so the wrong instance starts.
-**ElevateOS workaround:** INSTALL step 14 requires `--instance elevation --org elevation` explicitly. Documented in OPERATOR_NOTES.
-**Proposed fix:** Make `--instance` required (no default). Or fail with a clear error if `~/.elevate/<instance>/` doesn't exist.
+**ElevateOS status:** Fixed for the common production path. `ecosystem` now inherits `ELEVATE_INSTANCE_ID` / `CTX_INSTANCE_ID` before falling back to `default`, and `start --instance <id>` passes the requested instance into ecosystem generation and PM2 startup.
+**Next fix:** Consider making `--instance` explicit on all multi-instance commands, or fail with a clear error if `~/.elevate/<instance>/` does not exist.
 
 ---
 
@@ -100,3 +100,21 @@
 **What:** Dashboard server-side adapters that need API keys cannot rely on the PM2 dashboard process env.
 **ElevateOS workaround:** `dashboard/src/lib/realestate/crm-client.ts` reads the configured secret name from `integrations.crm.api_key_env`, then resolves it from `orgs/<org>/secrets.env` via `fs.readFileSync` + an inline dotenv parser. Auth header/prefix or query-param mode, base URL, endpoints, and DB column mappings are configured per org. The dashboard exposes the same fields in Settings without returning the raw API key.
 **Proposed fix:** Add an opt-in flag (`--load-org-secrets <org>`) that injects keys from `orgs/<org>/secrets.env` into the dashboard's PM2 env. Or have the dashboard read the secrets file lazily on first use, scoped per request via `CTX_ORG`.
+
+---
+
+## 12. Dashboard proxy session-cookie verification
+
+**Where:** `dashboard/src/proxy.ts`
+**What:** The proxy used to treat the mere presence of `authjs.session-token` as an authenticated dashboard session, while many API routes rely on proxy-level auth.
+**ElevateOS status:** Fixed. The proxy now verifies Auth.js JWT cookies with `getToken()` and rejects forged session cookies before API handlers run. Bearer tokens still require `jose` signature verification.
+**Next fix:** Keep sensitive API routes calling `auth()` directly when practical for defense in depth, especially destructive mutations.
+
+---
+
+## 13. API media static-file proxy bypass
+
+**Where:** `dashboard/src/proxy.ts`, `dashboard/src/app/api/media/[...filepath]/route.ts`
+**What:** The public static-file allowlist matched image-like suffixes globally, so an API path ending in `.png`, `.svg`, or similar could bypass proxy auth.
+**ElevateOS status:** Fixed. The public file allowlist no longer applies to `/api/*`, and `/api/media/*` remains protected before its realpath/allowed-root checks run.
+**Next fix:** Keep regression coverage for any future public-path changes.

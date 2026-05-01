@@ -163,6 +163,8 @@ export interface AgentConfig {
   max_session_seconds?: number;
   max_crashes_per_day?: number;
   model?: string;
+  /** Opt-in escape hatch for fully trusted local-only agents. Defaults to false. */
+  dangerously_skip_permissions?: boolean;
   working_directory?: string;
   enabled?: boolean;
   crons?: CronEntry[];

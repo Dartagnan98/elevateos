@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Capture PTY exit handler so tests can simulate worker exit
 let capturedOnExit: ((code: number) => void) | null = null;
+const agentPtyConstructor = vi.fn();
 const mockPty = {
   spawn: vi.fn().mockResolvedValue(undefined),
   kill: vi.fn(),
@@ -13,7 +14,10 @@ const mockPty = {
 };
 
 vi.mock('../../../src/pty/agent-pty.js', () => ({
-  AgentPTY: function AgentPTY() { return mockPty; },
+  AgentPTY: function AgentPTY(...args: unknown[]) {
+    agentPtyConstructor(...args);
+    return mockPty;
+  },
 }));
 
 const mockInjectMessage = vi.fn();
@@ -43,6 +47,7 @@ beforeEach(() => {
   mockPty.spawn.mockClear();
   mockPty.kill.mockClear();
   mockPty.write.mockClear();
+  agentPtyConstructor.mockClear();
   mockInjectMessage.mockClear();
 });
 
@@ -78,6 +83,16 @@ describe('WorkerProcess', () => {
       await w.spawn(mockEnv, 'do the task');
       expect(w.getStatus().status).toBe('running');
       expect(w.getStatus().pid).toBe(12345);
+    });
+
+    it('passes worker config to the Claude PTY', async () => {
+      const w = new WorkerProcess('w4-model', '/tmp/proj', undefined);
+      await w.spawn(mockEnv, 'do the task', { model: 'claude-opus-4-5' });
+      expect(agentPtyConstructor).toHaveBeenCalledWith(
+        mockEnv,
+        { model: 'claude-opus-4-5' },
+        '/tmp/test-ctx/logs/w4-model/stdout.log',
+      );
     });
   });
 

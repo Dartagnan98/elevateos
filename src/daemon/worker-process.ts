@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { mkdirSync } from 'fs';
-import type { CtxEnv, WorkerStatus, WorkerStatusValue } from '../types/index.js';
+import type { AgentConfig, CtxEnv, WorkerStatus, WorkerStatusValue } from '../types/index.js';
 import { AgentPTY } from '../pty/agent-pty.js';
 import { injectMessage } from '../pty/inject.js';
 
@@ -43,7 +43,7 @@ export class WorkerProcess {
   /**
    * Spawn the worker Claude Code session with the given task prompt.
    */
-  async spawn(env: CtxEnv, prompt: string): Promise<void> {
+  async spawn(env: CtxEnv, prompt: string, config: AgentConfig = {}): Promise<void> {
     // Ensure bus dirs exist so the worker can use elevateos bus commands
     try {
       mkdirSync(join(env.ctxRoot, 'inbox', this.name), { recursive: true });
@@ -52,7 +52,7 @@ export class WorkerProcess {
     } catch { /* ignore */ }
 
     const logPath = join(env.ctxRoot, 'logs', this.name, 'stdout.log');
-    this.pty = new AgentPTY(env, {}, logPath);
+    this.pty = new AgentPTY(env, config, logPath);
 
     this.pty.onExit((code) => {
       this.exitCode = code;

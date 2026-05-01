@@ -91,6 +91,7 @@ After install, `localhost:3000` shows the dashboard with local agent chat, tools
 - **Real-estate data adapters** — lazy-open SQLite reader for `messages.db`, normalized `tools/data/sources/<source-id>` JSONL connector records, fs-based review reader, and configurable CRM API client. API-key env names, auth headers, endpoint paths, and DB column mappings come from org config + `secrets.env`.
 - **Leads, Outreach, and Deals pages** — server-rendered dashboard surfaces, missing-DB safe via discriminated unions, with normalized source connector fallback.
 - **One canary SOP** — `sop-pack/realestate/v1/avery/fintrac-id-verification.md`.
+- **Production hardening pass** — dashboard proxy verifies Auth.js session JWTs and signed bearer tokens, `/api/media/*` remains authenticated, Claude Code permission bypass is opt-in, worker `--model` reaches the PTY, and PM2 dashboard runs `next start`.
 - **Install + rollback docs** — full 16-step install with Codex pass-4 safety baked in (heredoc env write, template-direct agent creation, safe-interval verification, skills-first copy, required `--instance` and `--org` flags).
 
 ## Working On Features
@@ -112,7 +113,7 @@ After install, `localhost:3000` shows the dashboard with local agent chat, tools
 - **Token and latency observability** — show per-session token usage, cache-read vs fresh-token accounting, repeated tool-output bloat, slow runs, active prompts, and the profile/toolset currently used by Telegram, dashboard chat, and delegated agents.
 - **Skill and prompt inspector** — dashboard views for installed skills, enabled tools, prompt profiles, cron jobs, and agent instructions so the user can see exactly what the agent will load before it runs.
 - **Local data export/import** — backup and restore flows for agents, settings, sessions, memory, embeddings metadata, Telegram config, and license state without touching unrelated local repos.
-- **Production security pass** — tighten auth defaults, local secret redaction, CORS, destructive-action confirmations, audit logs, gateway API key handling, and uninstall behavior before a public installer release.
+- **Public installer hardening** — add destructive-action confirmations, fuller audit logs, license/update boundaries, export/import polish, and uninstall safeguards before a broad public installer release.
 
 ## What's deferred to Tier 2
 
@@ -135,12 +136,14 @@ After install, `localhost:3000` shows the dashboard with local agent chat, tools
 ## Maintenance
 
 This repo is the ElevateOS application. Source-level fixes and portability notes are tracked in `docs/SOURCE_FIXES.md`.
+Claude-facing feature and operator guidance is tracked in `docs/CLAUDE_USAGE_GUIDE.md`.
 
 ---
 
 ## Docs
 
 - `docs/INSTALL.md` — 16-step install procedure.
+- `docs/CLAUDE_USAGE_GUIDE.md` — feature map, production-readiness checks, and operator commands for Claude/Codex.
 - `docs/ROLLBACK.md` — clean removal without touching customer data or external tool folders.
 - `docs/OPERATOR_NOTES.md` — cron semantics, sentinel pattern, skill ownership map, triage table.
 - `docs/SOURCE_FIXES.md` — source-level bugs we worked around, with proposed fixes.

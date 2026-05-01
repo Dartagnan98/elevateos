@@ -14,6 +14,7 @@ interface AgentConfig {
     never_ask?: string[];
   };
   model?: string;
+  dangerously_skip_permissions?: boolean;
   max_session_seconds?: number;
   max_crashes_per_day?: number;
   startup_delay?: number;
@@ -491,6 +492,7 @@ export function SettingsTab({ agentName, org }: SettingsTabProps) {
     saveSection(
       {
         model: config.model,
+        dangerously_skip_permissions: config.dangerously_skip_permissions,
         max_session_seconds: config.max_session_seconds,
         max_crashes_per_day: config.max_crashes_per_day,
         startup_delay: config.startup_delay,
@@ -649,6 +651,16 @@ export function SettingsTab({ agentName, org }: SettingsTabProps) {
               className="mt-1 block w-full rounded-md border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
             />
           </div>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={config.dangerously_skip_permissions === true}
+              onChange={e => setConfig(p => ({ ...p, dangerously_skip_permissions: e.target.checked }))}
+              className="rounded"
+            />
+            <span>Bypass Claude Permissions</span>
+          </label>
 
           <div className="grid grid-cols-3 gap-3">
             <div>

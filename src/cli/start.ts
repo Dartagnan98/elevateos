@@ -18,7 +18,7 @@ function commandExists(cmd: string): boolean {
 
 export const startCommand = new Command('start')
   .argument('[agent]', 'Specific agent to start (starts all if omitted)')
-  .option('--instance <id>', 'Instance ID', 'default')
+  .option('--instance <id>', 'Instance ID', process.env.ELEVATE_INSTANCE_ID || process.env.CTX_INSTANCE_ID || 'default')
   .option('--foreground', 'Run daemon in foreground (no PM2, for debugging)')
   .description(`Start the ${PRODUCT_NAME} daemon and agents`)
   .action(async (agent: string | undefined, options: { instance: string; foreground?: boolean }) => {
@@ -75,8 +75,8 @@ export const startCommand = new Command('start')
         if (existsSync(ecosystemPath)) {
           console.log(`Starting ${PRODUCT_NAME} daemon via PM2...`);
           try {
-            execSync('pm2 start ecosystem.config.js', { stdio: 'inherit', cwd: projectRoot });
-            execSync('pm2 save', { stdio: 'inherit', cwd: projectRoot });
+            execSync('pm2 start ecosystem.config.js', { stdio: 'inherit', cwd: projectRoot, env: daemonEnv });
+            execSync('pm2 save', { stdio: 'inherit', cwd: projectRoot, env: daemonEnv });
             console.log(`\nDaemon started. Use \`${CLI_NAME} status\` to check agents.`);
             if (IS_WINDOWS) {
               console.log('\nFor auto-start on Windows boot:');
@@ -89,13 +89,19 @@ export const startCommand = new Command('start')
         } else {
           console.log('Generating ecosystem.config.js and starting...');
           try {
-            execSync(`node ${JSON.stringify(join(projectRoot, 'dist', 'cli.js'))} ecosystem`, {
+            const ecosystemArgs = [
+              'ecosystem',
+              '--instance',
+              options.instance,
+              ...(org ? ['--org', org] : []),
+            ].map((value) => JSON.stringify(value)).join(' ');
+            execSync(`node ${JSON.stringify(join(projectRoot, 'dist', 'cli.js'))} ${ecosystemArgs}`, {
               stdio: 'inherit',
               cwd: projectRoot,
               env: daemonEnv,
             });
-            execSync('pm2 start ecosystem.config.js', { stdio: 'inherit', cwd: projectRoot });
-            execSync('pm2 save', { stdio: 'inherit', cwd: projectRoot });
+            execSync('pm2 start ecosystem.config.js', { stdio: 'inherit', cwd: projectRoot, env: daemonEnv });
+            execSync('pm2 save', { stdio: 'inherit', cwd: projectRoot, env: daemonEnv });
             console.log(`\nDaemon started. Use \`${CLI_NAME} status\` to check agents.`);
             if (IS_WINDOWS) {
               console.log('\nFor auto-start on Windows boot:');
@@ -104,7 +110,7 @@ export const startCommand = new Command('start')
             }
           } catch {
             console.error('Failed to generate ecosystem and start. Try manually:');
-            console.error(`  ${CLI_NAME} ecosystem && pm2 start ecosystem.config.js`);
+            console.error(`  ${CLI_NAME} ecosystem --instance ${options.instance} && pm2 start ecosystem.config.js`);
           }
         }
       } else {

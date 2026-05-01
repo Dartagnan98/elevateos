@@ -215,7 +215,9 @@ export class AgentPTY {
       args.push('--continue');
     }
 
-    args.push('--dangerously-skip-permissions');
+    if (this.shouldBypassClaudePermissions()) {
+      args.push('--dangerously-skip-permissions');
+    }
 
     if (this.config.model) {
       args.push('--model', this.config.model);
@@ -247,6 +249,12 @@ export class AgentPTY {
     args.push(prompt);
 
     return args;
+  }
+
+  private shouldBypassClaudePermissions(): boolean {
+    return this.config.dangerously_skip_permissions === true ||
+      process.env.ELEVATE_DANGEROUSLY_SKIP_PERMISSIONS === '1' ||
+      process.env.CTX_DANGEROUSLY_SKIP_PERMISSIONS === '1';
   }
 
   /**

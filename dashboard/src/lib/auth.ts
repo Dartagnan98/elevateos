@@ -13,8 +13,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // Force simple cookie names without __Secure- / __Host- prefixes.
   // NextAuth v5 auto-enables these for HTTPS (including Cloudflare tunnels via
   // X-Forwarded-Proto), but tunnel proxies may not forward Secure-prefixed
-  // cookies reliably. The middleware checks for authjs.session-token, so this
-  // must stay consistent.
+  // cookies reliably. The proxy verifies this JWT cookie name, so this must
+  // stay consistent.
   cookies: {
     sessionToken: {
       name: 'authjs.session-token',

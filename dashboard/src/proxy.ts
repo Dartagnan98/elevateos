@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
+import { getToken } from 'next-auth/jwt';
 
 // Allowed CORS origins - localhost dev + configured deployment URL + mobile app
 // Built once at module load: env-derived origins are validated via `new URL()`,
@@ -43,10 +44,56 @@ function buildAllowedOrigins(): string[] {
 
 const ALLOWED_ORIGINS: string[] = buildAllowedOrigins();
 const PUBLIC_FILE = /\.(?:avif|gif|ico|jpg|jpeg|png|svg|webp)$/i;
+const SESSION_COOKIE_NAME = 'authjs.session-token';
+const SECURE_SESSION_COOKIE_NAME = '__Secure-authjs.session-token';
 
 function getAllowedOrigin(requestOrigin: string | null): string | null {
   if (requestOrigin && ALLOWED_ORIGINS.includes(requestOrigin)) return requestOrigin;
   return null;
+}
+
+function hasCookie(request: NextRequest, cookieName: string): boolean {
+  return request.cookies.getAll().some((cookie) => (
+    cookie.name === cookieName || cookie.name.startsWith(`${cookieName}.`)
+  ));
+}
+
+function authMisconfiguredResponse(corsOrigin: string) {
+  const res = NextResponse.json(
+    { error: 'Server misconfiguration: auth secret not configured' },
+    { status: 500 },
+  );
+  res.headers.set('Access-Control-Allow-Origin', corsOrigin);
+  res.headers.set('Vary', 'Origin');
+  return res;
+}
+
+async function hasVerifiedSessionCookie(
+  request: NextRequest,
+  authSecret: string | undefined,
+  corsOrigin: string,
+): Promise<{ ok: boolean; response?: NextResponse }> {
+  const candidateCookieNames = [SESSION_COOKIE_NAME, SECURE_SESSION_COOKIE_NAME]
+    .filter((name) => hasCookie(request, name));
+
+  if (candidateCookieNames.length === 0) {
+    return { ok: false };
+  }
+  if (!authSecret) {
+    console.error('[proxy] CRITICAL: Session cookie presented but AUTH_SECRET/NEXTAUTH_SECRET is unset.');
+    return { ok: false, response: authMisconfiguredResponse(corsOrigin) };
+  }
+
+  for (const cookieName of candidateCookieNames) {
+    const token = await getToken({
+      req: request,
+      secret: authSecret,
+      cookieName,
+    });
+    if (token) return { ok: true };
+  }
+
+  return { ok: false };
 }
 
 export async function proxy(request: NextRequest) {
@@ -75,7 +122,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/_next') ||
     pathname === '/favicon.ico' ||
-    PUBLIC_FILE.test(pathname)
+    (!pathname.startsWith('/api/') && PUBLIC_FILE.test(pathname))
   ) {
     const response = NextResponse.next();
     response.headers.set('Access-Control-Allow-Origin', corsOrigin);
@@ -83,10 +130,15 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  // Check for next-auth session token cookie (web dashboard)
-  const hasSession =
-    request.cookies.has('authjs.session-token') ||
-    request.cookies.has('__Secure-authjs.session-token');
+  const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+
+  // Check for a verified NextAuth session token (web dashboard). A cookie name
+  // alone is not enough; forged cookies must fail before hitting API handlers.
+  const sessionCookie = await hasVerifiedSessionCookie(request, authSecret, corsOrigin);
+  if (sessionCookie.response) {
+    return sessionCookie.response;
+  }
+  const hasSession = sessionCookie.ok;
 
   // Check for Bearer token (mobile app)
   const authHeader = request.headers.get('Authorization');
@@ -96,19 +148,12 @@ export async function proxy(request: NextRequest) {
     const token = authHeader.slice(7);
     if (token.length > 0) {
       // Security (H6): Verify JWT signature — presence-only check bypassed by any string.
-      const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
       if (!authSecret) {
         console.error(
           '[proxy] CRITICAL: Bearer token presented but AUTH_SECRET/NEXTAUTH_SECRET is unset. Refusing request.',
           { pathname, method: request.method },
         );
-        const res = NextResponse.json(
-          { error: 'Server misconfiguration: auth secret not configured' },
-          { status: 500 },
-        );
-        res.headers.set('Access-Control-Allow-Origin', corsOrigin);
-        res.headers.set('Vary', 'Origin');
-        return res;
+        return authMisconfiguredResponse(corsOrigin);
       }
       try {
         const secret = new TextEncoder().encode(authSecret);
