@@ -251,7 +251,7 @@ describe('E2E Lifecycle', () => {
       expect(msg.id).toMatch(/^\d+-paul-[a-z0-9]{5}$/);
     });
 
-    it('task JSON has all 17 required fields', () => {
+    it('task JSON has all required fields', () => {
       const paths = makePaths('paul');
       const taskId = createTask(paths, 'paul', 'test-org', 'Test', {
         assignee: 'boris',
@@ -263,7 +263,8 @@ describe('E2E Lifecycle', () => {
       const expectedFields = [
         'id', 'title', 'description', 'type', 'needs_approval', 'status',
         'assigned_to', 'created_by', 'org', 'priority', 'project',
-        'kpi_key', 'created_at', 'updated_at', 'completed_at', 'due_date', 'archived',
+        'kpi_key', 'created_at', 'updated_at', 'completed_at', 'due_date',
+        'scheduled_for', 'scheduled_fired_at', 'archived',
       ];
       expect(Object.keys(task).sort()).toEqual(expectedFields.sort());
     });

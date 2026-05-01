@@ -10,7 +10,7 @@ describe('Sprint 1: Template Completeness', () => {
 
     it('has all required markdown files', () => {
       const requiredFiles = [
-        'CLAUDE.md', 'SOUL.md', 'HEARTBEAT.md', 'TOOLS.md',
+        'AGENTS.md', 'SOUL.md', 'HEARTBEAT.md', 'TOOLS.md',
         'GUARDRAILS.md', 'ONBOARDING.md', 'IDENTITY.md',
         'SYSTEM.md', 'USER.md', 'GOALS.md', 'MEMORY.md',
       ];
@@ -56,15 +56,15 @@ describe('Sprint 1: Template Completeness', () => {
       }
     });
 
-    it('CLAUDE.md has first boot check', () => {
-      const content = readFileSync(join(agentDir, 'CLAUDE.md'), 'utf-8');
+    it('AGENTS.md has first boot check', () => {
+      const content = readFileSync(join(agentDir, 'AGENTS.md'), 'utf-8');
       expect(content).toContain('First Boot Check');
       expect(content).toContain('ONBOARDING');
     });
 
-    it('CLAUDE.md references elevate bus commands', () => {
-      const content = readFileSync(join(agentDir, 'CLAUDE.md'), 'utf-8');
-      expect(content).toContain('elevate bus');
+    it('AGENTS.md references elevateos bus commands', () => {
+      const content = readFileSync(join(agentDir, 'AGENTS.md'), 'utf-8');
+      expect(content).toContain('elevateos bus');
       expect(content).not.toContain('bash $CTX_FRAMEWORK_ROOT/bus/');
     });
 
@@ -128,7 +128,7 @@ describe('Sprint 1: Template Completeness', () => {
 
     it('has all required markdown files', () => {
       const requiredFiles = [
-        'CLAUDE.md', 'SOUL.md', 'HEARTBEAT.md', 'TOOLS.md',
+        'AGENTS.md', 'SOUL.md', 'HEARTBEAT.md', 'TOOLS.md',
         'GUARDRAILS.md', 'ONBOARDING.md', 'IDENTITY.md',
         'SYSTEM.md', 'USER.md', 'GOALS.md', 'MEMORY.md',
       ];
@@ -171,8 +171,8 @@ describe('Sprint 1: Template Completeness', () => {
       }
     });
 
-    it('CLAUDE.md has orchestrator-specific content', () => {
-      const content = readFileSync(join(orchDir, 'CLAUDE.md'), 'utf-8');
+    it('AGENTS.md has orchestrator-specific content', () => {
+      const content = readFileSync(join(orchDir, 'AGENTS.md'), 'utf-8');
       expect(content).toContain('Orchestrator');
       expect(content).toContain('coordination');
       expect(content).toContain('Decompose');
@@ -206,7 +206,7 @@ describe('Sprint 1: Template Completeness', () => {
 
     it('has all required markdown files', () => {
       const requiredFiles = [
-        'CLAUDE.md', 'SOUL.md', 'HEARTBEAT.md', 'TOOLS.md',
+        'AGENTS.md', 'SOUL.md', 'HEARTBEAT.md', 'TOOLS.md',
         'GUARDRAILS.md', 'ONBOARDING.md', 'IDENTITY.md',
         'SYSTEM.md', 'USER.md', 'GOALS.md', 'MEMORY.md',
       ];
@@ -251,8 +251,8 @@ describe('Sprint 1: Template Completeness', () => {
       }
     });
 
-    it('CLAUDE.md has analyst-specific content', () => {
-      const content = readFileSync(join(analystDir, 'CLAUDE.md'), 'utf-8');
+    it('AGENTS.md has analyst-specific content', () => {
+      const content = readFileSync(join(analystDir, 'AGENTS.md'), 'utf-8');
       expect(content).toContain('Analyst');
       expect(content).toContain('metrics');
     });
